@@ -24,7 +24,7 @@ Mercado privado para la guild, con login por Discord. Ver [ro-guild-market-plan.
    npm run dev
    ```
 
-`DATABASE_URL`/`DIRECT_URL` ya vienen apuntando al Postgres local (`.env`, puerto 5433) — no hace falta tocarlos salvo que cambies la configuración de `docker-compose.yml`. En producción esas dos variables apuntarán a Supabase.
+`POSTGRES_PRISMA_URL`/`POSTGRES_URL_NON_POOLING` ya vienen apuntando al Postgres local (`.env`, puerto 5433) — no hace falta tocarlos salvo que cambies la configuración de `docker-compose.yml`. En producción, la integración Vercel↔Supabase rellena esas mismas variables sola (no se pegan a mano).
 
 ## Prisma
 
