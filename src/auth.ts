@@ -46,16 +46,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         profile.avatar as string | null,
       );
 
-      await prisma.user.upsert({
-        where: { id: discordId },
-        create: {
-          id: discordId,
-          username,
-          avatarUrl,
-          guildRoles: member.roles ?? [],
-        },
-        update: { username, avatarUrl, guildRoles: member.roles ?? [] },
-      });
+      // La pertenencia al guild ya está confirmada en este punto: un fallo
+      // guardando el perfil (p.ej. la DB caída) no debe bloquear el login
+      // de alguien que sí es del guild ni disfrazarse de "no eres del
+      // guild" (Auth.js manda cualquier excepción aquí al mismo
+      // error=AccessDenied que un signIn()=false, así que de cara al
+      // usuario serían indistinguibles). Se registra el fallo y se
+      // reintentará solo el guardado en el siguiente login.
+      try {
+        await prisma.user.upsert({
+          where: { id: discordId },
+          create: {
+            id: discordId,
+            username,
+            avatarUrl,
+            guildRoles: member.roles ?? [],
+          },
+          update: { username, avatarUrl, guildRoles: member.roles ?? [] },
+        });
+      } catch (err) {
+        console.error("No se pudo guardar el perfil de usuario tras el login:", err);
+      }
 
       return true;
     },
