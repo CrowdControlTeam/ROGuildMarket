@@ -1,0 +1,243 @@
+# Plan de desarrollo — Mercado de guild (Ragnarok Online)
+
+## 1. Idea general
+
+Una web privada, solo para miembros del Discord de la guild, donde los jugadores pueden:
+
+- Poner objetos en **venta directa** (precio fijo) o en **subasta** (puja al mejor postor).
+- **Comprar** objetos publicados por otros.
+- Publicar **peticiones de compra** ("busco X, pago Y").
+- Proponer **trades** (objeto por objeto, con o sin dinero de por medio).
+- Hacer **regalos** directos a otro jugador.
+
+El catálogo de objetos (nombre, icono, stats, descripción) sale de una base de datos propia, alimentada mediante scraping periódico de Midgardhub, para no depender de esa web en tiempo real.
+
+El acceso se controla con **login de Discord (OAuth2)**, y solo se permite entrar a quienes pertenezcan al servidor de Discord de la guild. Cada publicación en el mercado (venta, subasta, petición de compra) se anuncia automáticamente en un canal de Discord vía **webhook**, con fecha, autor, item (nombre + icono) y precio.
+
+La estética visual busca recordar a Ragnarok Online (paneles tipo ventana de inventario, tipografía con aire retro, paleta de colores del juego) sin usar sprites ni assets originales de Gravity.
+
+---
+
+## 2. Especificación punto por punto
+
+### 2.1 Autenticación y acceso
+- Login exclusivamente vía **Discord OAuth2** (no habrá usuario/contraseña propio).
+- Tras el login, se comprueba que el usuario pertenece al `GUILD_ID` (servidor de Discord) configurado. Si no pertenece, se le deniega el acceso con un mensaje claro.
+- Se guarda un perfil mínimo por usuario: `discordId`, `username`, `avatar`, fecha de alta, y opcionalmente su rol/rango dentro de la guild (para fases posteriores, p. ej. moderación).
+- Sesión persistente (cookies firmadas), cierre de sesión disponible.
+
+### 2.2 Catálogo de objetos
+- Base de datos propia con: nombre, icono, descripción, categoría (arma/armadura/carta/consumible/etc.), y cualquier dato adicional relevante para identificar el objeto en el mercado.
+- **Origen de los datos:** scraping propio de Midgardhub, ejecutado de forma periódica (no en cada visita del usuario), guardando los resultados en la DB local.
+- Antes de scrapear de forma sistemática, contactar al autor de Midgardhub (vía su página de contacto) explicando el uso: proyecto privado, sin ánimo de lucro, solo para una guild, con crédito a la fuente. Aunque no sea estrictamente obligatorio, es buena práctica y reduce riesgo de bloqueo/ToS.
+- Los iconos se alojan copiados en tu propio almacenamiento (no se hace *hotlink* directo a midgardhub).
+
+### 2.3 Mercado — modalidades de publicación
+Al crear una publicación, el vendedor elige un **modo** (obligatorio indicar al menos uno de los dos precios):
+
+| Campo | Venta directa | Subasta |
+|---|---|---|
+| Precio de venta | Obligatorio si no hay subasta | — |
+| Precio de subasta (puja inicial) | — | Obligatorio si no hay venta directa |
+| Duración | No aplica | Obligatoria (p. ej. 24h/48h/72h) |
+| Cierre | Al comprar | Al expirar el tiempo o alcanzar "comprar ya" (opcional) |
+
+- Se puede combinar: precio de venta directa ("cómpralo ya") + precio de subasta mínimo, pero al menos uno de los dos es obligatorio.
+- Cada publicación incluye: item, cantidad, precio(s), vendedor, fecha de publicación, estado (activa/vendida/cancelada/expirada).
+- Historial de pujas visible en las subastas.
+
+### 2.4 Peticiones de compra
+- Un jugador publica "busco [item], pago hasta [precio]".
+- Otros jugadores pueden responder ofreciendo el item.
+- Notificación en Discord igual que una venta, indicando que es una **petición de compra**, no una venta.
+
+### 2.5 Trade (intercambio)
+- Un jugador propone intercambiar un objeto propio por otro objeto (de otro jugador o "busco cualquiera de esta lista").
+- El receptor puede aceptar, rechazar o contraofertar.
+- Puede incluir compensación en zeny (moneda del juego) además del objeto.
+
+### 2.6 Regalos
+- Un jugador puede "regalar" un objeto a otro miembro directamente, sin coste, quedando registrado en el historial (para transparencia y evitar disputas).
+
+### 2.7 Notificaciones a Discord
+- Cada evento relevante (nueva venta, nueva subasta, nueva petición de compra, y opcionalmente trade/regalo) genera un mensaje enviado por **webhook de Discord** al canal configurado, en formato *embed* con:
+  - Fecha y hora de publicación.
+  - Usuario que publica (nombre + avatar de Discord).
+  - Item: nombre e icono.
+  - Precio (venta y/o subasta) o, en el caso de peticiones, el precio que se ofrece pagar.
+  - Enlace directo a la publicación en la web.
+- (Fase 3) Notificaciones de cierre de subasta y aviso al ganador, mediante el bot descrito en el punto 2.10 (los webhooks son unidireccionales, no pueden reaccionar a eventos ni mandar DMs).
+
+### 2.8 Ambientación visual "estilo RO"
+- Paleta de colores inspirada en la UI clásica del juego (marrones/dorados tipo madera, paneles con borde).
+- Tipografía con aire retro/pixel para títulos, tipografía legible normal para el contenido.
+- Iconografía e ilustraciones **propias o genéricas** (no sprites extraídos del cliente del juego ni artwork oficial de Gravity), para evitar problemas de derechos de autor.
+- Los iconos de los items scrapeados de Midgardhub sí se van a usar (son necesarios para identificar el objeto), pero limitados a ese uso funcional, con atribución a la fuente en el footer.
+
+### 2.9 Búsqueda, filtros y orden en el mercado
+
+**Alcance:** aplica a ventas directas, subastas y peticiones de compra. No aplica (por ahora) a trades ni regalos.
+
+**Filtros disponibles (combinables entre sí):**
+- **Nombre**: texto libre, coincidencia parcial y sin distinguir mayúsculas/minúsculas (ej. "manteau" encuentra "Manteau" y "Wool Manteau").
+- **Categoría / tipo de item**:
+  - Equipo: armas, y armadura con su subtipo de slot (casco superior, casco medio, casco inferior, cuerpo, escudo, prenda/garment, calzado, accesorio).
+  - Cartas: filtrables por el tipo de equipo en el que se pueden slotear (ej. "cartas de casco superior", "cartas de arma").
+  - Consumibles / usables.
+  - Miscelánea / Etc.
+- **Rango de precio**: precio mínimo y máximo (sobre el precio de venta directa o el precio de subasta, según corresponda; en peticiones de compra, sobre el precio ofrecido).
+
+**Orden de resultados:**
+- Por defecto: fecha de publicación, de más reciente a más antigua.
+- Alternativas seleccionables por el usuario: precio (ascendente/descendente), fecha de publicación (ascendente/descendente), nombre (A-Z / Z-A).
+
+**Carga de resultados: botón "cargar más" con paginación por cursor** (no scroll infinito puro ni paginación numerada clásica). Motivo:
+- El scroll infinito puro complica mantener filtros/orden reflejados en la URL (difícil compartir o recargar una búsqueda concreta) y puede degradar el rendimiento si el listado crece mucho sin virtualización.
+- La paginación numérica clásica (OFFSET/LIMIT) se vuelve lenta e inconsistente si se publican o retiran items mientras el usuario navega entre páginas.
+- Un cursor (basado en el último elemento cargado, no en el número de página) da una experiencia fluida similar al scroll infinito, es eficiente en la base de datos aunque el catálogo crezca mucho, y permite mantener filtros/orden en la URL.
+
+**Implicaciones técnicas:**
+- El modelo `Item` necesita campos de categoría y subtipo (arma, armadura + slot, carta + slot compatible, consumible, miscelánea) capturados durante el propio scraping, para no depender de parsear texto libre en cada búsqueda.
+- Los campos usados para filtrar y ordenar (categoría, subtipo, precio, fecha, nombre) deben estar indexados en PostgreSQL para que la búsqueda siga siendo rápida a medida que crece el número de publicaciones.
+
+### 2.10 Notificaciones privadas por Discord (DM)
+
+**Cuándo se envía:** al completarse una transacción, se manda un mensaje privado (DM) por Discord solo a quien **recibe** esa transacción (no al que la origina, que ya sabe que la ha hecho):
+
+| Evento | Quién recibe el DM |
+|---|---|
+| Compra (venta directa o subasta) | El vendedor: "X ha comprado tu [item]" |
+| Petición de compra aceptada | Quien publicó la petición, al recibir el item que buscaba |
+| Trade aceptado | Cada parte del trade, con el objeto que **ella** ha recibido a cambio (ambas partes reciben algo, así que ambas reciben su propio DM) |
+| Regalo | Quien recibe el regalo |
+
+**Formato del mensaje:**
+- Preferentemente un embed ("tarjeta"), igual en espíritu al usado en el canal público: icono y nombre del item, quién origina la transacción, precio o detalle del intercambio, fecha, y enlace a la publicación/transacción en la web.
+- Si no se puede construir el embed, se envía como alternativa un mensaje de texto plano con la misma información esencial (usuario, acción, item, precio).
+
+**Manejo de fallos de entrega:** si el bot no puede enviarle el DM al usuario (por ejemplo, tiene los mensajes privados cerrados a miembros del servidor, o ha bloqueado al bot), no se hace nada adicional: no se reintenta ni se avisa por otra vía. La transacción queda igualmente reflejada en la web y en el canal público vía webhook.
+
+**Requisito técnico:** los webhooks son unidireccionales y no pueden enviar DMs, así que esta función requiere un **bot de Discord** con permiso para abrir conversaciones privadas con miembros del servidor. El bot se incorpora en la **Fase 3** (ver roadmap), aprovechando que es cuando llegan peticiones de compra, trades y regalos, y se reutiliza en ese momento también para las compras simples de la Fase 1.
+
+---
+
+## 3. Desglose de tareas / roadmap
+
+### Fase 0 — Preparación (antes de programar)
+- [ ] Crear aplicación en el [Discord Developer Portal](https://discord.com/developers/applications): OAuth2 (client id/secret) + Webhook en el canal del mercado.
+- [ ] Confirmar el `GUILD_ID` del servidor de la guild.
+- [ ] Contactar al autor de Midgardhub para informar del uso de los datos.
+- [ ] Crear repositorio, cuentas en Vercel, Neon/Supabase y GitHub Actions.
+
+### Fase 1 — MVP (login + venta simple + notificación Discord)
+- [ ] Proyecto base Next.js + TypeScript + Tailwind.
+- [ ] Autenticación con NextAuth (Auth.js) + provider Discord, con verificación de pertenencia al guild.
+- [ ] Modelo de datos inicial (Prisma): `User`, `Item` (con categoría y subtipo de slot), `Listing` (solo venta directa por ahora).
+- [ ] Script de scraping inicial: carga masiva de items de Midgardhub a la DB, incluyendo categoría y subtipo de slot de cada item.
+- [ ] CRUD de publicaciones: crear venta (item + cantidad + precio), listar mercado, ver detalle, marcar como vendida.
+- [ ] Búsqueda y filtros sobre las ventas (nombre parcial, categoría/subtipo, rango de precio) + orden (precio, fecha, nombre) con paginación por cursor ("cargar más").
+- [ ] Envío de webhook a Discord al crear una publicación.
+- [ ] Look & feel base "estilo RO" (layout, paleta, componentes principales).
+- [ ] Despliegue en Vercel + DB en Neon/Supabase.
+
+### Fase 2 — Subastas
+- [ ] Extender `Listing` con campos de subasta (precio inicial, duración, cierre, puja mínima).
+- [ ] Sistema de pujas (`Bid`): validación de puja mínima incremental, historial.
+- [ ] Job programado (cron) que cierra subastas expiradas y determina ganador.
+- [ ] Notificación Discord (webhook del canal) al iniciar la subasta. El aviso privado al ganador se añade en la Fase 3, junto con el resto de notificaciones por DM.
+- [ ] Extender la búsqueda, filtros y orden de la Fase 1 para incluir también las subastas.
+
+### Fase 3 — Peticiones de compra, trades y regalos
+- [ ] Modelo `BuyRequest` (petición de compra) + notificación Discord.
+- [ ] Extender la búsqueda, filtros y orden de las Fases 1-2 para incluir también las peticiones de compra.
+- [ ] Modelo `TradeOffer` (propuesta, contraoferta, aceptación/rechazo).
+- [ ] Modelo `Gift` (registro de regalos, sin lógica de precio).
+- [ ] Actualizar UI del mercado para filtrar por tipo de publicación (venta/subasta/petición/trade), combinable con los filtros de nombre/categoría/precio ya existentes.
+- [ ] Dar de alta un bot de Discord (Discord Developer Portal) e invitarlo al servidor de la guild, con permiso para enviar mensajes privados a sus miembros.
+- [ ] Servicio de envío de DMs (tarjeta/embed con fallback a texto plano) reutilizable para todos los eventos de transacción.
+- [ ] DM al vendedor al completarse una compra (venta directa o subasta).
+- [ ] DM al ganador de una subasta al cerrarse.
+- [ ] DM a quien publicó la petición de compra cuando esta se acepta.
+- [ ] DM a cada parte de un trade aceptado, con el objeto que ha recibido.
+- [ ] DM a quien recibe un regalo.
+- [ ] Manejo de fallos de envío de DM (usuario con los DMs cerrados): no reintentar, no bloquear el flujo de la transacción.
+
+### Fase 4 — Pulido y extras
+- [ ] Ampliar el bot creado en la Fase 3 con comandos rápidos (`/mercado buscar item`) y funciones de roles/moderación.
+- [ ] Historial de transacciones por usuario ("mis compras", "mis ventas").
+- [ ] Filtros avanzados adicionales (por stats del item, favoritos, alertas de búsqueda guardada que avisen por Discord cuando se publique algo que coincida).
+- [ ] Panel de administración básico (borrar publicaciones, banear usuarios abusivos).
+- [ ] Actualización periódica automática del catálogo de items (re-scraping incremental).
+- [ ] Revisión de accesibilidad y responsive (móvil).
+
+---
+
+## 4. Normas a seguir durante el desarrollo
+
+1. **Legal / propiedad intelectual**
+   - No usar sprites, artwork ni assets oficiales de Gravity/RO. La estética se logra con paleta, tipografía y composición propias, no con arte extraído del juego.
+   - Los iconos de items provienen de Midgardhub solo con fin funcional (identificar el objeto), con crédito visible a la fuente.
+   - Respetar `robots.txt` y limitar la frecuencia del scraping; preferir contacto directo con el autor antes que scraping agresivo.
+
+2. **Seguridad**
+   - Nunca exponer el `client secret` de Discord, el token del bot ni la URL del webhook en el frontend — todo vive en variables de entorno del servidor.
+   - Toda operación sensible (crear venta, pujar, aceptar trade) se valida **en el servidor**, nunca confiando solo en el cliente.
+   - La pertenencia al guild se verifica en cada request sensible, no solo en el login (evita que alguien se quede con sesión tras salir del servidor).
+   - Rate limiting básico en endpoints públicos para evitar spam de publicaciones o pujas.
+
+3. **Integridad de los datos del mercado**
+   - Toda transacción (venta, subasta, trade, regalo) queda registrada de forma inmutable (no se borra, se marca como cancelada/completada) para poder resolver disputas entre jugadores.
+   - Los precios y cantidades se validan como enteros positivos; no se permiten publicaciones sin al menos un precio (venta o subasta) definido.
+
+4. **Consistencia de diseño**
+   - Design system propio definido una vez (colores, tipografía, componentes de "panel"), reutilizado en toda la web — no estilos ad-hoc por página.
+
+5. **Desarrollo por fases**
+   - Cada fase (subastas, trades, regalos) se implementa como módulo independiente que no rompe lo ya construido en el MVP. No mezclar features de fases distintas en la misma tanda de cambios.
+
+6. **Calidad de código**
+   - TypeScript en modo estricto, validación de datos de entrada con Zod (o similar) tanto en formularios como en API.
+   - Componentes React reutilizables; lógica de negocio (cálculo de subastas, validaciones) con tests unitarios mínimos.
+
+7. **Privacidad**
+   - Solo se muestra la información imprescindible del usuario (nombre y avatar de Discord); no se solicitan datos personales adicionales.
+   - El mercado y sus publicaciones son visibles únicamente para usuarios autenticados y verificados como miembros del guild — nunca en abierto.
+   - Los DMs de transacción (2.10) solo contienen información de la propia transacción del destinatario, nunca datos de otros usuarios ajenos a ella. Si el envío falla, no se reintenta ni se expone el fallo al resto de usuarios.
+
+8. **Copias de seguridad**
+   - Backups periódicos (aunque sean manuales al principio) de la base de datos, dado que registra transacciones económicas del juego entre jugadores reales.
+
+---
+
+## 5. Stack recomendado (gratuito)
+
+| Capa | Recomendación | Motivo |
+|---|---|---|
+| Frontend + Backend | **Next.js 14 (App Router) + TypeScript** | Ya conoces React; Next.js añade rutas API/Server Actions, SSR y despliegue muy sencillo en Vercel. |
+| Estilos | **Tailwind CSS** | Rápido para montar un design system propio (paneles, paleta RO) sin depender de una librería con estética genérica. |
+| Autenticación | **NextAuth.js (Auth.js) con provider de Discord** | Integración lista para OAuth2 de Discord; el callback permite comprobar el scope `guilds` y verificar el `GUILD_ID`. |
+| ORM / Base de datos | **Prisma + PostgreSQL** | Tipado end-to-end con TypeScript, migraciones sencillas, y Postgres es más que suficiente para el volumen de una guild. |
+| Hosting de la app | **Vercel (plan gratuito)** | Despliegue automático desde GitHub, pensado específicamente para Next.js, límites de sobra para el tráfico de una guild. |
+| Hosting de la base de datos | **Neon** (Postgres serverless) o **Supabase** (Postgres + Storage) | Ambos con free tier permanente; Supabase además da almacenamiento gratuito, útil para alojar los iconos de items copiados. |
+| Scraping periódico | **Node.js (Playwright o Cheerio, según si el contenido es dinámico) + GitHub Actions (cron)** | GitHub Actions permite programar el scraping (p. ej. semanal) sin coste, ejecutándose fuera de tu hosting principal. |
+| Notificaciones | **Discord Webhooks** (fases 1-2, canal público) → **Bot con discord.js** (fase 3, DMs y cierre de subastas) | El webhook basta para publicar en el canal; el bot se incorpora en la Fase 3 porque los DMs y el aviso de cierre de subasta lo requieren (los webhooks son unidireccionales y no pueden mandar privados). |
+| Validación | **Zod** | Validación compartida entre formularios de cliente y API del servidor. |
+| Búsqueda y paginación | **Índices en PostgreSQL (categoría, subtipo, precio, fecha) + paginación por cursor con Prisma** | Filtros combinables y carga "cargar más" eficientes incluso con el catálogo y las publicaciones creciendo. |
+| Testing | **Vitest** (unitario) + **Playwright** (e2e, fase posterior) | Ligeros, rápidos, integran bien con el resto del stack. |
+
+### Resumen de cuentas gratuitas a crear
+1. Discord Developer Portal (app OAuth2 + webhook).
+2. GitHub (repositorio + Actions para el cron de scraping).
+3. Vercel (hosting de la web).
+4. Neon o Supabase (base de datos Postgres).
+
+Con este stack, el coste de infraestructura es **0€** para el tamaño típico de una guild, con margen de sobra en todos los free tiers mencionados.
+
+---
+
+## 6. Próximos pasos sugeridos
+
+1. Confirmar el `GUILD_ID` del Discord de la guild y crear la aplicación en el Discord Developer Portal.
+2. Contactar al autor de Midgardhub para informar del uso previsto de los datos.
+3. Arrancar el repositorio con Next.js + Tailwind + Prisma, y montar el login con Discord (Fase 1).
+4. Una vez el login y la venta directa funcionen de punta a punta (incluida la notificación al canal de Discord), pasar a subastas (Fase 2).

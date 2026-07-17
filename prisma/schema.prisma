@@ -1,0 +1,88 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ItemCategory {
+  WEAPON
+  ARMOR
+  CARD
+  CONSUMABLE
+  COSTUME
+  PET
+  ENCHANT
+  ETC
+}
+
+// Slot que ocupa una armadura, o slot compatible de una carta.
+enum EquipSlot {
+  UPPER_HEADGEAR
+  MID_HEADGEAR
+  LOWER_HEADGEAR
+  ARMOR
+  SHIELD
+  GARMENT
+  FOOTGEAR
+  ACCESSORY
+  WEAPON
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  CANCELLED
+  EXPIRED
+}
+
+model User {
+  // Igual al id de Discord (snowflake): no hay otro proveedor de login.
+  id         String   @id
+  username   String
+  avatarUrl  String?
+  guildRoles String[] @default([])
+  createdAt  DateTime @default(now())
+
+  listings Listing[]
+}
+
+model Item {
+  id          String       @id @default(cuid())
+  name        String
+  description String?
+  category    ItemCategory
+  // Slot de equipo (armaduras) o slot en el que se puede montar (cartas).
+  slot        EquipSlot?
+  // Copia propia del icono (sin hotlink a la fuente externa).
+  iconUrl     String
+  // Ficha de origen del scraping, para trazabilidad.
+  sourceUrl   String?
+  scrapedAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  listings Listing[]
+
+  @@index([category, slot])
+  @@index([name])
+}
+
+// Fase 1: solo venta directa. Los campos de subasta se añaden en la Fase 2.
+model Listing {
+  id        String        @id @default(cuid())
+  seller    User          @relation(fields: [sellerId], references: [id])
+  sellerId  String
+  item      Item          @relation(fields: [itemId], references: [id])
+  itemId    String
+  quantity  Int           @default(1)
+  price     Int
+  status    ListingStatus @default(ACTIVE)
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@index([status, createdAt])
+  @@index([price])
+}

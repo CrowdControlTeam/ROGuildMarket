@@ -1,0 +1,44 @@
+import Link from "next/link";
+import { prisma } from "@/lib/prisma";
+import { HamburgerMenu } from "./HamburgerMenu";
+import { UserMenu } from "./UserMenu";
+
+type SessionUser = {
+  discordId: string;
+  username: string;
+  avatarUrl: string | null;
+};
+
+export async function SiteHeader({ user }: { user: SessionUser | null }) {
+  const fullUser = user
+    ? await prisma.user.findUnique({ where: { id: user.discordId } })
+    : null;
+
+  return (
+    <header className="border-b-4 border-ro-panel-border bg-ro-bg-alt">
+      <div className="mx-auto flex max-w-3xl items-center justify-between px-6 py-3">
+        <div className="flex items-center gap-3">
+          <HamburgerMenu />
+          <Link
+            href="/"
+            className="font-heading text-[0.65rem] leading-none tracking-wide text-ro-gold sm:text-xs"
+          >
+            RO Guild Market
+          </Link>
+        </div>
+
+        {fullUser && (
+          <UserMenu
+            user={{
+              discordId: fullUser.id,
+              username: fullUser.username,
+              avatarUrl: fullUser.avatarUrl,
+              guildRoles: fullUser.guildRoles,
+              createdAt: fullUser.createdAt,
+            }}
+          />
+        )}
+      </div>
+    </header>
+  );
+}
