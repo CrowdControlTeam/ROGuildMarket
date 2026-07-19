@@ -1,5 +1,51 @@
 # Plan de desarrollo — Mercado de guild (Ragnarok Online)
 
+## 0. Estado actual (actualizado 2026-07-19)
+
+Léase esto primero al retomar el proyecto, antes que el resto del documento —
+resume la realidad actual del desarrollo; el resto del archivo es la
+especificación original y puede haber quedado desactualizado en detalles.
+
+**Dónde está todo:**
+- App: [github.com/CrowdControlTeam/ROGuildMarket](https://github.com/CrowdControlTeam/ROGuildMarket), desplegada en Vercel (proyecto `ro-guild-market`) en `https://ro-guild-market.vercel.app`, con base de datos en Supabase (proyecto `lpljlztabvjwuolqaqwa`) conectada vía la integración oficial Vercel↔Supabase.
+- Scraper del catálogo: repositorio aparte, [github.com/CrowdControlTeam/ro-guild-market-scraper](https://github.com/CrowdControlTeam/ro-guild-market-scraper) (ver Fase 1.4 más abajo y su propio README).
+- Credenciales (Discord, Supabase, `AUTH_SECRET`, etc.): en `.env.local`/`.env`/`.env.production` en local (gitignorados, nunca commiteados) y en las variables de entorno del proyecto en Vercel. Ninguna vive en este repo ni en este documento.
+
+**Progreso**: Fase 0 y Fase 1 completas (marcadas más abajo), incluido el
+despliegue. Fases 2-4 sin empezar, salvo un adelanto explicado abajo.
+
+**Git flow** (en vigor desde que hay repo remoto, sustituye a cualquier
+mención de trabajar directo en local): `main` protegida, todo por rama
+`<tipo>/<descripcion_tarea>` (`feature`/`bugfix`/`hotfix`/`release`) +
+PR revisado y mergeado por el humano, nunca por el asistente. Commits
+`<tipo>: <mensaje>` con el tipo determinado por el tipo de rama.
+
+**Desviaciones/decisiones respecto al documento original:**
+- Next.js 16 (no 14) + Tailwind v4 (no v3) — el plan se escribió antes de esas versiones; NextAuth v5 (beta, pero es el estándar de facto para App Router).
+- Base de datos: Supabase en vez de Neon, conectada a Vercel vía su integración oficial (variables `POSTGRES_PRISMA_URL`/`POSTGRES_URL_NON_POOLING`, autosincronizadas — no se pegan credenciales a mano). En local, Postgres por Docker (`docker-compose.yml`, puerto 5433).
+- Scraping: solo manual/puntual desde el principio (no hay Fase 4.5 de re-scraping periódico ni GitHub Actions) — decisión explícita del usuario, no solo por Fase 1. El scraper vive en su propio repositorio, no mezclado con la app.
+- El nombre de usuario mostrado en cualquier parte de la app o de los mensajes de Discord es siempre el **apodo del servidor de Discord** (nickname del guild, con fallback al nombre visible y por último al `@username`), nunca el `@username` en crudo — regla transversal, ver memoria del asistente `display_name_convention`.
+- Formato de precios: separador de miles con `.` (sin decimales), y color según magnitud (normal hasta 1M, verde/azul/rojo/morado cada orden de magnitud x10 por encima) — ver `src/lib/price.ts`, aplicado en toda la app.
+
+**Adelanto sobre el roadmap — compras parciales (normalmente más de Fase 3):**
+La Fase 1 CRUD original solo preveía "marcar como vendida" (todo o nada). Se
+amplió a compra real: cualquier miembro (salvo el propio vendedor) puede
+comprar de 1 a N unidades de una publicación; hay un modelo `Purchase`
+(registro inmutable por compra: comprador, cantidad, precio unitario) y un
+contador `Listing.quantitySold`; el estado pasa solo a `SOLD` al agotarse el
+stock. El vendedor cierra el stock restante sin vender con "Cancelar
+publicación" (ya no existe "marcar como vendida" manual). **Esto es
+deliberadamente la base para una futura Fase 3 de ofertas** (al comprar se
+lanzará una oferta al vendedor, que podrá aceptar o no, con DM de Discord si
+el bot está configurado) — de momento la compra se confirma al instante, sin
+ese paso intermedio ni DM.
+
+**Próximo paso natural**: Fase 2 (subastas) tal como está descrita más abajo,
+o seguir puliendo el mercado de venta directa — sin decidir todavía, a
+confirmar con el usuario al retomar.
+
+---
+
 ## 1. Idea general
 
 Una web privada, solo para miembros del Discord de la guild, donde los jugadores pueden:
@@ -124,21 +170,21 @@ Al crear una publicación, el vendedor elige un **modo** (obligatorio indicar al
 ## 3. Desglose de tareas / roadmap
 
 ### Fase 0 — Preparación (antes de programar)
-- [ ] Crear aplicación en el [Discord Developer Portal](https://discord.com/developers/applications): OAuth2 (client id/secret) + Webhook en el canal del mercado.
-- [ ] Confirmar el `GUILD_ID` del servidor de la guild.
-- [ ] Contactar al autor de Midgardhub para informar del uso de los datos.
-- [ ] Crear repositorio, cuentas en Vercel, Neon/Supabase y GitHub Actions.
+- [x] Crear aplicación en el [Discord Developer Portal](https://discord.com/developers/applications): OAuth2 (client id/secret) + Webhook en el canal del mercado. *(app de test; falta la definitiva de producción cuando la guild lo decida)*
+- [x] Confirmar el `GUILD_ID` del servidor de la guild. *(valor de test en uso; pendiente el real)*
+- [x] Contactar al autor de Midgardhub para informar del uso de los datos. *(confirmado sin problema — su web traduce una fuente coreana ya scrapeada)*
+- [x] Crear repositorio, cuentas en Vercel, Neon/Supabase y GitHub Actions. *(Supabase en vez de Neon; sin GitHub Actions — el scraping es manual, no periódico, ver Fase 1.4)*
 
 ### Fase 1 — MVP (login + venta simple + notificación Discord)
-- [ ] Proyecto base Next.js + TypeScript + Tailwind.
-- [ ] Autenticación con NextAuth (Auth.js) + provider Discord, con verificación de pertenencia al guild.
-- [ ] Modelo de datos inicial (Prisma): `User`, `Item` (con categoría y subtipo de slot), `Listing` (solo venta directa por ahora).
-- [ ] Script de scraping inicial: carga masiva de items de Midgardhub a la DB, incluyendo categoría y subtipo de slot de cada item.
-- [ ] CRUD de publicaciones: crear venta (item + cantidad + precio), listar mercado, ver detalle, marcar como vendida.
-- [ ] Búsqueda y filtros sobre las ventas (nombre parcial, categoría/subtipo, rango de precio) + orden (precio, fecha, nombre) con paginación por cursor ("cargar más").
-- [ ] Envío de webhook a Discord al crear una publicación.
-- [ ] Look & feel base "estilo RO" (layout, paleta, componentes principales).
-- [ ] Despliegue en Vercel + DB en Neon/Supabase.
+- [x] Proyecto base Next.js + TypeScript + Tailwind. *(Next.js 16 + Tailwind v4, no 14/v3 — el plan se escribió antes de esas versiones)*
+- [x] Autenticación con NextAuth (Auth.js) + provider Discord, con verificación de pertenencia al guild. *(NextAuth v5; sesión de 24h para re-verificar membresía periódicamente)*
+- [x] Modelo de datos inicial (Prisma): `User`, `Item` (con categoría y subtipo de slot), `Listing` (solo venta directa por ahora). *(además ya se adelantó `Purchase`, ver nota de estado actual)*
+- [x] Script de scraping inicial: carga masiva de items de Midgardhub a la DB, incluyendo categoría y subtipo de slot de cada item. *(vive en un repo aparte: [ro-guild-market-scraper](https://github.com/CrowdControlTeam/ro-guild-market-scraper); manual y puntual, sin cron)*
+- [x] CRUD de publicaciones: crear venta (item + cantidad + precio), listar mercado, ver detalle, marcar como vendida. *(ampliado: compra parcial real en vez de solo "marcar como vendida", ver nota de estado actual)*
+- [x] Búsqueda y filtros sobre las ventas (nombre parcial, categoría/subtipo, rango de precio) + orden (precio, fecha, nombre) con paginación por cursor ("cargar más").
+- [x] Envío de webhook a Discord al crear una publicación.
+- [x] Look & feel base "estilo RO" (layout, paleta, componentes principales).
+- [x] Despliegue en Vercel + DB en Neon/Supabase. *(Supabase, conectado a Vercel vía su integración oficial — ver estado actual)*
 
 ### Fase 2 — Subastas
 - [ ] Extender `Listing` con campos de subasta (precio inicial, duración, cierre, puja mínima).
