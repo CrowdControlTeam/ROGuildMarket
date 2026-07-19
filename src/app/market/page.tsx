@@ -26,7 +26,7 @@ export default async function MarketPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  await requireSession();
+  const session = await requireSession();
   const raw = await searchParams;
   const parsed = searchParamsSchema.safeParse({
     q: firstValue(raw.q),
@@ -65,6 +65,7 @@ export default async function MarketPage({
         initialListings={listings}
         initialCursor={nextCursor}
         filters={filters}
+        currentUserId={session.user.discordId}
       />
     </main>
   );

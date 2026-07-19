@@ -66,7 +66,10 @@ export async function createListing(formData: FormData) {
   return { id: listing.id };
 }
 
-export async function markListingSold(listingId: string) {
+// El vendedor cierra la publicación con stock restante sin vender (p.ej.
+// lo vendió fuera de la web). SOLD queda reservado para cuando se agota
+// por compras hechas aquí — ver purchaseListing.
+export async function cancelListing(listingId: string) {
   const session = await requireSession();
 
   const listing = await prisma.listing.findUnique({
@@ -74,7 +77,7 @@ export async function markListingSold(listingId: string) {
   });
   if (!listing) throw new Error("Publicación no encontrada");
   if (listing.sellerId !== session.user.discordId) {
-    throw new Error("Solo el vendedor puede marcar la publicación como vendida");
+    throw new Error("Solo el vendedor puede cancelar la publicación");
   }
   if (listing.status !== "ACTIVE") {
     throw new Error("Esta publicación ya no está activa");
@@ -82,7 +85,60 @@ export async function markListingSold(listingId: string) {
 
   await prisma.listing.update({
     where: { id: listingId },
-    data: { status: "SOLD" },
+    data: { status: "CANCELLED" },
+  });
+
+  revalidatePath("/market");
+  revalidatePath(`/market/${listingId}`);
+}
+
+const purchaseSchema = z.object({
+  quantity: z.coerce.number().int().positive("La cantidad debe ser mayor que 0"),
+});
+
+export async function purchaseListing(listingId: string, formData: FormData) {
+  const session = await requireSession();
+
+  const parsed = purchaseSchema.safeParse({
+    quantity: formData.get("quantity"),
+  });
+  if (!parsed.success) {
+    throw new Error(parsed.error.issues[0]?.message ?? "Datos inválidos");
+  }
+  const { quantity } = parsed.data;
+
+  await prisma.$transaction(async (tx) => {
+    const listing = await tx.listing.findUnique({ where: { id: listingId } });
+    if (!listing) throw new Error("Publicación no encontrada");
+    if (listing.sellerId === session.user.discordId) {
+      throw new Error("No puedes comprar tu propia publicación");
+    }
+    if (listing.status !== "ACTIVE") {
+      throw new Error("Esta publicación ya no está activa");
+    }
+
+    const remaining = listing.quantity - listing.quantitySold;
+    if (quantity > remaining) {
+      throw new Error(`Solo quedan ${remaining} unidades disponibles`);
+    }
+
+    await tx.purchase.create({
+      data: {
+        listingId,
+        buyerId: session.user.discordId,
+        quantity,
+        unitPrice: listing.price,
+      },
+    });
+
+    const newSold = listing.quantitySold + quantity;
+    await tx.listing.update({
+      where: { id: listingId },
+      data: {
+        quantitySold: newSold,
+        status: newSold >= listing.quantity ? "SOLD" : "ACTIVE",
+      },
+    });
   });
 
   revalidatePath("/market");

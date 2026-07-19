@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createListing } from "@/lib/listings";
 import { buttonClass, inputClass, labelClass } from "@/lib/ui";
+import { PriceInput } from "@/components/PriceInput";
 import { ItemPicker } from "./ItemPicker";
 
 export function NewListingForm() {
@@ -44,7 +45,7 @@ export function NewListingForm() {
 
       <div>
         <label className={labelClass}>Precio (z)</label>
-        <input type="number" name="price" min={1} required className={inputClass} />
+        <PriceInput name="price" placeholder="0" />
       </div>
 
       {error && <p className="text-sm text-red-700">{error}</p>}

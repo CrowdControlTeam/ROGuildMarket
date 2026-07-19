@@ -38,9 +38,15 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       );
       if (!res.ok) return false;
 
-      const member = (await res.json()) as { roles?: string[] };
+      const member = (await res.json()) as { roles?: string[]; nick?: string | null };
       const discordId = profile.id as string;
-      const username = (profile.username ?? profile.global_name) as string;
+      // Apodo del servidor si tiene uno puesto; si no, el nombre visible de
+      // Discord. Nunca el username (@handle) — así se le reconoce y se le
+      // puede escribir DM sin tener que buscar quién es. Ver norma 4.1
+      // "solo se muestra la información imprescindible".
+      const username = (member.nick ??
+        profile.global_name ??
+        profile.username) as string;
       const avatarUrl = buildAvatarUrl(
         discordId,
         profile.avatar as string | null,
@@ -72,12 +78,28 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async jwt({ token, account, profile }) {
       if (account && profile) {
-        token.discordId = profile.id as string;
-        token.username = (profile.username ?? profile.global_name) as string;
+        const discordId = profile.id as string;
+        token.discordId = discordId;
         token.avatarUrl = buildAvatarUrl(
-          profile.id as string,
+          discordId,
           profile.avatar as string | null,
         );
+
+        // El nombre a mostrar (apodo del servidor si lo tiene) ya lo
+        // calculó y guardó signIn(); lo leemos de vuelta en vez de
+        // recalcularlo aquí, que exigiría una segunda llamada a la API de
+        // Discord para el mismo dato.
+        try {
+          const dbUser = await prisma.user.findUnique({
+            where: { id: discordId },
+            select: { username: true },
+          });
+          token.username =
+            dbUser?.username ??
+            ((profile.global_name ?? profile.username) as string);
+        } catch {
+          token.username = (profile.global_name ?? profile.username) as string;
+        }
       }
       return token;
     },
