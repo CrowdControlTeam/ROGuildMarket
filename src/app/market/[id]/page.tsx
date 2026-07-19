@@ -4,7 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/guard";
 import { Panel } from "@/components/Panel";
 import { BackLink } from "@/components/BackLink";
-import { MarkSoldButton } from "./MarkSoldButton";
+import { formatPrice, priceColorClass } from "@/lib/price";
+import { UserMention } from "@/components/UserMention";
+import { CancelListingButton } from "./CancelListingButton";
+import { BuyForm } from "./BuyForm";
 
 const STATUS_LABEL: Record<string, string> = {
   ACTIVE: "Activa",
@@ -28,6 +31,7 @@ export default async function ListingDetailPage({
   if (!listing) notFound();
 
   const isSeller = listing.sellerId === session.user.discordId;
+  const remaining = listing.quantity - listing.quantitySold;
 
   return (
     <main className="mx-auto max-w-lg px-6 py-8">
@@ -52,28 +56,57 @@ export default async function ListingDetailPage({
 
         <dl className="mt-6 flex flex-col gap-2 text-sm">
           <div className="flex justify-between border-b border-ro-panel-border/30 pb-2">
-            <dt className="text-ro-text-muted">Cantidad</dt>
-            <dd>{listing.quantity}</dd>
+            <dt className="text-ro-text-muted">Disponibles</dt>
+            <dd>{remaining}</dd>
           </div>
           <div className="flex justify-between border-b border-ro-panel-border/30 pb-2">
-            <dt className="text-ro-text-muted">Precio</dt>
-            <dd className="font-bold text-ro-gold-dark">
-              {listing.price.toLocaleString()} z
+            <dt className="text-ro-text-muted">Precio por unidad</dt>
+            <dd className={`font-bold ${priceColorClass(listing.price)}`}>
+              {formatPrice(listing.price)}
             </dd>
           </div>
           <div className="flex justify-between border-b border-ro-panel-border/30 pb-2">
             <dt className="text-ro-text-muted">Vendedor</dt>
-            <dd>{listing.seller.username}</dd>
+            <dd>
+              <UserMention
+                userId={listing.sellerId}
+                username={listing.seller.username}
+                viewerId={session.user.discordId}
+                capitalize
+              />
+            </dd>
           </div>
-          <div className="flex justify-between">
+          <div
+            className={`flex justify-between ${
+              listing.quantity > 1 ? "border-b border-ro-panel-border/30 pb-2" : ""
+            }`}
+          >
             <dt className="text-ro-text-muted">Publicado</dt>
             <dd>{listing.createdAt.toLocaleString()}</dd>
           </div>
+          {/* Con 1 sola unidad, "Vendidos: 0 de 1" no aporta nada que
+              "Disponibles" ya no diga. */}
+          {listing.quantity > 1 && (
+            <div className="flex justify-between">
+              <dt className="text-ro-text-muted">Vendidos</dt>
+              <dd>
+                {listing.quantitySold} de {listing.quantity}
+              </dd>
+            </div>
+          )}
         </dl>
 
-        {isSeller && listing.status === "ACTIVE" && (
+        {listing.status === "ACTIVE" && (
           <div className="mt-6">
-            <MarkSoldButton listingId={listing.id} />
+            {isSeller ? (
+              <CancelListingButton listingId={listing.id} />
+            ) : (
+              <BuyForm
+                listingId={listing.id}
+                remaining={remaining}
+                unitPrice={listing.price}
+              />
+            )}
           </div>
         )}
       </Panel>

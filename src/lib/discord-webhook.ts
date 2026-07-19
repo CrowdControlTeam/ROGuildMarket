@@ -1,4 +1,5 @@
 import { DISCORD_EMBED_COLOR } from "@/lib/discord-colors";
+import { formatPrice } from "@/lib/price";
 
 type ListingWebhookPayload = {
   itemName: string;
@@ -33,7 +34,7 @@ export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) 
         fields: [
           {
             name: "Precio",
-            value: `${payload.price.toLocaleString()} z`,
+            value: formatPrice(payload.price),
             inline: true,
           },
           { name: "Cantidad", value: String(payload.quantity), inline: true },

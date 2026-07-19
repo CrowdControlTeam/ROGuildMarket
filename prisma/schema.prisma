@@ -49,7 +49,8 @@ model User {
   guildRoles String[] @default([])
   createdAt  DateTime @default(now())
 
-  listings Listing[]
+  listings  Listing[]
+  purchases Purchase[]
 }
 
 model Item {
@@ -74,17 +75,39 @@ model Item {
 
 // Fase 1: solo venta directa. Los campos de subasta se añaden en la Fase 2.
 model Listing {
-  id        String        @id @default(cuid())
-  seller    User          @relation(fields: [sellerId], references: [id])
-  sellerId  String
-  item      Item          @relation(fields: [itemId], references: [id])
-  itemId    String
-  quantity  Int           @default(1)
-  price     Int
-  status    ListingStatus @default(ACTIVE)
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id           String        @id @default(cuid())
+  seller       User          @relation(fields: [sellerId], references: [id])
+  sellerId     String
+  item         Item          @relation(fields: [itemId], references: [id])
+  itemId       String
+  quantity     Int           @default(1)
+  // Suma desnormalizada de Purchase.quantity, para no recalcularla en cada
+  // lectura. Se actualiza en la misma transacción que crea cada Purchase.
+  quantitySold Int           @default(0)
+  price        Int
+  status       ListingStatus @default(ACTIVE)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  purchases Purchase[]
 
   @@index([status, createdAt])
   @@index([price])
+}
+
+// Registro inmutable de cada compra (norma 3 del plan: las transacciones no
+// se borran). Una Listing puede tener varias Purchase de distintos
+// compradores hasta agotar su quantity.
+model Purchase {
+  id        String   @id @default(cuid())
+  listing   Listing  @relation(fields: [listingId], references: [id])
+  listingId String
+  buyer     User     @relation(fields: [buyerId], references: [id])
+  buyerId   String
+  quantity  Int
+  unitPrice Int
+  createdAt DateTime @default(now())
+
+  @@index([listingId])
+  @@index([buyerId])
 }

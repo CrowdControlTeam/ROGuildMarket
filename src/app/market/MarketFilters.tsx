@@ -4,7 +4,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { ItemCategory, EquipSlot } from "@prisma/client";
 import { CATEGORY_LABELS, SLOT_LABELS } from "@/lib/market-labels";
-import { buttonClass, inputClass, selectClass, labelClass } from "@/lib/ui";
+import { buttonClass, inputClass, inputBaseClass, selectClass, labelClass } from "@/lib/ui";
+import { MaskedPriceInput } from "@/components/MaskedPriceInput";
 
 export function MarketFilters() {
   const router = useRouter();
@@ -13,8 +14,12 @@ export function MarketFilters() {
   const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [category, setCategory] = useState(searchParams.get("category") ?? "");
   const [slot, setSlot] = useState(searchParams.get("slot") ?? "");
-  const [minPrice, setMinPrice] = useState(searchParams.get("minPrice") ?? "");
-  const [maxPrice, setMaxPrice] = useState(searchParams.get("maxPrice") ?? "");
+  const [minPrice, setMinPrice] = useState<number | "">(
+    toNumberOrEmpty(searchParams.get("minPrice")),
+  );
+  const [maxPrice, setMaxPrice] = useState<number | "">(
+    toNumberOrEmpty(searchParams.get("maxPrice")),
+  );
 
   // El orden vive en la tabla de resultados (ver SortSelect), no aquí:
   // lo conservamos tal cual esté en la URL al aplicar o resetear filtros.
@@ -24,8 +29,8 @@ export function MarketFilters() {
     setOrDelete(params, "q", q.trim());
     setOrDelete(params, "category", category);
     setOrDelete(params, "slot", slot);
-    setOrDelete(params, "minPrice", minPrice);
-    setOrDelete(params, "maxPrice", maxPrice);
+    setOrDelete(params, "minPrice", minPrice === "" ? "" : String(minPrice));
+    setOrDelete(params, "maxPrice", maxPrice === "" ? "" : String(maxPrice));
     // Cambiar filtros reinicia la paginación (sin cursor).
     router.push(`/market?${params.toString()}`);
   }
@@ -96,26 +101,26 @@ export function MarketFilters() {
         </select>
       </div>
 
-      <div>
-        <label className={labelClass}>Precio mín.</label>
-        <input
-          type="number"
-          min={0}
-          value={minPrice}
-          onChange={(e) => setMinPrice(e.target.value)}
-          className={`w-24 ${inputClass}`}
-        />
-      </div>
+      {/* Agrupados para que salten de línea juntos al hacer wrap, en vez de
+          partirse por la mitad. */}
+      <div className="flex gap-3">
+        <div>
+          <label className={labelClass}>Precio mín.</label>
+          <MaskedPriceInput
+            value={minPrice}
+            onChange={setMinPrice}
+            className={`w-36 ${inputBaseClass}`}
+          />
+        </div>
 
-      <div>
-        <label className={labelClass}>Precio máx.</label>
-        <input
-          type="number"
-          min={0}
-          value={maxPrice}
-          onChange={(e) => setMaxPrice(e.target.value)}
-          className={`w-24 ${inputClass}`}
-        />
+        <div>
+          <label className={labelClass}>Precio máx.</label>
+          <MaskedPriceInput
+            value={maxPrice}
+            onChange={setMaxPrice}
+            className={`w-36 ${inputBaseClass}`}
+          />
+        </div>
       </div>
 
       <button type="submit" className={buttonClass("primary")}>
@@ -131,4 +136,10 @@ export function MarketFilters() {
 function setOrDelete(params: URLSearchParams, key: string, value: string) {
   if (value) params.set(key, value);
   else params.delete(key);
+}
+
+function toNumberOrEmpty(value: string | null): number | "" {
+  if (!value) return "";
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : "";
 }

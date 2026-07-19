@@ -24,8 +24,13 @@ export function buttonClass(variant: ButtonVariant = "primary") {
   return `${BUTTON_BASE} ${BUTTON_VARIANTS[variant]}`;
 }
 
-export const inputClass =
-  "w-full rounded-md border-2 border-ro-panel-border bg-ro-panel-alt px-3 py-1.5 text-sm text-ro-text placeholder:text-ro-text-muted focus:border-ro-gold-dark focus:outline-none";
+// Sin ancho, para poder combinarla con un ancho propio (w-28, etc.) sin que
+// compita con el w-full de abajo — dos clases de ancho a la vez en el mismo
+// elemento dan un resultado impredecible según el orden en la hoja generada.
+export const inputBaseClass =
+  "rounded-md border-2 border-ro-panel-border bg-ro-panel-alt px-3 py-1.5 text-sm text-ro-text placeholder:text-ro-text-muted focus:border-ro-gold-dark focus:outline-none";
+
+export const inputClass = `w-full ${inputBaseClass}`;
 
 export const selectClass =
   "rounded-md border-2 border-ro-panel-border bg-ro-panel-alt px-2 py-1.5 text-sm text-ro-text focus:border-ro-gold-dark focus:outline-none disabled:opacity-40";

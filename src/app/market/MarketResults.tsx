@@ -6,12 +6,15 @@ import Image from "next/image";
 import { loadMoreListings } from "@/lib/market-actions";
 import type { MarketFilters } from "@/lib/market";
 import { buttonClass } from "@/lib/ui";
+import { formatPrice, priceColorClass } from "@/lib/price";
+import { UserMention } from "@/components/UserMention";
 
 type Item = { id: string; name: string; iconUrl: string };
 type Seller = { id: string; username: string };
 type Listing = {
   id: string;
   quantity: number;
+  quantitySold: number;
   price: number;
   item: Item;
   seller: Seller;
@@ -21,10 +24,12 @@ export function MarketResults({
   initialListings,
   initialCursor,
   filters,
+  currentUserId,
 }: {
   initialListings: Listing[];
   initialCursor: string | null;
   filters: Omit<MarketFilters, "cursor">;
+  currentUserId: string;
 }) {
   const [listings, setListings] = useState(initialListings);
   const [cursor, setCursor] = useState(initialCursor);
@@ -65,11 +70,17 @@ export function MarketResults({
               <div className="flex-1">
                 <p className="font-semibold">{listing.item.name}</p>
                 <p className="text-sm text-ro-text-muted">
-                  x{listing.quantity} · vendido por {listing.seller.username}
+                  x{listing.quantity - listing.quantitySold} disponibles ·
+                  vendido por{" "}
+                  <UserMention
+                    userId={listing.seller.id}
+                    username={listing.seller.username}
+                    viewerId={currentUserId}
+                  />
                 </p>
               </div>
-              <p className="font-bold text-ro-gold-dark">
-                {listing.price.toLocaleString()} z
+              <p className={`font-bold ${priceColorClass(listing.price)}`}>
+                {formatPrice(listing.price)}
               </p>
             </Link>
           </li>
