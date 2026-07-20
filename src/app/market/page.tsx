@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { z } from "zod";
-import { ItemCategory, EquipSlot } from "@prisma/client";
+import { ItemCategory, EquipSlot, WeaponType } from "@prisma/client";
 import { getListings, isMarketSort, type MarketFilters as MarketFiltersType } from "@/lib/market";
 import { requireSession } from "@/lib/guard";
 import { Panel } from "@/components/Panel";
@@ -13,6 +13,18 @@ const searchParamsSchema = z.object({
   q: z.string().trim().min(1).optional(),
   category: z.enum(ItemCategory).optional(),
   slot: z.enum(EquipSlot).optional(),
+  weaponType: z.enum(WeaponType).optional(),
+  option1DefId: z.string().trim().min(1).optional(),
+  option1Min: z.coerce.number().int().optional(),
+  option1Max: z.coerce.number().int().optional(),
+  option2DefId: z.string().trim().min(1).optional(),
+  option2Min: z.coerce.number().int().optional(),
+  option2Max: z.coerce.number().int().optional(),
+  option3DefId: z.string().trim().min(1).optional(),
+  option3Min: z.coerce.number().int().optional(),
+  option3Max: z.coerce.number().int().optional(),
+  refineMin: z.coerce.number().int().nonnegative().optional(),
+  refineMax: z.coerce.number().int().nonnegative().optional(),
   minPrice: z.coerce.number().int().nonnegative().optional(),
   maxPrice: z.coerce.number().int().nonnegative().optional(),
   sort: z
@@ -32,6 +44,18 @@ export default async function MarketPage({
     q: firstValue(raw.q),
     category: firstValue(raw.category),
     slot: firstValue(raw.slot),
+    weaponType: firstValue(raw.weaponType),
+    option1DefId: firstValue(raw.option1DefId),
+    option1Min: firstValue(raw.option1Min),
+    option1Max: firstValue(raw.option1Max),
+    option2DefId: firstValue(raw.option2DefId),
+    option2Min: firstValue(raw.option2Min),
+    option2Max: firstValue(raw.option2Max),
+    option3DefId: firstValue(raw.option3DefId),
+    option3Min: firstValue(raw.option3Min),
+    option3Max: firstValue(raw.option3Max),
+    refineMin: firstValue(raw.refineMin),
+    refineMax: firstValue(raw.refineMax),
     minPrice: firstValue(raw.minPrice),
     maxPrice: firstValue(raw.maxPrice),
     sort: firstValue(raw.sort),

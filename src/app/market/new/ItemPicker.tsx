@@ -5,12 +5,7 @@ import Image from "next/image";
 import { searchItems } from "@/lib/listings";
 import { inputClass } from "@/lib/ui";
 
-type ItemResult = {
-  id: string;
-  name: string;
-  iconUrl: string;
-  category: string;
-};
+export type ItemResult = Awaited<ReturnType<typeof searchItems>>[number];
 
 export function ItemPicker({
   onSelect,

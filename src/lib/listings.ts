@@ -1,21 +1,61 @@
 "use server";
 
 import { z } from "zod";
+import { ItemOptionGroup } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/guard";
 import { sendListingCreatedWebhook } from "@/lib/discord-webhook";
+import { MAX_OPTION_SLOTS, getItemOptionGroup, loadMagicalWeaponTypes } from "@/lib/item-options";
+import { isRefineEligible, formatRefinedName, loadMaxRefineLevel } from "@/lib/refine";
 
 export async function searchItems(query: string) {
   await requireSession();
   const trimmed = query.trim();
   if (trimmed.length < 2) return [];
 
-  return prisma.item.findMany({
+  const items = await prisma.item.findMany({
     where: { name: { contains: trimmed, mode: "insensitive" } },
     orderBy: { name: "asc" },
     take: 20,
-    select: { id: true, name: true, iconUrl: true, category: true },
+    select: {
+      id: true,
+      name: true,
+      iconUrl: true,
+      category: true,
+      slot: true,
+      weaponType: true,
+    },
+  });
+
+  const magicalTypes = await loadMagicalWeaponTypes();
+  return items.map((item) => ({
+    ...item,
+    optionGroup: getItemOptionGroup(item, magicalTypes),
+  }));
+}
+
+// Para que el filtro de mercado pueda resolver el ItemOptionGroup en
+// cliente (necesita saber qué tipos de arma cuentan como mágicos) sin
+// duplicar la tabla ahí.
+export async function getMagicalWeaponTypes() {
+  await requireSession();
+  const magicalTypes = await loadMagicalWeaponTypes();
+  return Array.from(magicalTypes);
+}
+
+export async function getMaxRefineLevel() {
+  await requireSession();
+  return loadMaxRefineLevel();
+}
+
+// Devuelve el catálogo de options posibles de un grupo, ya ordenado por
+// slot posicional — el formulario filtra por slotIndex en cliente.
+export async function getOptionChoices(group: ItemOptionGroup) {
+  await requireSession();
+  return prisma.itemOptionDef.findMany({
+    where: { group },
+    orderBy: [{ slotIndex: "asc" }, { label: "asc" }],
   });
 }
 
@@ -24,6 +64,28 @@ const createListingSchema = z.object({
   quantity: z.coerce.number().int().positive("La cantidad debe ser mayor que 0"),
   price: z.coerce.number().int().positive("El precio debe ser mayor que 0"),
 });
+
+// Las options van en campos planos option1DefId/option1Value, etc. (mismo
+// estilo que el resto del form, sin arrays anidados en FormData). Parar en
+// el primer slot vacío garantiza que siempre ocupen las posiciones desde 1
+// en adelante sin huecos, sin necesidad de validarlo aparte.
+function parseOptionsFromFormData(formData: FormData) {
+  const options: { slotIndex: number; defId: string; value: number }[] = [];
+  for (let slotIndex = 1; slotIndex <= MAX_OPTION_SLOTS; slotIndex++) {
+    const defId = formData.get(`option${slotIndex}DefId`);
+    if (!defId) break;
+    const rawValue = formData.get(`option${slotIndex}Value`);
+    if (typeof defId !== "string" || typeof rawValue !== "string") {
+      throw new Error("Datos de option inválidos");
+    }
+    const value = Number(rawValue);
+    if (!Number.isInteger(value)) {
+      throw new Error("El valor de la option debe ser un número entero");
+    }
+    options.push({ slotIndex, defId, value });
+  }
+  return options;
+}
 
 export async function createListing(formData: FormData) {
   const session = await requireSession();
@@ -42,24 +104,89 @@ export async function createListing(formData: FormData) {
   });
   if (!item) throw new Error("El item seleccionado no existe");
 
+  const magicalTypes = await loadMagicalWeaponTypes();
+  const optionGroup = getItemOptionGroup(item, magicalTypes);
+
+  const rawOptions = parseOptionsFromFormData(formData);
+  if (rawOptions.length > 0 && !optionGroup) {
+    throw new Error("Este item no admite random options");
+  }
+
+  // defsById también se reutiliza para el webhook más abajo, sin otra query.
+  const defsById = new Map<string, { id: string; label: string; group: ItemOptionGroup; slotIndex: number; minValue: number; maxValue: number }>();
+  if (optionGroup && rawOptions.length > 0) {
+    const defs = await prisma.itemOptionDef.findMany({
+      where: { id: { in: rawOptions.map((o) => o.defId) } },
+    });
+    for (const def of defs) defsById.set(def.id, def);
+
+    for (const raw of rawOptions) {
+      const def = defsById.get(raw.defId);
+      if (!def || def.group !== optionGroup || def.slotIndex !== raw.slotIndex) {
+        throw new Error("Option inválida para este item");
+      }
+      if (raw.value < def.minValue || raw.value > def.maxValue) {
+        throw new Error(
+          `El valor de "${def.label}" debe estar entre ${def.minValue} y ${def.maxValue}`,
+        );
+      }
+    }
+  }
+
+  // Un item con random options es una instancia única (el roll de options
+  // no es igual entre copias) — no tiene sentido apilar cantidad > 1.
+  // Se fuerza aquí también (no solo ocultando el campo en el form) porque
+  // no hay que confiar en lo que mande el cliente. El refine, en cambio,
+  // sí admite varias copias al mismo nivel (ver decisión con el usuario).
+  const quantity = optionGroup ? 1 : parsed.data.quantity;
+
+  const refineEligible = isRefineEligible(item);
+  let refineLevel = 0;
+  if (refineEligible) {
+    const rawRefine = formData.get("refineLevel");
+    refineLevel = typeof rawRefine === "string" && rawRefine !== "" ? Number(rawRefine) : 0;
+    if (!Number.isInteger(refineLevel) || refineLevel < 0) {
+      throw new Error("El refine debe ser un número entero positivo");
+    }
+    const maxRefineLevel = await loadMaxRefineLevel();
+    if (refineLevel > maxRefineLevel) {
+      throw new Error(`El refine no puede ser mayor que +${maxRefineLevel}`);
+    }
+  }
+
   const listing = await prisma.listing.create({
     data: {
       sellerId: session.user.discordId,
       itemId: parsed.data.itemId,
-      quantity: parsed.data.quantity,
+      quantity,
       price: parsed.data.price,
+      refineLevel,
+      options:
+        rawOptions.length > 0
+          ? {
+              create: rawOptions.map((o) => ({
+                slotIndex: o.slotIndex,
+                defId: o.defId,
+                value: o.value,
+              })),
+            }
+          : undefined,
     },
   });
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   await sendListingCreatedWebhook({
-    itemName: item.name,
+    itemName: formatRefinedName(item.name, refineLevel),
     itemIconUrl: `${appUrl}${item.iconUrl}`,
     price: listing.price,
     quantity: listing.quantity,
     sellerUsername: session.user.username,
     sellerAvatarUrl: session.user.avatarUrl,
     listingUrl: `${appUrl}/market/${listing.id}`,
+    options: rawOptions.map((o) => ({
+      label: defsById.get(o.defId)!.label,
+      value: o.value,
+    })),
   });
 
   revalidatePath("/market");

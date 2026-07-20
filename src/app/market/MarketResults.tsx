@@ -7,17 +7,21 @@ import { loadMoreListings } from "@/lib/market-actions";
 import type { MarketFilters } from "@/lib/market";
 import { buttonClass } from "@/lib/ui";
 import { formatPrice, priceColorClass } from "@/lib/price";
+import { formatRefinedName } from "@/lib/refine-constants";
 import { UserMention } from "@/components/UserMention";
 
 type Item = { id: string; name: string; iconUrl: string };
 type Seller = { id: string; username: string };
+type ListingOption = { slotIndex: number; value: number; def: { label: string } };
 type Listing = {
   id: string;
   quantity: number;
   quantitySold: number;
   price: number;
+  refineLevel: number;
   item: Item;
   seller: Seller;
+  options: ListingOption[];
 };
 
 export function MarketResults({
@@ -68,7 +72,9 @@ export function MarketResults({
                 height={40}
               />
               <div className="flex-1">
-                <p className="font-semibold">{listing.item.name}</p>
+                <p className="font-semibold">
+                  {formatRefinedName(listing.item.name, listing.refineLevel)}
+                </p>
                 <p className="text-sm text-ro-text-muted">
                   x{listing.quantity - listing.quantitySold} disponibles ·
                   vendido por{" "}
@@ -78,6 +84,18 @@ export function MarketResults({
                     viewerId={currentUserId}
                   />
                 </p>
+                {listing.options.length > 0 && (
+                  <p className="mt-1 flex flex-wrap gap-1">
+                    {listing.options.map((o) => (
+                      <span
+                        key={o.slotIndex}
+                        className="rounded border border-ro-gold-dark/50 bg-ro-gold/10 px-1.5 py-0.5 text-xs text-ro-text-muted"
+                      >
+                        {o.def.label} +{o.value}
+                      </span>
+                    ))}
+                  </p>
+                )}
               </div>
               <p className={`font-bold ${priceColorClass(listing.price)}`}>
                 {formatPrice(listing.price)}
