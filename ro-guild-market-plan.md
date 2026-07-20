@@ -1,6 +1,6 @@
 # Plan de desarrollo — Mercado de guild (Ragnarok Online)
 
-## 0. Estado actual (actualizado 2026-07-19)
+## 0. Estado actual (actualizado 2026-07-20)
 
 Léase esto primero al retomar el proyecto, antes que el resto del documento —
 resume la realidad actual del desarrollo; el resto del archivo es la
@@ -12,7 +12,8 @@ especificación original y puede haber quedado desactualizado en detalles.
 - Credenciales (Discord, Supabase, `AUTH_SECRET`, etc.): en `.env.local`/`.env`/`.env.production` en local (gitignorados, nunca commiteados) y en las variables de entorno del proyecto en Vercel. Ninguna vive en este repo ni en este documento.
 
 **Progreso**: Fase 0 y Fase 1 completas (marcadas más abajo), incluido el
-despliegue. Fases 2-4 sin empezar, salvo un adelanto explicado abajo.
+despliegue. Fases 2-4 sin empezar, salvo varios adelantos explicados abajo
+(compras parciales, random options, refine).
 
 **Git flow** (en vigor desde que hay repo remoto, sustituye a cualquier
 mención de trabajar directo en local): `main` protegida, todo por rama
@@ -40,9 +41,66 @@ lanzará una oferta al vendedor, que podrá aceptar o no, con DM de Discord si
 el bot está configurado) — de momento la compra se confirma al instante, sin
 ese paso intermedio ni DM.
 
+**Adelanto sobre el roadmap — random options y refine (2026-07-20, tampoco
+estaba en el plan original tal cual):**
+- **Random options**: arma/armadura de cuerpo/prenda/calzado pueden llevar de
+  0 a 3 estadísticas aleatorias adicionales por listing (no son fijas del
+  item del catálogo). Catálogo real de 194 combinaciones stat/rango/slot
+  posicional (`ItemOptionDef`), con selección por listing (`ListingOption`,
+  hasta `MAX_OPTION_SLOTS` = 3, ver `src/lib/item-options-constants.ts`).
+  El formulario de venta desbloquea cada slot de option en orden (1→2→3) y
+  valida el rango; se muestran en la card del mercado, la ficha del listing
+  y el embed de Discord. Filtro de mercado por option (uno por slot, con
+  mín/máx), que se deshabilita pero conserva su valor si la categoría deja
+  de ser compatible, y se limpia si cambia a otro grupo válido distinto
+  (p.ej. arma mágica → física).
+- **Refine**: nivel +0 a un máximo configurable en base de datos
+  (`MarketConfig.maxRefineLevel`, 10 por defecto — el tope real de RO Zero
+  no está confirmado todavía). Aplica a arma, o armadura en slot casco
+  superior/cuerpo/escudo/prenda/calzado (accesorios y cascos medio/inferior
+  no). A diferencia de las options, no obliga a publicar cantidad 1 (varias
+  copias al mismo refine sí tiene sentido). Se muestra como prefijo `+N`
+  donde aparezca el item (nunca en +0), y tiene su propio filtro de rango.
+- **Catálogo de items**: `Item` ahora guarda `weaponType` (subtipo real de
+  arma — daga, espada 1H/2H, lanza 1H/2H, hacha 1H/2H, maza, báculo,
+  báculo 2H, arco, knuckle, katar, instrumento, látigo, libro, y los tipos
+  de arma de fuego aunque de momento no hay ninguna en el catálogo), en vez
+  del física/mágica que se manejaba antes solo a nivel de código. Qué
+  subtipos cuentan como "mágicos" (pool de options `WEAPON_MAGICAL`) vive en
+  `MagicalWeaponType`, una tabla editable en base de datos sin desplegar
+  código (por defecto: báculo, báculo 2H, libro). También se revisaron y
+  corrigieron a mano varios nombres de item que venían rotos (texto en otro
+  idioma sin traducir, o una descripción larga colada como si fuera el
+  nombre) y unas pocas categorías mal puestas (piedras de stat que debían
+  ser `ENCHANT` y estaban como `ETC`/`CARD`).
+
+**Lección operativa (2026-07-20) — checklist al añadir migraciones de
+Prisma:** un cambio de esquema mergeado a `main` se despliega en Vercel
+automáticamente, pero **no aplica migraciones ni datos por sí solo** — hay
+que aplicar `prisma migrate deploy` (y los scripts de seed que toquen,
+`prisma/seed*.mjs`) contra la base de datos de producción de Supabase
+explícitamente, o el sitio entero cae con error de servidor en cuanto el
+código nuevo intenta leer columnas/tablas que la base de datos de
+producción todavía no tiene. Pasó exactamente eso el 2026-07-20 al mergear
+el PR de options/refine — quedó resuelto aplicando las migraciones y los
+seeds a mano contra Supabase, pero conviene incluir este paso en el flujo
+de cualquier PR que toque `prisma/schema.prisma` a partir de ahora, en vez
+de darlo por hecho.
+
+**Pendiente de decidir, sin implementar todavía — reconocimiento de item
+por captura de pantalla:** el usuario planteó (2026-07-19) que al crear una
+venta se pueda arrastrar/pegar una captura del tooltip de un item en el
+juego y que la app reconozca automáticamente el item y sus options,
+rellenando el formulario. Se decidió explícitamente posponerlo hasta que el
+catálogo de random options (ya construido, ver arriba) estuviera en pie,
+porque el reconocimiento se puede validar mucho mejor contra un catálogo de
+options real que a ciegas. Sigue sin planificarse en detalle — sería el
+candidato natural para la próxima sesión si no se prioriza Fase 2.
+
 **Próximo paso natural**: Fase 2 (subastas) tal como está descrita más abajo,
-o seguir puliendo el mercado de venta directa — sin decidir todavía, a
-confirmar con el usuario al retomar.
+seguir puliendo el mercado de venta directa, o el reconocimiento de item por
+captura mencionado arriba — sin decidir todavía, a confirmar con el usuario
+al retomar.
 
 ---
 
@@ -178,10 +236,10 @@ Al crear una publicación, el vendedor elige un **modo** (obligatorio indicar al
 ### Fase 1 — MVP (login + venta simple + notificación Discord)
 - [x] Proyecto base Next.js + TypeScript + Tailwind. *(Next.js 16 + Tailwind v4, no 14/v3 — el plan se escribió antes de esas versiones)*
 - [x] Autenticación con NextAuth (Auth.js) + provider Discord, con verificación de pertenencia al guild. *(NextAuth v5; sesión de 24h para re-verificar membresía periódicamente)*
-- [x] Modelo de datos inicial (Prisma): `User`, `Item` (con categoría y subtipo de slot), `Listing` (solo venta directa por ahora). *(además ya se adelantó `Purchase`, ver nota de estado actual)*
+- [x] Modelo de datos inicial (Prisma): `User`, `Item` (con categoría y subtipo de slot), `Listing` (solo venta directa por ahora). *(además ya se adelantó `Purchase`, `ItemOptionDef`/`ListingOption` (random options), `Listing.refineLevel`, `Item.weaponType`/`MagicalWeaponType` y `MarketConfig` — ver nota de estado actual)*
 - [x] Script de scraping inicial: carga masiva de items de Midgardhub a la DB, incluyendo categoría y subtipo de slot de cada item. *(vive en un repo aparte: [ro-guild-market-scraper](https://github.com/CrowdControlTeam/ro-guild-market-scraper); manual y puntual, sin cron)*
 - [x] CRUD de publicaciones: crear venta (item + cantidad + precio), listar mercado, ver detalle, marcar como vendida. *(ampliado: compra parcial real en vez de solo "marcar como vendida", ver nota de estado actual)*
-- [x] Búsqueda y filtros sobre las ventas (nombre parcial, categoría/subtipo, rango de precio) + orden (precio, fecha, nombre) con paginación por cursor ("cargar más").
+- [x] Búsqueda y filtros sobre las ventas (nombre parcial, categoría/subtipo, rango de precio) + orden (precio, fecha, nombre) con paginación por cursor ("cargar más"). *(ampliado con filtros de tipo de arma, random option (por slot) y refine — ver nota de estado actual)*
 - [x] Envío de webhook a Discord al crear una publicación.
 - [x] Look & feel base "estilo RO" (layout, paleta, componentes principales).
 - [x] Despliegue en Vercel + DB en Neon/Supabase. *(Supabase, conectado a Vercel vía su integración oficial — ver estado actual)*
