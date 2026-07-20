@@ -67,6 +67,24 @@ export function AdminConfigForm({ config }: { config: Config }) {
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-semibold text-ro-text">Random options</legend>
+        <ToggleSwitch
+          name="optionsEnabled"
+          defaultChecked={config.optionsEnabled}
+          label="Permitir estadísticas aleatorias (options) en armas/armaduras"
+        />
+        <p className="text-xs text-ro-text-muted">
+          Catálogo de options:{" "}
+          {config.optionsCatalogCount > 0 ? (
+            <span className="text-green-700">{config.optionsCatalogCount} combinaciones cargadas</span>
+          ) : (
+            <span className="text-red-700">sin cargar</span>
+          )}
+          . Hace falta esto Y el toggle activo — pensado para versiones de RO sin catálogo de options todavía.
+        </p>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-semibold text-ro-text">Mercado</legend>
         <ToggleSwitch
           name="maintenanceModeEnabled"

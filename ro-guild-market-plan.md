@@ -111,8 +111,17 @@ permiso "Administrator" del servidor de Discord (calculado en cada login vía
 nativo de Discord). El link "Configuración" solo aparece en el menú de
 usuario (sidebar "Tu cuenta") para quien es admin.
 - `MarketConfig` (la misma tabla singleton de `maxRefineLevel`) gana
-  `webhookUrl`/`webhookEnabled`, `imageRecognitionEnabled` y
-  `maintenanceModeEnabled`.
+  `webhookUrl`/`webhookEnabled`, `imageRecognitionEnabled`,
+  `maintenanceModeEnabled` y `optionsEnabled`.
+- **Random options** también se puede apagar desde el panel
+  (`optionsEnabled`), pensado para cuando el mercado sirva otras versiones de
+  RO además de RO Zero que todavía no tengan su catálogo de options
+  importado: el toggle por sí solo no basta, también se comprueba que
+  `ItemOptionDef` tenga filas (`isOptionsFeatureAvailable` en
+  `src/lib/item-options.ts`) — activarlo sin catálogo cargado no debe
+  simular que la función funciona. El panel muestra cuántas combinaciones
+  hay cargadas (indicador de solo lectura, mismo espíritu que el de la key
+  de Gemini). Activo por defecto (el catálogo actual ya está cargado).
 - **Patrón de gating usado en toda la app**: cada función necesita su toggle
   activo Y (si aplica) el dato/secreto configurado — si falta cualquiera de
   los dos, no solo se desactiva la función sino que **el bloque de UI

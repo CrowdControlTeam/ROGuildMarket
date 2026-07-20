@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-guard";
 import { loadMarketConfig } from "@/lib/market-config";
+import { getOptionsCatalogCount } from "@/lib/item-options";
 
 // El valor real de un secreto nunca sale del servidor una vez guardado —
 // esto es lo único que llega al cliente para representarlo en el formulario.
@@ -15,7 +16,10 @@ function maskSecret(value: string): string {
 export async function getMarketConfig() {
   await requireAdmin();
 
-  const config = await loadMarketConfig();
+  const [config, optionsCatalogCount] = await Promise.all([
+    loadMarketConfig(),
+    getOptionsCatalogCount(),
+  ]);
 
   return {
     maxRefineLevel: config.maxRefineLevel,
@@ -24,6 +28,8 @@ export async function getMarketConfig() {
     imageRecognitionEnabled: config.imageRecognitionEnabled,
     hasGeminiApiKey: !!process.env.GEMINI_API_KEY,
     maintenanceModeEnabled: config.maintenanceModeEnabled,
+    optionsEnabled: config.optionsEnabled,
+    optionsCatalogCount,
   };
 }
 
@@ -32,6 +38,7 @@ const updateConfigSchema = z.object({
   webhookEnabled: z.boolean(),
   imageRecognitionEnabled: z.boolean(),
   maintenanceModeEnabled: z.boolean(),
+  optionsEnabled: z.boolean(),
   // Vacío = no tocar el valor ya guardado (patrón "enmascarado + reemplazar":
   // el formulario nunca recibe el valor real, así que no puede reenviarlo).
   webhookUrl: z.string().trim().optional(),
@@ -45,6 +52,7 @@ export async function updateMarketConfig(formData: FormData) {
     webhookEnabled: formData.get("webhookEnabled") === "on",
     imageRecognitionEnabled: formData.get("imageRecognitionEnabled") === "on",
     maintenanceModeEnabled: formData.get("maintenanceModeEnabled") === "on",
+    optionsEnabled: formData.get("optionsEnabled") === "on",
     webhookUrl: formData.get("webhookUrl") || undefined,
   });
   if (!parsed.success) {
@@ -59,6 +67,7 @@ export async function updateMarketConfig(formData: FormData) {
       webhookEnabled: parsed.data.webhookEnabled,
       imageRecognitionEnabled: parsed.data.imageRecognitionEnabled,
       maintenanceModeEnabled: parsed.data.maintenanceModeEnabled,
+      optionsEnabled: parsed.data.optionsEnabled,
       webhookUrl: parsed.data.webhookUrl ?? null,
     },
     update: {
@@ -66,6 +75,7 @@ export async function updateMarketConfig(formData: FormData) {
       webhookEnabled: parsed.data.webhookEnabled,
       imageRecognitionEnabled: parsed.data.imageRecognitionEnabled,
       maintenanceModeEnabled: parsed.data.maintenanceModeEnabled,
+      optionsEnabled: parsed.data.optionsEnabled,
       ...(parsed.data.webhookUrl ? { webhookUrl: parsed.data.webhookUrl } : {}),
     },
   });

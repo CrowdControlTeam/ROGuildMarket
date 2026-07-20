@@ -12,7 +12,12 @@ import {
 import { CATEGORY_LABELS, SLOT_LABELS, WEAPON_TYPE_LABELS } from "@/lib/market-labels";
 import { getItemOptionGroup, MAX_OPTION_SLOTS } from "@/lib/item-options-constants";
 import { isRefineEligible, DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constants";
-import { getMagicalWeaponTypes, getOptionChoices, getMaxRefineLevel } from "@/lib/listings";
+import {
+  getMagicalWeaponTypes,
+  getOptionChoices,
+  getMaxRefineLevel,
+  getOptionsFeatureAvailable,
+} from "@/lib/listings";
 import { buttonClass, inputClass, inputBaseClass, selectClass, labelClass } from "@/lib/ui";
 import { MaskedPriceInput } from "@/components/MaskedPriceInput";
 
@@ -66,6 +71,14 @@ export function MarketFilters() {
     getMagicalWeaponTypes().then((types) => setMagicalTypes(new Set(types)));
   }, []);
 
+  // Toggle + catálogo desde /admin (ver src/lib/item-options.ts) — si está
+  // apagado, la sección de options ni se carga ni se muestra, sin importar
+  // qué combinación de categoría/slot/tipo de arma esté elegida.
+  const [optionsFeatureAvailable, setOptionsFeatureAvailable] = useState(true);
+  useEffect(() => {
+    getOptionsFeatureAvailable().then(setOptionsFeatureAvailable);
+  }, []);
+
   const showSlot = category === ItemCategory.ARMOR || category === ItemCategory.CARD || category === "";
   const showWeaponType = category === ItemCategory.WEAPON || category === "";
 
@@ -100,9 +113,10 @@ export function MarketFilters() {
   // Solo se toca optionDefs/optionSelections cuando el grupo resuelve a algo
   // concreto: si pasa a null (sin options) o undefined (aún resolviendo), no
   // se cambia nada — los filtros de option se quedan como estén, solo se
-  // deshabilitan en el render (ver `optionsEnabled`).
+  // deshabilitan en el render (ver `groupHasOptions`). Tampoco se pide nada
+  // si la función está apagada desde /admin.
   useEffect(() => {
-    if (optionGroup === null || optionGroup === undefined) return;
+    if (!optionsFeatureAvailable || optionGroup === null || optionGroup === undefined) return;
     getOptionChoices(optionGroup).then((defs) => {
       setOptionDefs(defs);
       setOptionSelections((prev) =>
@@ -111,9 +125,9 @@ export function MarketFilters() {
         ),
       );
     });
-  }, [optionGroup]);
+  }, [optionGroup, optionsFeatureAvailable]);
 
-  const optionsEnabled = optionGroup !== null && optionGroup !== undefined;
+  const groupHasOptions = optionGroup !== null && optionGroup !== undefined;
 
   function handleOptionSelectChange(index: number, defId: string) {
     setOptionSelections((prev) => {
@@ -153,7 +167,7 @@ export function MarketFilters() {
     // aplican, aunque el usuario los tenga rellenados en pantalla.
     optionSelections.forEach((sel, i) => {
       const n = i + 1;
-      const defId = optionsEnabled ? sel.defId : "";
+      const defId = optionsFeatureAvailable && groupHasOptions ? sel.defId : "";
       setOrDelete(params, `option${n}DefId`, defId);
       setOrDelete(params, `option${n}Min`, defId && sel.min !== "" ? String(sel.min) : "");
       setOrDelete(params, `option${n}Max`, defId && sel.max !== "" ? String(sel.max) : "");
@@ -330,7 +344,7 @@ export function MarketFilters() {
         </button>
       </div>
 
-      {optionDefs.length > 0 && (
+      {optionsFeatureAvailable && optionDefs.length > 0 && (
         <div className="flex w-full flex-col gap-2">
           <label className={labelClass}>Options</label>
           {Array.from({ length: MAX_OPTION_SLOTS }, (_, i) => i + 1).map((slotIndex) => {
@@ -343,7 +357,7 @@ export function MarketFilters() {
               <div key={slotIndex} className="flex items-center gap-2">
                 <select
                   value={sel.defId}
-                  disabled={!optionsEnabled}
+                  disabled={!groupHasOptions}
                   onChange={(e) => handleOptionSelectChange(index, e.target.value)}
                   className={`min-w-0 flex-1 ${selectClass}`}
                 >

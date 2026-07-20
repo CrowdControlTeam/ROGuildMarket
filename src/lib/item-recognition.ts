@@ -3,7 +3,12 @@
 import { ItemCategory, EquipSlot, WeaponType, ItemOptionGroup } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/guard";
-import { MAX_OPTION_SLOTS, getItemOptionGroup, loadMagicalWeaponTypes } from "@/lib/item-options";
+import {
+  MAX_OPTION_SLOTS,
+  getItemOptionGroup,
+  loadMagicalWeaponTypes,
+  isOptionsFeatureAvailable,
+} from "@/lib/item-options";
 import { isRefineEligible, loadMaxRefineLevel } from "@/lib/refine";
 import { findBestMatch } from "@/lib/fuzzy-match";
 import { loadMarketConfig } from "@/lib/market-config";
@@ -179,8 +184,11 @@ export async function recognizeItemFromScreenshot(formData: FormData): Promise<R
     return { status: "no_match", detectedName: extraction.itemName };
   }
 
-  const magicalTypes = await loadMagicalWeaponTypes();
-  const optionGroup = getItemOptionGroup(matchedItem, magicalTypes);
+  const [magicalTypes, optionsAvailable] = await Promise.all([
+    loadMagicalWeaponTypes(),
+    isOptionsFeatureAvailable(),
+  ]);
+  const optionGroup = optionsAvailable ? getItemOptionGroup(matchedItem, magicalTypes) : null;
 
   let refineLevel = 0;
   if (isRefineEligible(matchedItem)) {

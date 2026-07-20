@@ -185,6 +185,13 @@ model MarketConfig {
   // cualquiera de los dos, el bloque ni se renderiza en el formulario.
   imageRecognitionEnabled Boolean @default(false)
 
+  // Random options necesita esto Y que el catálogo (ItemOptionDef) tenga
+  // filas — pensado para cuando el mercado sirva a versiones de RO además
+  // de RO Zero que todavía no tengan su catálogo de options importado (ver
+  // src/lib/item-options.ts). Activo por defecto porque el catálogo actual
+  // ya está cargado.
+  optionsEnabled Boolean @default(true)
+
   // Bloquea crear ventas y comprar para todo el mundo salvo administradores
   // (ver src/lib/admin-guard.ts). Pensado para desplegar cambios grandes
   // sin que se publique/compre a medio camino.

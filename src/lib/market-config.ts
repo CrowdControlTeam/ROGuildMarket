@@ -13,6 +13,7 @@ export type MarketConfigValues = {
   webhookEnabled: boolean;
   imageRecognitionEnabled: boolean;
   maintenanceModeEnabled: boolean;
+  optionsEnabled: boolean;
 };
 
 // Si la fila (id=1) todavía no existe, se cae a los valores conservadores
@@ -25,5 +26,6 @@ export async function loadMarketConfig(): Promise<MarketConfigValues> {
     webhookEnabled: config?.webhookEnabled ?? false,
     imageRecognitionEnabled: config?.imageRecognitionEnabled ?? false,
     maintenanceModeEnabled: config?.maintenanceModeEnabled ?? false,
+    optionsEnabled: config?.optionsEnabled ?? true,
   };
 }

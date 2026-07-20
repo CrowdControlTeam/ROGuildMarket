@@ -6,7 +6,12 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/guard";
 import { sendListingCreatedWebhook } from "@/lib/discord-webhook";
-import { MAX_OPTION_SLOTS, getItemOptionGroup, loadMagicalWeaponTypes } from "@/lib/item-options";
+import {
+  MAX_OPTION_SLOTS,
+  getItemOptionGroup,
+  loadMagicalWeaponTypes,
+  isOptionsFeatureAvailable,
+} from "@/lib/item-options";
 import { isRefineEligible, formatRefinedName, loadMaxRefineLevel } from "@/lib/refine";
 import { loadMarketConfig } from "@/lib/market-config";
 
@@ -29,11 +34,22 @@ export async function searchItems(query: string) {
     },
   });
 
-  const magicalTypes = await loadMagicalWeaponTypes();
+  const [magicalTypes, optionsAvailable] = await Promise.all([
+    loadMagicalWeaponTypes(),
+    isOptionsFeatureAvailable(),
+  ]);
   return items.map((item) => ({
     ...item,
-    optionGroup: getItemOptionGroup(item, magicalTypes),
+    optionGroup: optionsAvailable ? getItemOptionGroup(item, magicalTypes) : null,
   }));
+}
+
+// Para que el filtro de mercado (client component, sin acceso directo a
+// Prisma) pueda saber si debe mostrar la sección de options en absoluto —
+// mismo patrón que getMagicalWeaponTypes/getMaxRefineLevel.
+export async function getOptionsFeatureAvailable() {
+  await requireSession();
+  return isOptionsFeatureAvailable();
 }
 
 // Para que el filtro de mercado pueda resolver el ItemOptionGroup en
@@ -110,8 +126,11 @@ export async function createListing(formData: FormData) {
   });
   if (!item) throw new Error("El item seleccionado no existe");
 
-  const magicalTypes = await loadMagicalWeaponTypes();
-  const optionGroup = getItemOptionGroup(item, magicalTypes);
+  const [magicalTypes, optionsAvailable] = await Promise.all([
+    loadMagicalWeaponTypes(),
+    isOptionsFeatureAvailable(),
+  ]);
+  const optionGroup = optionsAvailable ? getItemOptionGroup(item, magicalTypes) : null;
 
   const rawOptions = parseOptionsFromFormData(formData);
   if (rawOptions.length > 0 && !optionGroup) {
