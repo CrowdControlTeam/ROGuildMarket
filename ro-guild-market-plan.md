@@ -8,7 +8,7 @@ especificación original y puede haber quedado desactualizado en detalles.
 
 **Dónde está todo:**
 - App: [github.com/CrowdControlTeam/ROGuildMarket](https://github.com/CrowdControlTeam/ROGuildMarket), desplegada en Vercel (proyecto `ro-guild-market`) en `https://ro-guild-market.vercel.app`, con base de datos en Supabase (proyecto `lpljlztabvjwuolqaqwa`) conectada vía la integración oficial Vercel↔Supabase.
-- Scraper del catálogo: repositorio aparte, [github.com/CrowdControlTeam/ro-guild-market-scraper](https://github.com/CrowdControlTeam/ro-guild-market-scraper) (ver Fase 1.4 más abajo y su propio README).
+- Tool de catálogo: repositorio local ubicado un directorio más arriba (../ro-guild-market-generator).
 - Credenciales (Discord, Supabase, `AUTH_SECRET`, etc.): en `.env.local`/`.env`/`.env.production` en local (gitignorados, nunca commiteados) y en las variables de entorno del proyecto en Vercel. Ninguna vive en este repo ni en este documento.
 
 **Progreso**: Fase 0 y Fase 1 completas (marcadas más abajo), incluido el
@@ -24,7 +24,7 @@ PR revisado y mergeado por el humano, nunca por el asistente. Commits
 **Desviaciones/decisiones respecto al documento original:**
 - Next.js 16 (no 14) + Tailwind v4 (no v3) — el plan se escribió antes de esas versiones; NextAuth v5 (beta, pero es el estándar de facto para App Router).
 - Base de datos: Supabase en vez de Neon, conectada a Vercel vía su integración oficial (variables `POSTGRES_PRISMA_URL`/`POSTGRES_URL_NON_POOLING`, autosincronizadas — no se pegan credenciales a mano). En local, Postgres por Docker (`docker-compose.yml`, puerto 5433).
-- Scraping: solo manual/puntual desde el principio (no hay Fase 4.5 de re-scraping periódico ni GitHub Actions) — decisión explícita del usuario, no solo por Fase 1. El scraper vive en su propio repositorio, no mezclado con la app.
+- Generator: solo manual/puntual desde el principio (no hay Fase 4.5 de generación periódica ni GitHub Actions) — decisión explícita del usuario, no solo por Fase 1. El generator vive en su propio repositorio, no mezclado con la app.
 - El nombre de usuario mostrado en cualquier parte de la app o de los mensajes de Discord es siempre el **apodo del servidor de Discord** (nickname del guild, con fallback al nombre visible y por último al `@username`), nunca el `@username` en crudo — regla transversal, ver memoria del asistente `display_name_convention`.
 - Formato de precios: separador de miles con `.` (sin decimales), y color según magnitud (normal hasta 1M, verde/azul/rojo/morado cada orden de magnitud x10 por encima) — ver `src/lib/price.ts`, aplicado en toda la app.
 
@@ -114,7 +114,7 @@ Una web privada, solo para miembros del Discord de la guild, donde los jugadores
 - Proponer **trades** (objeto por objeto, con o sin dinero de por medio).
 - Hacer **regalos** directos a otro jugador.
 
-El catálogo de objetos (nombre, icono, stats, descripción) sale de una base de datos propia, alimentada mediante scraping periódico de Midgardhub, para no depender de esa web en tiempo real.
+El catálogo de objetos (nombre, icono, stats, descripción) sale de una base de datos propia.
 
 El acceso se controla con **login de Discord (OAuth2)**, y solo se permite entrar a quienes pertenezcan al servidor de Discord de la guild. Cada publicación en el mercado (venta, subasta, petición de compra) se anuncia automáticamente en un canal de Discord vía **webhook**, con fecha, autor, item (nombre + icono) y precio.
 
@@ -132,9 +132,7 @@ La estética visual busca recordar a Ragnarok Online (paneles tipo ventana de in
 
 ### 2.2 Catálogo de objetos
 - Base de datos propia con: nombre, icono, descripción, categoría (arma/armadura/carta/consumible/etc.), y cualquier dato adicional relevante para identificar el objeto en el mercado.
-- **Origen de los datos:** scraping propio de Midgardhub, ejecutado de forma periódica (no en cada visita del usuario), guardando los resultados en la DB local.
-- Antes de scrapear de forma sistemática, contactar al autor de Midgardhub (vía su página de contacto) explicando el uso: proyecto privado, sin ánimo de lucro, solo para una guild, con crédito a la fuente. Aunque no sea estrictamente obligatorio, es buena práctica y reduce riesgo de bloqueo/ToS.
-- Los iconos se alojan copiados en tu propio almacenamiento (no se hace *hotlink* directo a midgardhub).
+- Los iconos se alojan copiados en tu propio almacenamiento (no se hace *hotlink* a la fuente).
 
 ### 2.3 Mercado — modalidades de publicación
 Al crear una publicación, el vendedor elige un **modo** (obligatorio indicar al menos uno de los dos precios):
@@ -176,7 +174,7 @@ Al crear una publicación, el vendedor elige un **modo** (obligatorio indicar al
 - Paleta de colores inspirada en la UI clásica del juego (marrones/dorados tipo madera, paneles con borde).
 - Tipografía con aire retro/pixel para títulos, tipografía legible normal para el contenido.
 - Iconografía e ilustraciones **propias o genéricas** (no sprites extraídos del cliente del juego ni artwork oficial de Gravity), para evitar problemas de derechos de autor.
-- Los iconos de los items scrapeados de Midgardhub sí se van a usar (son necesarios para identificar el objeto), pero limitados a ese uso funcional, con atribución a la fuente en el footer.
+- Los iconos de los items son necesarios para identificar el objeto, pero limitados a ese uso funcional.
 
 ### 2.9 Búsqueda, filtros y orden en el mercado
 
@@ -201,7 +199,7 @@ Al crear una publicación, el vendedor elige un **modo** (obligatorio indicar al
 - Un cursor (basado en el último elemento cargado, no en el número de página) da una experiencia fluida similar al scroll infinito, es eficiente en la base de datos aunque el catálogo crezca mucho, y permite mantener filtros/orden en la URL.
 
 **Implicaciones técnicas:**
-- El modelo `Item` necesita campos de categoría y subtipo (arma, armadura + slot, carta + slot compatible, consumible, miscelánea) capturados durante el propio scraping, para no depender de parsear texto libre en cada búsqueda.
+- El modelo `Item` necesita campos de categoría y subtipo (arma, armadura + slot, carta + slot compatible, consumible, miscelánea) capturados durante el propio generator, para no depender de parsear texto libre en cada búsqueda.
 - Los campos usados para filtrar y ordenar (categoría, subtipo, precio, fecha, nombre) deben estar indexados en PostgreSQL para que la búsqueda siga siendo rápida a medida que crece el número de publicaciones.
 
 ### 2.10 Notificaciones privadas por Discord (DM)
@@ -230,14 +228,12 @@ Al crear una publicación, el vendedor elige un **modo** (obligatorio indicar al
 ### Fase 0 — Preparación (antes de programar)
 - [x] Crear aplicación en el [Discord Developer Portal](https://discord.com/developers/applications): OAuth2 (client id/secret) + Webhook en el canal del mercado. *(app de test; falta la definitiva de producción cuando la guild lo decida)*
 - [x] Confirmar el `GUILD_ID` del servidor de la guild. *(valor de test en uso; pendiente el real)*
-- [x] Contactar al autor de Midgardhub para informar del uso de los datos. *(confirmado sin problema — su web traduce una fuente coreana ya scrapeada)*
-- [x] Crear repositorio, cuentas en Vercel, Neon/Supabase y GitHub Actions. *(Supabase en vez de Neon; sin GitHub Actions — el scraping es manual, no periódico, ver Fase 1.4)*
+- [x] Crear repositorio, cuentas en Vercel, Neon/Supabase y GitHub Actions. *(Supabase en vez de Neon; sin GitHub Actions — el generator es manual, no periódico, ver Fase 1.4)*
 
 ### Fase 1 — MVP (login + venta simple + notificación Discord)
 - [x] Proyecto base Next.js + TypeScript + Tailwind. *(Next.js 16 + Tailwind v4, no 14/v3 — el plan se escribió antes de esas versiones)*
 - [x] Autenticación con NextAuth (Auth.js) + provider Discord, con verificación de pertenencia al guild. *(NextAuth v5; sesión de 24h para re-verificar membresía periódicamente)*
 - [x] Modelo de datos inicial (Prisma): `User`, `Item` (con categoría y subtipo de slot), `Listing` (solo venta directa por ahora). *(además ya se adelantó `Purchase`, `ItemOptionDef`/`ListingOption` (random options), `Listing.refineLevel`, `Item.weaponType`/`MagicalWeaponType` y `MarketConfig` — ver nota de estado actual)*
-- [x] Script de scraping inicial: carga masiva de items de Midgardhub a la DB, incluyendo categoría y subtipo de slot de cada item. *(vive en un repo aparte: [ro-guild-market-scraper](https://github.com/CrowdControlTeam/ro-guild-market-scraper); manual y puntual, sin cron)*
 - [x] CRUD de publicaciones: crear venta (item + cantidad + precio), listar mercado, ver detalle, marcar como vendida. *(ampliado: compra parcial real en vez de solo "marcar como vendida", ver nota de estado actual)*
 - [x] Búsqueda y filtros sobre las ventas (nombre parcial, categoría/subtipo, rango de precio) + orden (precio, fecha, nombre) con paginación por cursor ("cargar más"). *(ampliado con filtros de tipo de arma, random option (por slot) y refine — ver nota de estado actual)*
 - [x] Envío de webhook a Discord al crear una publicación.
@@ -271,7 +267,6 @@ Al crear una publicación, el vendedor elige un **modo** (obligatorio indicar al
 - [ ] Historial de transacciones por usuario ("mis compras", "mis ventas").
 - [ ] Filtros avanzados adicionales (por stats del item, favoritos, alertas de búsqueda guardada que avisen por Discord cuando se publique algo que coincida).
 - [ ] Panel de administración básico (borrar publicaciones, banear usuarios abusivos).
-- [ ] Actualización periódica automática del catálogo de items (re-scraping incremental).
 - [ ] Revisión de accesibilidad y responsive (móvil).
 
 ---
@@ -280,8 +275,6 @@ Al crear una publicación, el vendedor elige un **modo** (obligatorio indicar al
 
 1. **Legal / propiedad intelectual**
    - No usar sprites, artwork ni assets oficiales de Gravity/RO. La estética se logra con paleta, tipografía y composición propias, no con arte extraído del juego.
-   - Los iconos de items provienen de Midgardhub solo con fin funcional (identificar el objeto), con crédito visible a la fuente.
-   - Respetar `robots.txt` y limitar la frecuencia del scraping; preferir contacto directo con el autor antes que scraping agresivo.
 
 2. **Seguridad**
    - Nunca exponer el `client secret` de Discord, el token del bot ni la URL del webhook en el frontend — todo vive en variables de entorno del servidor.
@@ -323,7 +316,6 @@ Al crear una publicación, el vendedor elige un **modo** (obligatorio indicar al
 | ORM / Base de datos | **Prisma + PostgreSQL** | Tipado end-to-end con TypeScript, migraciones sencillas, y Postgres es más que suficiente para el volumen de una guild. |
 | Hosting de la app | **Vercel (plan gratuito)** | Despliegue automático desde GitHub, pensado específicamente para Next.js, límites de sobra para el tráfico de una guild. |
 | Hosting de la base de datos | **Neon** (Postgres serverless) o **Supabase** (Postgres + Storage) | Ambos con free tier permanente; Supabase además da almacenamiento gratuito, útil para alojar los iconos de items copiados. |
-| Scraping periódico | **Node.js (Playwright o Cheerio, según si el contenido es dinámico) + GitHub Actions (cron)** | GitHub Actions permite programar el scraping (p. ej. semanal) sin coste, ejecutándose fuera de tu hosting principal. |
 | Notificaciones | **Discord Webhooks** (fases 1-2, canal público) → **Bot con discord.js** (fase 3, DMs y cierre de subastas) | El webhook basta para publicar en el canal; el bot se incorpora en la Fase 3 porque los DMs y el aviso de cierre de subasta lo requieren (los webhooks son unidireccionales y no pueden mandar privados). |
 | Validación | **Zod** | Validación compartida entre formularios de cliente y API del servidor. |
 | Búsqueda y paginación | **Índices en PostgreSQL (categoría, subtipo, precio, fecha) + paginación por cursor con Prisma** | Filtros combinables y carga "cargar más" eficientes incluso con el catálogo y las publicaciones creciendo. |
@@ -331,7 +323,7 @@ Al crear una publicación, el vendedor elige un **modo** (obligatorio indicar al
 
 ### Resumen de cuentas gratuitas a crear
 1. Discord Developer Portal (app OAuth2 + webhook).
-2. GitHub (repositorio + Actions para el cron de scraping).
+2. GitHub (repositorio + Actions).
 3. Vercel (hosting de la web).
 4. Neon o Supabase (base de datos Postgres).
 
