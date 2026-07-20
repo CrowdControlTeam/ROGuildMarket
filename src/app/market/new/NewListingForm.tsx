@@ -1,18 +1,21 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ItemOptionDef } from "@prisma/client";
 import { createListing, getOptionChoices, getMaxRefineLevel } from "@/lib/listings";
+import { recognizeItemFromScreenshot } from "@/lib/item-recognition";
 import { buttonClass, inputClass, inputBaseClass, selectClass, labelClass } from "@/lib/ui";
 import { PriceInput } from "@/components/PriceInput";
 import {
   MAX_OPTION_SLOTS,
   emptyOptionSelections,
+  buildOptionSelectionsFromDetected,
   type OptionSelection,
 } from "@/lib/item-options-constants";
 import { isRefineEligible, DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constants";
 import { ItemPicker, type ItemResult } from "./ItemPicker";
+import { ScreenshotDropzone } from "./ScreenshotDropzone";
 
 export function NewListingForm() {
   const router = useRouter();
@@ -21,8 +24,11 @@ export function NewListingForm() {
   const [optionSelections, setOptionSelections] = useState<OptionSelection[]>(
     emptyOptionSelections(),
   );
+  const [refineLevel, setRefineLevel] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [maxRefineLevel, setMaxRefineLevel] = useState(DEFAULT_MAX_REFINE_LEVEL);
+  const [isRecognizing, startRecognizeTransition] = useTransition();
+  const [recognitionNote, setRecognitionNote] = useState<string | null>(null);
 
   useEffect(() => {
     getMaxRefineLevel().then(setMaxRefineLevel);
@@ -46,6 +52,35 @@ export function NewListingForm() {
   function handleItemSelect(item: ItemResult) {
     setSelectedItem(item);
     setOptionSelections(emptyOptionSelections());
+    setRefineLevel(0);
+    setRecognitionNote(null);
+  }
+
+  function handleScreenshotScan(file: File) {
+    setRecognitionNote(null);
+    startRecognizeTransition(async () => {
+      const formData = new FormData();
+      formData.set("screenshot", file);
+      const result = await recognizeItemFromScreenshot(formData);
+
+      if (result.status === "error") {
+        setRecognitionNote(result.message);
+        return;
+      }
+      if (result.status === "no_match") {
+        setRecognitionNote(
+          result.detectedName
+            ? `No se ha encontrado en el catálogo ningún item parecido a "${result.detectedName}". Selecciónalo manualmente.`
+            : "No se ha podido leer el item en la captura. Selecciónalo manualmente.",
+        );
+        return;
+      }
+
+      setSelectedItem(result.item);
+      setRefineLevel(result.refineLevel);
+      setOptionSelections(buildOptionSelectionsFromDetected(result.options));
+      setRecognitionNote(`Detectado: ${result.item.name}. Revisa los datos antes de publicar.`);
+    });
   }
 
   // Elegir un option real en `index` habilita su input y desbloquea la
@@ -88,8 +123,18 @@ export function NewListingForm() {
       className="flex flex-col gap-4"
     >
       <div>
+        <label className={labelClass}>Reconocer desde captura (opcional)</label>
+        <ScreenshotDropzone onScan={handleScreenshotScan} isScanning={isRecognizing} />
+        {recognitionNote && <p className="mt-1 text-sm text-ro-text-muted">{recognitionNote}</p>}
+      </div>
+
+      <div>
         <label className={labelClass}>Item</label>
-        <ItemPicker onSelect={handleItemSelect} />
+        <ItemPicker
+          key={selectedItem?.id ?? "empty"}
+          onSelect={handleItemSelect}
+          initialQuery={selectedItem?.name}
+        />
         <input type="hidden" name="itemId" value={selectedItem?.id ?? ""} />
       </div>
 
@@ -120,7 +165,8 @@ export function NewListingForm() {
             name="refineLevel"
             min={0}
             max={maxRefineLevel}
-            defaultValue={0}
+            value={refineLevel}
+            onChange={(e) => setRefineLevel(e.target.value === "" ? 0 : Number(e.target.value))}
             className={inputClass}
           />
         </div>

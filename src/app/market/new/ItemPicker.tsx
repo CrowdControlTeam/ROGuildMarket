@@ -9,10 +9,15 @@ export type ItemResult = Awaited<ReturnType<typeof searchItems>>[number];
 
 export function ItemPicker({
   onSelect,
+  initialQuery,
 }: {
   onSelect: (item: ItemResult) => void;
+  // Texto inicial del input cuando la selección viene de fuera (p.ej. el
+  // reconocimiento por captura). El padre fuerza un remount (key={item.id})
+  // cuando cambia la selección en vez de sincronizar esto en un efecto.
+  initialQuery?: string;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery ?? "");
   const [results, setResults] = useState<ItemResult[]>([]);
   const [isPending, startTransition] = useTransition();
 
