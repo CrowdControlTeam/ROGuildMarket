@@ -1,4 +1,4 @@
-import { Prisma, ItemCategory, EquipSlot } from "@prisma/client";
+import { Prisma, ItemCategory, EquipSlot, WeaponType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export const SORT_OPTIONS = [
@@ -22,6 +22,22 @@ export type MarketFilters = {
   q?: string;
   category?: ItemCategory;
   slot?: EquipSlot;
+  weaponType?: WeaponType;
+  // Filtro por random option, uno por slot posicional (1..MAX_OPTION_SLOTS
+  // — ver src/lib/item-options-constants.ts). El cliente ya resuelve a qué
+  // defId corresponde cada selección (no hace falta re-derivar el grupo
+  // aquí), así que basta con filtrar directamente por defId+slotIndex.
+  option1DefId?: string;
+  option1Min?: number;
+  option1Max?: number;
+  option2DefId?: string;
+  option2Min?: number;
+  option2Max?: number;
+  option3DefId?: string;
+  option3Min?: number;
+  option3Max?: number;
+  refineMin?: number;
+  refineMax?: number;
   minPrice?: number;
   maxPrice?: number;
   sort: MarketSort;
@@ -133,6 +149,35 @@ function cursorWhereFor(
   }
 }
 
+// Una condición por slot de option rellenado en el filtro — se combinan
+// todas con AND (un listing debe cumplirlas todas a la vez), cada una
+// buscando en una fila de ListingOption distinta (por eso son "some"
+// separados y no uno solo con varias condiciones dentro).
+function optionSlotWhere(
+  slotIndex: number,
+  defId?: string,
+  min?: number,
+  max?: number,
+): Prisma.ListingWhereInput | null {
+  if (!defId) return null;
+  return {
+    options: {
+      some: {
+        slotIndex,
+        defId,
+        ...(min !== undefined || max !== undefined
+          ? {
+              value: {
+                ...(min !== undefined ? { gte: min } : {}),
+                ...(max !== undefined ? { lte: max } : {}),
+              },
+            }
+          : {}),
+      },
+    },
+  };
+}
+
 export async function getListings(filters: MarketFilters) {
   const cursor = decodeCursor(filters.cursor);
 
@@ -141,6 +186,19 @@ export async function getListings(filters: MarketFilters) {
     (filters.category === ItemCategory.ARMOR ||
       filters.category === ItemCategory.CARD ||
       !filters.category);
+
+  const needsWeaponTypeFilter =
+    filters.weaponType &&
+    (filters.category === ItemCategory.WEAPON || !filters.category);
+
+  const optionConditions = [
+    optionSlotWhere(1, filters.option1DefId, filters.option1Min, filters.option1Max),
+    optionSlotWhere(2, filters.option2DefId, filters.option2Min, filters.option2Max),
+    optionSlotWhere(3, filters.option3DefId, filters.option3Min, filters.option3Max),
+  ].filter((c): c is Prisma.ListingWhereInput => c !== null);
+
+  const cursorCondition = cursorWhereFor(filters.sort, cursor);
+  const andConditions = [...(cursorCondition ? [cursorCondition] : []), ...optionConditions];
 
   const where: Prisma.ListingWhereInput = {
     status: "ACTIVE",
@@ -152,19 +210,32 @@ export async function getListings(filters: MarketFilters) {
           },
         }
       : {}),
+    ...(filters.refineMin !== undefined || filters.refineMax !== undefined
+      ? {
+          refineLevel: {
+            ...(filters.refineMin !== undefined ? { gte: filters.refineMin } : {}),
+            ...(filters.refineMax !== undefined ? { lte: filters.refineMax } : {}),
+          },
+        }
+      : {}),
     item: {
       ...(filters.q ? { name: { contains: filters.q, mode: "insensitive" } } : {}),
       ...(filters.category ? { category: filters.category } : {}),
       ...(needsSlotFilter ? { slot: filters.slot } : {}),
+      ...(needsWeaponTypeFilter ? { weaponType: filters.weaponType } : {}),
     },
-    AND: cursorWhereFor(filters.sort, cursor),
+    ...(andConditions.length > 0 ? { AND: andConditions } : {}),
   };
 
   const listings = await prisma.listing.findMany({
     where,
     orderBy: orderByFor(filters.sort),
     take: PAGE_SIZE + 1,
-    include: { item: true, seller: true },
+    include: {
+      item: true,
+      seller: true,
+      options: { include: { def: true }, orderBy: { slotIndex: "asc" } },
+    },
   });
 
   const hasMore = listings.length > PAGE_SIZE;

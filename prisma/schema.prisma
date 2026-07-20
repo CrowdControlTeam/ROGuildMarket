@@ -41,6 +41,47 @@ enum ListingStatus {
   EXPIRED
 }
 
+// Solo relevante cuando category = WEAPON. Taxonomía estándar de tipos de
+// arma de RO — determina, vía MagicalWeaponType, de qué pool de random
+// options (ItemOptionDef) puede salir el arma. Poblado por el scraper desde
+// el campo `slot` de Midgardhub (ver ../ro-guild-market-scraper/src/scrape.ts).
+enum WeaponType {
+  DAGGER
+  ONE_HAND_SWORD
+  TWO_HAND_SWORD
+  ONE_HAND_SPEAR
+  TWO_HAND_SPEAR
+  ONE_HAND_AXE
+  TWO_HAND_AXE
+  MACE
+  ROD
+  TWO_HAND_ROD
+  BOW
+  KNUCKLE
+  INSTRUMENT
+  WHIP
+  BOOK
+  KATAR
+  REVOLVER
+  RIFLE
+  GATLING_GUN
+  SHOTGUN
+  GRENADE_LAUNCHER
+  FUUMA_SHURIKEN
+}
+
+// Grupo de equipo para el pool de random options — no todos los EquipSlot
+// tienen options (headgears/shield/accessory/card no), y las armas se
+// dividen en dos pools distintos según WeaponAttackType, de ahí que sea un
+// enum aparte en vez de reutilizar EquipSlot/ItemCategory directamente.
+enum ItemOptionGroup {
+  ARMOR
+  GARMENT
+  FOOTGEAR
+  WEAPON_PHYSICAL
+  WEAPON_MAGICAL
+}
+
 model User {
   // Igual al id de Discord (snowflake): no hay otro proveedor de login.
   id         String   @id
@@ -60,6 +101,10 @@ model Item {
   category    ItemCategory
   // Slot de equipo (armaduras) o slot en el que se puede montar (cartas).
   slot        EquipSlot?
+  // Solo relevante para category = WEAPON — ver comentario del enum.
+  // Nullable: armas aún sin clasificar (o sin tipo, p.ej. munición) no
+  // muestran random options todavía.
+  weaponType WeaponType?
   // Copia propia del icono (sin hotlink a la fuente externa).
   iconUrl     String
   // Ficha de origen del scraping, para trazabilidad.
@@ -89,7 +134,14 @@ model Listing {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
+  // Nivel de refine (+0 a MarketConfig.maxRefineLevel) — solo relevante para
+  // equipo refinable (arma, o armadura en slot casco superior/cuerpo/
+  // escudo/prenda/calzado; accesorios y cascos medio/inferior no). 0 en
+  // cualquier otro item, y no se muestra como prefijo "+N" hasta 1.
+  refineLevel Int @default(0)
+
   purchases Purchase[]
+  options   ListingOption[]
 
   @@index([status, createdAt])
   @@index([price])
@@ -110,4 +162,61 @@ model Purchase {
 
   @@index([listingId])
   @@index([buyerId])
+}
+
+// Configuración global del mercado, editable en base de datos (Prisma
+// Studio) sin desplegar código. Fila única (id fijo = 1) — ver
+// prisma/seedMarketConfig.mjs.
+model MarketConfig {
+  id Int @id @default(1)
+  // Refine real de RO Zero sin confirmar todavía (0-15 según el usuario,
+  // pero sin verificar) — 10 de arranque, se ajusta aquí cuando se sepa.
+  maxRefineLevel Int @default(10)
+}
+
+// Qué WeaponType cuentan como "arma mágica" (pool WEAPON_MAGICAL) en vez de
+// "arma física" (WEAPON_PHYSICAL) — la presencia de una fila es la señal (no
+// hace falta columna booleana). Editable directamente en la base de datos
+// (Prisma Studio) sin necesidad de desplegar código. Seed por defecto: ROD,
+// TWO_HAND_ROD, BOOK — ver prisma/seedMagicalWeaponType.mjs.
+model MagicalWeaponType {
+  type WeaponType @id
+}
+
+// Catálogo de estadísticas de random option posibles, por grupo de equipo y
+// por slot posicional (1, 2, 3 — cada posición tiene su propio pool, no son
+// intercambiables entre sí). Poblado desde datos reales, ver
+// prisma/seedItemOptions.mjs — no depende del scraper de Midgardhub.
+model ItemOptionDef {
+  id        String          @id @default(cuid())
+  group     ItemOptionGroup
+  slotIndex Int
+  // Identificador estable derivado del label (p.ej. "MAX_HP_PCT"), para no
+  // depender del texto exacto del label como clave.
+  statCode  String
+  label     String
+  minValue  Int
+  // Igual a minValue cuando el valor es fijo (p.ej. ASPD siempre +1).
+  maxValue  Int
+
+  selections ListingOption[]
+
+  @@unique([group, slotIndex, statCode])
+  @@index([group, slotIndex])
+}
+
+// Random option concreta que el vendedor indica que tiene su listing —
+// hasta MAX_OPTION_SLOTS (ver src/lib/item-options.ts) por listing, siempre
+// ocupando las posiciones desde 1 en adelante sin huecos.
+model ListingOption {
+  id        String        @id @default(cuid())
+  listing   Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  listingId String
+  slotIndex Int
+  def       ItemOptionDef @relation(fields: [defId], references: [id])
+  defId     String
+  // Valor concreto que le salió al vendedor, dentro de [def.minValue, def.maxValue].
+  value     Int
+
+  @@unique([listingId, slotIndex])
 }

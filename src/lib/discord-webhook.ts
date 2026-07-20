@@ -9,6 +9,7 @@ type ListingWebhookPayload = {
   sellerUsername: string;
   sellerAvatarUrl: string | null;
   listingUrl: string; // absoluta
+  options?: { label: string; value: number }[];
 };
 
 // Un fallo aquí nunca debe tumbar la publicación en sí (ya se guardó en la
@@ -38,6 +39,15 @@ export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) 
             inline: true,
           },
           { name: "Cantidad", value: String(payload.quantity), inline: true },
+          ...(payload.options && payload.options.length > 0
+            ? [
+                {
+                  name: "Options",
+                  value: payload.options.map((o) => `${o.label}: +${o.value}`).join("\n"),
+                  inline: false,
+                },
+              ]
+            : []),
         ],
         timestamp: new Date().toISOString(),
       },

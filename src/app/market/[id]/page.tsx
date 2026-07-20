@@ -5,6 +5,8 @@ import { requireSession } from "@/lib/guard";
 import { Panel } from "@/components/Panel";
 import { BackLink } from "@/components/BackLink";
 import { formatPrice, priceColorClass } from "@/lib/price";
+import { formatRefinedName } from "@/lib/refine-constants";
+import { labelClass } from "@/lib/ui";
 import { UserMention } from "@/components/UserMention";
 import { CancelListingButton } from "./CancelListingButton";
 import { BuyForm } from "./BuyForm";
@@ -26,7 +28,11 @@ export default async function ListingDetailPage({
 
   const listing = await prisma.listing.findUnique({
     where: { id },
-    include: { item: true, seller: true },
+    include: {
+      item: true,
+      seller: true,
+      options: { include: { def: true }, orderBy: { slotIndex: "asc" } },
+    },
   });
   if (!listing) notFound();
 
@@ -46,7 +52,7 @@ export default async function ListingDetailPage({
           />
           <div>
             <h1 className="font-heading text-sm text-ro-text">
-              {listing.item.name}
+              {formatRefinedName(listing.item.name, listing.refineLevel)}
             </h1>
             <p className="mt-1 text-sm text-ro-text-muted">
               {STATUS_LABEL[listing.status]}
@@ -95,6 +101,20 @@ export default async function ListingDetailPage({
             </div>
           )}
         </dl>
+
+        {listing.options.length > 0 && (
+          <div className="mt-4">
+            <p className={labelClass}>Options</p>
+            <ul className="flex flex-col gap-1 text-sm">
+              {listing.options.map((o) => (
+                <li key={o.slotIndex} className="flex justify-between border-b border-ro-panel-border/30 pb-1">
+                  <span className="text-ro-text-muted">{o.def.label}</span>
+                  <span className="font-semibold">+{o.value}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
         {listing.status === "ACTIVE" && (
           <div className="mt-6">
