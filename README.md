@@ -35,6 +35,6 @@ Mercado privado para la guild, con login por Discord. Ver [ro-guild-market-plan.
 ## Catálogo de items
 
 La carga del catálogo de items vive en un repositorio aparte:
-[ro-guild-market-scraper](../ro-guild-market-scraper). Es manual y puntual
+[ro-guild-market-generator](../ro-guild-market-generator). Es manual y puntual
 (sin cron); tras ejecutarlo hay que copiar a mano los iconos generados a
 `public/icons/items/` en este repo.

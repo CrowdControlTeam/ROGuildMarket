@@ -43,8 +43,8 @@ enum ListingStatus {
 
 // Solo relevante cuando category = WEAPON. Taxonomía estándar de tipos de
 // arma de RO — determina, vía MagicalWeaponType, de qué pool de random
-// options (ItemOptionDef) puede salir el arma. Poblado por el scraper desde
-// el campo `slot` de Midgardhub (ver ../ro-guild-market-scraper/src/scrape.ts).
+// options (ItemOptionDef) puede salir el arma. Poblado por el generator desde
+// el campo `slot` de la fuente.
 enum WeaponType {
   DAGGER
   ONE_HAND_SWORD
@@ -107,7 +107,7 @@ model Item {
   weaponType WeaponType?
   // Copia propia del icono (sin hotlink a la fuente externa).
   iconUrl     String
-  // Ficha de origen del scraping, para trazabilidad.
+  // Ficha de origen de la carga de datos, para trazabilidad.
   sourceUrl   String?
   scrapedAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -186,7 +186,7 @@ model MagicalWeaponType {
 // Catálogo de estadísticas de random option posibles, por grupo de equipo y
 // por slot posicional (1, 2, 3 — cada posición tiene su propio pool, no son
 // intercambiables entre sí). Poblado desde datos reales, ver
-// prisma/seedItemOptions.mjs — no depende del scraper de Midgardhub.
+// prisma/seedItemOptions.mjs.
 model ItemOptionDef {
   id        String          @id @default(cuid())
   group     ItemOptionGroup
