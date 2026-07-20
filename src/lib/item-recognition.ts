@@ -6,6 +6,17 @@ import { requireSession } from "@/lib/guard";
 import { MAX_OPTION_SLOTS, getItemOptionGroup, loadMagicalWeaponTypes } from "@/lib/item-options";
 import { isRefineEligible, loadMaxRefineLevel } from "@/lib/refine";
 import { findBestMatch } from "@/lib/fuzzy-match";
+import { loadMarketConfig } from "@/lib/market-config";
+
+// Hace falta el toggle activo (configurable en /admin) Y la variable de
+// entorno GEMINI_API_KEY seteada — la key nunca se guarda en base de datos.
+// El caller (la página del formulario de venta) usa esto para decidir si
+// renderiza el bloque de reconocimiento, no solo si lo deshabilita.
+export async function isImageRecognitionAvailable(): Promise<boolean> {
+  await requireSession();
+  const config = await loadMarketConfig();
+  return config.imageRecognitionEnabled && !!process.env.GEMINI_API_KEY;
+}
 
 // flash-lite en vez del flash "grande": esta tarea es extracción
 // estructurada simple, no necesita razonamiento profundo, y flash-lite es
@@ -130,6 +141,14 @@ export type RecognitionResult =
 // formulario — que además deja todo editable antes de publicar.
 export async function recognizeItemFromScreenshot(formData: FormData): Promise<RecognitionResult> {
   await requireSession();
+
+  // No confiar solo en que el cliente no muestre el bloque: si lo
+  // desactivan desde /admin mientras alguien tiene el formulario abierto,
+  // la llamada también debe rechazarse aquí.
+  const config = await loadMarketConfig();
+  if (!config.imageRecognitionEnabled || !process.env.GEMINI_API_KEY) {
+    return { status: "error", message: "El reconocimiento por captura no está activo" };
+  }
 
   const file = formData.get("screenshot");
   if (!(file instanceof File) || file.size === 0) {

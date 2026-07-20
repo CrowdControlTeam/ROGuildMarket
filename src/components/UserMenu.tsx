@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
+import { Settings, LogOut } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { buttonClass } from "@/lib/ui";
 import { signOutAction } from "@/lib/auth-actions";
@@ -12,6 +14,7 @@ type FullUser = {
   avatarUrl: string | null;
   guildRoles: string[];
   createdAt: Date;
+  isAdmin: boolean;
 };
 
 export function UserMenu({ user }: { user: FullUser }) {
@@ -80,11 +83,25 @@ export function UserMenu({ user }: { user: FullUser }) {
           </div>
         </dl>
 
-        <form action={signOutAction} className="mt-6">
-          <button type="submit" className={`w-full ${buttonClass("danger")}`}>
-            Cerrar sesión
-          </button>
-        </form>
+        <div className="mt-6 flex flex-col gap-2">
+          {user.isAdmin && (
+            <Link
+              href="/admin"
+              onClick={() => setOpen(false)}
+              className={`w-full ${buttonClass("discord")}`}
+            >
+              <Settings size={16} />
+              Configuración
+            </Link>
+          )}
+
+          <form action={signOutAction}>
+            <button type="submit" className={`w-full ${buttonClass("danger")}`}>
+              <LogOut size={16} />
+              Cerrar sesión
+            </button>
+          </form>
+        </div>
       </Sidebar>
     </>
   );

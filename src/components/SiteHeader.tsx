@@ -7,6 +7,7 @@ type SessionUser = {
   discordId: string;
   username: string;
   avatarUrl: string | null;
+  isAdmin: boolean;
 };
 
 export async function SiteHeader({ user }: { user: SessionUser | null }) {
@@ -27,7 +28,7 @@ export async function SiteHeader({ user }: { user: SessionUser | null }) {
           </Link>
         </div>
 
-        {fullUser && (
+        {fullUser && user && (
           <UserMenu
             user={{
               discordId: fullUser.id,
@@ -35,6 +36,7 @@ export async function SiteHeader({ user }: { user: SessionUser | null }) {
               avatarUrl: fullUser.avatarUrl,
               guildRoles: fullUser.guildRoles,
               createdAt: fullUser.createdAt,
+              isAdmin: user.isAdmin,
             }}
           />
         )}

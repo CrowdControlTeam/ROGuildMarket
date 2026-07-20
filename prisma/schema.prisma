@@ -172,6 +172,23 @@ model MarketConfig {
   // Refine real de RO Zero sin confirmar todavía (0-15 según el usuario,
   // pero sin verificar) — 10 de arranque, se ajusta aquí cuando se sepa.
   maxRefineLevel Int @default(10)
+
+  // Notificación de nueva venta al canal de Discord: solo se envía si hay
+  // URL Y el toggle está activo — si falta cualquiera de los dos, no se
+  // manda nada (ver src/lib/discord-webhook.ts). Editable desde /admin.
+  webhookUrl     String?
+  webhookEnabled Boolean @default(false)
+
+  // El reconocimiento de item por captura necesita esto Y la variable de
+  // entorno GEMINI_API_KEY seteada — la key en sí nunca se guarda en base
+  // de datos, solo el toggle (ver src/lib/item-recognition.ts). Si falta
+  // cualquiera de los dos, el bloque ni se renderiza en el formulario.
+  imageRecognitionEnabled Boolean @default(false)
+
+  // Bloquea crear ventas y comprar para todo el mundo salvo administradores
+  // (ver src/lib/admin-guard.ts). Pensado para desplegar cambios grandes
+  // sin que se publique/compre a medio camino.
+  maintenanceModeEnabled Boolean @default(false)
 }
 
 // Qué WeaponType cuentan como "arma mágica" (pool WEAPON_MAGICAL) en vez de

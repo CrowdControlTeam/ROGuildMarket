@@ -8,6 +8,7 @@ import { requireSession } from "@/lib/guard";
 import { sendListingCreatedWebhook } from "@/lib/discord-webhook";
 import { MAX_OPTION_SLOTS, getItemOptionGroup, loadMagicalWeaponTypes } from "@/lib/item-options";
 import { isRefineEligible, formatRefinedName, loadMaxRefineLevel } from "@/lib/refine";
+import { loadMarketConfig } from "@/lib/market-config";
 
 export async function searchItems(query: string) {
   await requireSession();
@@ -89,6 +90,11 @@ function parseOptionsFromFormData(formData: FormData) {
 
 export async function createListing(formData: FormData) {
   const session = await requireSession();
+
+  const { maintenanceModeEnabled } = await loadMarketConfig();
+  if (maintenanceModeEnabled && !session.user.isAdmin) {
+    throw new Error("El mercado está en mantenimiento; inténtalo más tarde.");
+  }
 
   const parsed = createListingSchema.safeParse({
     itemId: formData.get("itemId"),
@@ -225,6 +231,11 @@ const purchaseSchema = z.object({
 
 export async function purchaseListing(listingId: string, formData: FormData) {
   const session = await requireSession();
+
+  const { maintenanceModeEnabled } = await loadMarketConfig();
+  if (maintenanceModeEnabled && !session.user.isAdmin) {
+    throw new Error("El mercado está en mantenimiento; inténtalo más tarde.");
+  }
 
   const parsed = purchaseSchema.safeParse({
     quantity: formData.get("quantity"),
