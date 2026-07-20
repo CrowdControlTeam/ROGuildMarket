@@ -1,11 +1,42 @@
 import NextAuth from "next-auth";
 import Discord from "next-auth/providers/discord";
 import { prisma } from "@/lib/prisma";
+import { loadMarketConfig } from "@/lib/market-config";
 
 const GUILD_ID = process.env.DISCORD_GUILD_ID;
 
 if (!GUILD_ID) {
   throw new Error("Falta la variable de entorno DISCORD_GUILD_ID");
+}
+
+const DISCORD_ADMINISTRATOR_PERMISSION = BigInt(0x8);
+
+// El endpoint de member (guilds.members.read) no trae los permisos
+// calculados del usuario, así que hace falta /users/@me/guilds (scope
+// "guilds") y buscar la entrada de nuestro guild ahí — trae "permissions"
+// (a nivel de guild, sin overwrites de canal, que es justo lo que hace
+// falta para "es admin del servidor sí/no") y "owner".
+async function isGuildAdmin(accessToken: string): Promise<boolean> {
+  const res = await fetch("https://discord.com/api/users/@me/guilds", {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) return false;
+
+  const guilds = (await res.json()) as {
+    id: string;
+    owner?: boolean;
+    permissions?: string;
+  }[];
+  const guild = guilds.find((g) => g.id === GUILD_ID);
+  if (!guild) return false;
+  if (guild.owner) return true;
+  if (!guild.permissions) return false;
+
+  try {
+    return (BigInt(guild.permissions) & DISCORD_ADMINISTRATOR_PERMISSION) !== BigInt(0);
+  } catch {
+    return false;
+  }
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -19,7 +50,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       clientId: process.env.DISCORD_CLIENT_ID,
       clientSecret: process.env.DISCORD_CLIENT_SECRET,
       authorization: {
-        params: { scope: "identify guilds.members.read" },
+        // "guilds" (además de guilds.members.read) para poder calcular si
+        // el usuario es administrador del servidor — ver isGuildAdmin.
+        params: { scope: "identify guilds guilds.members.read" },
       },
     }),
   ],
@@ -85,21 +118,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           profile.avatar as string | null,
         );
 
-        // El nombre a mostrar (apodo del servidor si lo tiene) ya lo
-        // calculó y guardó signIn(); lo leemos de vuelta en vez de
-        // recalcularlo aquí, que exigiría una segunda llamada a la API de
-        // Discord para el mismo dato.
+        // El nombre a mostrar (apodo del servidor si lo tiene) y los roles
+        // del guild ya los calculó y guardó signIn(); se leen de vuelta en
+        // vez de recalcularlos aquí, que exigiría otra llamada a Discord.
+        let guildRoles: string[] = [];
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: discordId },
-            select: { username: true },
+            select: { username: true, guildRoles: true },
           });
           token.username =
             dbUser?.username ??
             ((profile.global_name ?? profile.username) as string);
+          guildRoles = dbUser?.guildRoles ?? [];
         } catch {
           token.username = (profile.global_name ?? profile.username) as string;
         }
+
+        // Se recalcula en cada login (la sesión ya caduca a las 24h y
+        // fuerza reautenticar, ver arriba), así que si a alguien le quitan
+        // el permiso de Administrator o el rol en Discord, lo pierde aquí
+        // también sin necesidad de guardar/mantener nada aparte. Los roles
+        // configurados en /admin se SUMAN al permiso nativo, no lo sustituyen.
+        const hasAdminPermission = account.access_token
+          ? await isGuildAdmin(account.access_token)
+          : false;
+        const { adminRoleIds } = await loadMarketConfig();
+        const hasAdminRole = guildRoles.some((r) => adminRoleIds.includes(r));
+        token.isAdmin = hasAdminPermission || hasAdminRole;
       }
       return token;
     },
@@ -107,6 +153,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       session.user.discordId = token.discordId as string;
       session.user.username = token.username as string;
       session.user.avatarUrl = token.avatarUrl as string | null;
+      session.user.isAdmin = (token.isAdmin as boolean | undefined) ?? false;
       return session;
     },
   },

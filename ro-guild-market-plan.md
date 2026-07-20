@@ -1,6 +1,6 @@
 # Plan de desarrollo — Mercado de guild (Ragnarok Online)
 
-## 0. Estado actual (actualizado 2026-07-20)
+## 0. Estado actual (actualizado 2026-07-21)
 
 Léase esto primero al retomar el proyecto, antes que el resto del documento —
 resume la realidad actual del desarrollo; el resto del archivo es la
@@ -13,7 +13,8 @@ especificación original y puede haber quedado desactualizado en detalles.
 
 **Progreso**: Fase 0 y Fase 1 completas (marcadas más abajo), incluido el
 despliegue. Fases 2-4 sin empezar, salvo varios adelantos explicados abajo
-(compras parciales, random options, refine).
+(compras parciales, random options, refine, reconocimiento por captura,
+panel de administración).
 
 **Git flow** (en vigor desde que hay repo remoto, sustituye a cualquier
 mención de trabajar directo en local): `main` protegida, todo por rama
@@ -87,20 +88,74 @@ seeds a mano contra Supabase, pero conviene incluir este paso en el flujo
 de cualquier PR que toque `prisma/schema.prisma` a partir de ahora, en vez
 de darlo por hecho.
 
-**Pendiente de decidir, sin implementar todavía — reconocimiento de item
-por captura de pantalla:** el usuario planteó (2026-07-19) que al crear una
-venta se pueda arrastrar/pegar una captura del tooltip de un item en el
-juego y que la app reconozca automáticamente el item y sus options,
-rellenando el formulario. Se decidió explícitamente posponerlo hasta que el
-catálogo de random options (ya construido, ver arriba) estuviera en pie,
-porque el reconocimiento se puede validar mucho mejor contra un catálogo de
-options real que a ciegas. Sigue sin planificarse en detalle — sería el
-candidato natural para la próxima sesión si no se prioriza Fase 2.
+**Adelanto sobre el roadmap — reconocimiento de item por captura (2026-07-20):**
+al crear una venta se puede arrastrar/pegar/pegar-con-Ctrl+V una captura del
+tooltip de un item (zona de arrastre estilo diablo.trade, `ScreenshotDropzone`,
+con botón "Escanear" separado de la subida). El servidor manda la imagen a
+Gemini (`gemini-flash-lite-latest`, elegido por precio/cuota gratuita frente
+a modelos más grandes) pidiendo JSON estructurado (nombre, refine, options en
+orden top-to-bottom), y **nunca confía en la respuesta de la IA tal cual**:
+el nombre y cada option se re-validan por similitud de texto
+(`src/lib/fuzzy-match.ts`, Levenshtein normalizado) contra el catálogo real
+(`Item`, `ItemOptionDef` del slot correspondiente) antes de proponer nada; lo
+que no supera el umbral se descarta en vez de arriesgar un match malo. El
+formulario se precarga con la sugerencia pero queda totalmente editable.
+Probado end-to-end con capturas reales.
+
+**Adelanto sobre el roadmap — panel de administración y configuración
+(2026-07-21):** varias cosas que antes eran variables de entorno (o no
+existían) ahora se gestionan desde `/admin`, accesible a quien tenga el
+permiso "Administrator" del servidor de Discord (calculado en cada login vía
+`/users/@me/guilds`, scope `guilds` añadido al OAuth — ver `isGuildAdmin` en
+`src/auth.ts`) **o** cuyo rol de Discord esté en `MarketConfig.adminRoleIds`
+(se suma, no sustituye el permiso nativo). El link "Configuración" solo
+aparece en el menú de usuario (sidebar "Tu cuenta") para quien es admin.
+- **Elegir qué roles tienen acceso**: el panel deja marcar roles adicionales
+  desde un multi-select con nombres reales — pero listar los roles del
+  servidor con nombre requiere un bot de Discord (`GET /guilds/{id}/roles`
+  no es accesible con el token de usuario normal, solo con `Authorization:
+  Bot ...`). Sin `DISCORD_BOT_TOKEN` configurado (opcional, nunca en base de
+  datos — ver `src/lib/discord-bot.ts`), el panel cae a un textarea donde
+  pegar IDs de rol a mano. El mismo bot, una vez dado de alta, servirá
+  también para las DMs de Fase 3 — no es trabajo de usar y tirar.
+- `MarketConfig` (la misma tabla singleton de `maxRefineLevel`) gana
+  `webhookUrl`/`webhookEnabled`, `imageRecognitionEnabled`,
+  `maintenanceModeEnabled`, `optionsEnabled` y `adminRoleIds`.
+- **Random options** también se puede apagar desde el panel
+  (`optionsEnabled`), pensado para cuando el mercado sirva otras versiones de
+  RO además de RO Zero que todavía no tengan su catálogo de options
+  importado: el toggle por sí solo no basta, también se comprueba que
+  `ItemOptionDef` tenga filas (`isOptionsFeatureAvailable` en
+  `src/lib/item-options.ts`) — activarlo sin catálogo cargado no debe
+  simular que la función funciona. El panel muestra cuántas combinaciones
+  hay cargadas (indicador de solo lectura, mismo espíritu que el de la key
+  de Gemini). Activo por defecto (el catálogo actual ya está cargado).
+- **Patrón de gating usado en toda la app**: cada función necesita su toggle
+  activo Y (si aplica) el dato/secreto configurado — si falta cualquiera de
+  los dos, no solo se desactiva la función sino que **el bloque de UI
+  correspondiente ni se renderiza** (ej. la zona de reconocer-por-captura
+  desaparece del formulario si el toggle está apagado o falta
+  `GEMINI_API_KEY`).
+- El webhook de Discord se movió de variable de entorno (`DISCORD_WEBHOOK_URL`,
+  ya eliminada de todos los `.env*` y de Vercel) a esta tabla, con patrón
+  "enmascarado + reemplazar" en el formulario (el valor real nunca vuelve a
+  salir del servidor una vez guardado — `src/lib/admin-config.ts`).
+  `GEMINI_API_KEY` en cambio **sigue siendo variable de entorno** (nunca se
+  guarda en base de datos); el panel solo controla su toggle y muestra si la
+  key está configurada o no, de solo lectura.
+- Modo mantenimiento: bloquea crear ventas y comprar para todos salvo
+  admins (validado en servidor en `createListing`/`purchaseListing`, no solo
+  ocultando botones), con aviso visible en `/market`.
+- Toggles construidos como switches propios (`src/components/ToggleSwitch.tsx`,
+  checkbox real oculto + track/thumb con Tailwind `peer-checked`), no
+  checkboxes nativos ni una librería de UI — decisión explícita del usuario.
+- Iconos: se introdujo `lucide-react` como primera dependencia de iconos del
+  proyecto (antes todo era SVG/CSS a mano) — engranaje en "Configuración",
+  puerta con flecha en "Cerrar sesión".
 
 **Próximo paso natural**: Fase 2 (subastas) tal como está descrita más abajo,
-seguir puliendo el mercado de venta directa, o el reconocimiento de item por
-captura mencionado arriba — sin decidir todavía, a confirmar con el usuario
-al retomar.
+o seguir puliendo el mercado de venta directa — sin decidir todavía, a
+confirmar con el usuario al retomar.
 
 ---
 

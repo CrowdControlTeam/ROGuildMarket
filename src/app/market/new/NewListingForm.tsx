@@ -17,7 +17,7 @@ import { isRefineEligible, DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constan
 import { ItemPicker, type ItemResult } from "./ItemPicker";
 import { ScreenshotDropzone } from "./ScreenshotDropzone";
 
-export function NewListingForm() {
+export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boolean }) {
   const router = useRouter();
   const [selectedItem, setSelectedItem] = useState<ItemResult | null>(null);
   const [optionDefs, setOptionDefs] = useState<ItemOptionDef[]>([]);
@@ -122,11 +122,13 @@ export function NewListingForm() {
       }}
       className="flex flex-col gap-4"
     >
-      <div>
-        <label className={labelClass}>Reconocer desde captura (opcional)</label>
-        <ScreenshotDropzone onScan={handleScreenshotScan} isScanning={isRecognizing} />
-        {recognitionNote && <p className="mt-1 text-sm text-ro-text-muted">{recognitionNote}</p>}
-      </div>
+      {recognitionEnabled && (
+        <div>
+          <label className={labelClass}>Reconocer desde captura (opcional)</label>
+          <ScreenshotDropzone onScan={handleScreenshotScan} isScanning={isRecognizing} />
+          {recognitionNote && <p className="mt-1 text-sm text-ro-text-muted">{recognitionNote}</p>}
+        </div>
+      )}
 
       <div>
         <label className={labelClass}>Item</label>

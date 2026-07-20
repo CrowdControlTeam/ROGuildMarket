@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ItemCategory, EquipSlot, WeaponType } from "@prisma/client";
 import { getListings, isMarketSort, type MarketFilters as MarketFiltersType } from "@/lib/market";
 import { requireSession } from "@/lib/guard";
+import { loadMarketConfig } from "@/lib/market-config";
 import { Panel } from "@/components/Panel";
 import { buttonClass } from "@/lib/ui";
 import { MarketFilters } from "./MarketFilters";
@@ -66,14 +67,26 @@ export default async function MarketPage({
     : { sort: "newest" };
 
   const { listings, nextCursor } = await getListings(filters);
+  const { maintenanceModeEnabled } = await loadMarketConfig();
+  const blockedByMaintenance = maintenanceModeEnabled && !session.user.isAdmin;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
+      {maintenanceModeEnabled && (
+        <p className="mb-4 rounded-md border-2 border-ro-gold-dark bg-ro-gold/10 px-4 py-2 text-sm text-ro-text">
+          El mercado está en modo mantenimiento
+          {session.user.isAdmin
+            ? " (como administrador, sí puedes publicar y comprar)."
+            : ": no se puede crear ventas ni comprar por ahora."}
+        </p>
+      )}
       <div className="mb-6 flex items-center justify-between">
         <h1 className="font-heading text-lg text-ro-gold">Mercado</h1>
-        <Link href="/market/new" className={buttonClass("primary")}>
-          Nueva venta
-        </Link>
+        {!blockedByMaintenance && (
+          <Link href="/market/new" className={buttonClass("primary")}>
+            Nueva venta
+          </Link>
+        )}
       </div>
 
       <Panel className="mb-6">

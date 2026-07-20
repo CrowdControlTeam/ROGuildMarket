@@ -6,6 +6,7 @@ declare module "next-auth" {
       discordId: string;
       username: string;
       avatarUrl: string | null;
+      isAdmin: boolean;
     } & DefaultSession["user"];
   }
 }
@@ -15,5 +16,6 @@ declare module "next-auth/jwt" {
     discordId?: string;
     username?: string;
     avatarUrl?: string | null;
+    isAdmin?: boolean;
   }
 }

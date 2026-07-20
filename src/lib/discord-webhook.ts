@@ -1,5 +1,6 @@
 import { DISCORD_EMBED_COLOR } from "@/lib/discord-colors";
 import { formatPrice } from "@/lib/price";
+import { loadMarketConfig } from "@/lib/market-config";
 
 type ListingWebhookPayload = {
   itemName: string;
@@ -15,11 +16,12 @@ type ListingWebhookPayload = {
 // Un fallo aquí nunca debe tumbar la publicación en sí (ya se guardó en la
 // DB): se registra el error y ya está, sin reintentos.
 export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) {
-  const webhookUrl = process.env.DISCORD_WEBHOOK_URL;
-  if (!webhookUrl) {
-    console.warn("DISCORD_WEBHOOK_URL no configurado; no se envía notificación.");
-    return;
-  }
+  const config = await loadMarketConfig();
+  // Configurable desde /admin en vez de una variable de entorno — hace
+  // falta URL Y el toggle activo, si falta cualquiera de los dos no se
+  // manda nada (ver src/lib/market-config.ts).
+  if (!config.webhookEnabled || !config.webhookUrl) return;
+  const webhookUrl = config.webhookUrl;
 
   const body = {
     embeds: [
