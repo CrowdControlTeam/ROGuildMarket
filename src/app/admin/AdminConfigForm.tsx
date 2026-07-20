@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { updateMarketConfig, type getMarketConfig } from "@/lib/admin-config";
-import { buttonClass, inputClass, labelClass, selectClass } from "@/lib/ui";
+import { buttonClass, inputClass, labelClass } from "@/lib/ui";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 
 type Config = Awaited<ReturnType<typeof getMarketConfig>>;
@@ -32,19 +32,20 @@ export function AdminConfigForm({ config }: { config: Config }) {
           roles se SUMAN como vía adicional, no lo sustituyen.
         </p>
         {config.guildRolesResult.status === "ok" ? (
-          <select
-            name="adminRoleIds"
-            multiple
-            defaultValue={config.adminRoleIds}
-            size={Math.min(6, Math.max(3, config.guildRolesResult.roles.length))}
-            className={selectClass}
-          >
+          <div className="flex max-h-40 flex-col gap-1 overflow-y-auto rounded-md border-2 border-ro-panel-border bg-ro-panel-alt p-2">
             {config.guildRolesResult.roles.map((role) => (
-              <option key={role.id} value={role.id}>
+              <label key={role.id} className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  name="adminRoleIds"
+                  value={role.id}
+                  defaultChecked={config.adminRoleIds.includes(role.id)}
+                  className="accent-ro-gold"
+                />
                 {role.name}
-              </option>
+              </label>
             ))}
-          </select>
+          </div>
         ) : (
           <div>
             {config.guildRolesResult.status === "error" && (
