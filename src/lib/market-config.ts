@@ -14,6 +14,7 @@ export type MarketConfigValues = {
   imageRecognitionEnabled: boolean;
   maintenanceModeEnabled: boolean;
   optionsEnabled: boolean;
+  adminRoleIds: string[];
 };
 
 // Si la fila (id=1) todavía no existe, se cae a los valores conservadores
@@ -27,5 +28,6 @@ export async function loadMarketConfig(): Promise<MarketConfigValues> {
     imageRecognitionEnabled: config?.imageRecognitionEnabled ?? false,
     maintenanceModeEnabled: config?.maintenanceModeEnabled ?? false,
     optionsEnabled: config?.optionsEnabled ?? true,
+    adminRoleIds: config?.adminRoleIds ?? [],
   };
 }

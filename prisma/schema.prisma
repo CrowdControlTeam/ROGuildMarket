@@ -196,6 +196,12 @@ model MarketConfig {
   // (ver src/lib/admin-guard.ts). Pensado para desplegar cambios grandes
   // sin que se publique/compre a medio camino.
   maintenanceModeEnabled Boolean @default(false)
+
+  // Roles de Discord con acceso a /admin, SUMADOS al permiso Administrator
+  // nativo (no lo sustituyen) — ver isGuildAdmin en src/auth.ts. IDs en
+  // crudo: el panel los muestra con nombre real si hay bot configurado
+  // (DISCORD_BOT_TOKEN, nunca en base de datos), o como entrada manual si no.
+  adminRoleIds String[] @default([])
 }
 
 // Qué WeaponType cuentan como "arma mágica" (pool WEAPON_MAGICAL) en vez de

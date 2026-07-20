@@ -104,15 +104,23 @@ Probado end-to-end con capturas reales.
 
 **Adelanto sobre el roadmap — panel de administración y configuración
 (2026-07-21):** varias cosas que antes eran variables de entorno (o no
-existían) ahora se gestionan desde `/admin`, accesible solo a quien tenga el
+existían) ahora se gestionan desde `/admin`, accesible a quien tenga el
 permiso "Administrator" del servidor de Discord (calculado en cada login vía
 `/users/@me/guilds`, scope `guilds` añadido al OAuth — ver `isGuildAdmin` en
-`src/auth.ts`; no hay lista de admins ni rol propio, se apoya en el permiso
-nativo de Discord). El link "Configuración" solo aparece en el menú de
-usuario (sidebar "Tu cuenta") para quien es admin.
+`src/auth.ts`) **o** cuyo rol de Discord esté en `MarketConfig.adminRoleIds`
+(se suma, no sustituye el permiso nativo). El link "Configuración" solo
+aparece en el menú de usuario (sidebar "Tu cuenta") para quien es admin.
+- **Elegir qué roles tienen acceso**: el panel deja marcar roles adicionales
+  desde un multi-select con nombres reales — pero listar los roles del
+  servidor con nombre requiere un bot de Discord (`GET /guilds/{id}/roles`
+  no es accesible con el token de usuario normal, solo con `Authorization:
+  Bot ...`). Sin `DISCORD_BOT_TOKEN` configurado (opcional, nunca en base de
+  datos — ver `src/lib/discord-bot.ts`), el panel cae a un textarea donde
+  pegar IDs de rol a mano. El mismo bot, una vez dado de alta, servirá
+  también para las DMs de Fase 3 — no es trabajo de usar y tirar.
 - `MarketConfig` (la misma tabla singleton de `maxRefineLevel`) gana
   `webhookUrl`/`webhookEnabled`, `imageRecognitionEnabled`,
-  `maintenanceModeEnabled` y `optionsEnabled`.
+  `maintenanceModeEnabled`, `optionsEnabled` y `adminRoleIds`.
 - **Random options** también se puede apagar desde el panel
   (`optionsEnabled`), pensado para cuando el mercado sirva otras versiones de
   RO además de RO Zero que todavía no tengan su catálogo de options

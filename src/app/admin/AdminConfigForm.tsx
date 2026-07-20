@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { updateMarketConfig, type getMarketConfig } from "@/lib/admin-config";
-import { buttonClass, inputClass, labelClass } from "@/lib/ui";
+import { buttonClass, inputClass, labelClass, selectClass } from "@/lib/ui";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 
 type Config = Awaited<ReturnType<typeof getMarketConfig>>;
@@ -25,6 +25,49 @@ export function AdminConfigForm({ config }: { config: Config }) {
       }}
       className="flex flex-col gap-6"
     >
+      <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-semibold text-ro-text">Acceso al panel</legend>
+        <p className="text-xs text-ro-text-muted">
+          Quien tenga el permiso &quot;Administrator&quot; del servidor de Discord ya entra siempre. Estos
+          roles se SUMAN como vía adicional, no lo sustituyen.
+        </p>
+        {config.guildRolesResult.status === "ok" ? (
+          <select
+            name="adminRoleIds"
+            multiple
+            defaultValue={config.adminRoleIds}
+            size={Math.min(6, Math.max(3, config.guildRolesResult.roles.length))}
+            className={selectClass}
+          >
+            {config.guildRolesResult.roles.map((role) => (
+              <option key={role.id} value={role.id}>
+                {role.name}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <div>
+            {config.guildRolesResult.status === "error" && (
+              <p className="mb-1 text-xs text-red-700">
+                No se pudo listar los roles del servidor con nombre ({config.guildRolesResult.message}).
+              </p>
+            )}
+            <textarea
+              name="adminRoleIdsText"
+              rows={3}
+              defaultValue={config.adminRoleIds.join("\n")}
+              placeholder="Un ID de rol por línea (o separados por comas)"
+              className={inputClass}
+            />
+            <p className="mt-1 text-xs text-ro-text-muted">
+              Sin bot configurado (DISCORD_BOT_TOKEN) no se pueden mostrar los nombres de los roles —
+              copia el ID de cada rol desde Discord (Ajustes del servidor → Roles → clic derecho → Copiar
+              ID, con el modo desarrollador activado).
+            </p>
+          </div>
+        )}
+      </fieldset>
+
       <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-semibold text-ro-text">Notificaciones a Discord</legend>
         <ToggleSwitch

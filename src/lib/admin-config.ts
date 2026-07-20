@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-guard";
 import { loadMarketConfig } from "@/lib/market-config";
 import { getOptionsCatalogCount } from "@/lib/item-options";
+import { fetchGuildRoles } from "@/lib/discord-bot";
 
 // El valor real de un secreto nunca sale del servidor una vez guardado —
 // esto es lo único que llega al cliente para representarlo en el formulario.
@@ -16,9 +17,10 @@ function maskSecret(value: string): string {
 export async function getMarketConfig() {
   await requireAdmin();
 
-  const [config, optionsCatalogCount] = await Promise.all([
+  const [config, optionsCatalogCount, guildRolesResult] = await Promise.all([
     loadMarketConfig(),
     getOptionsCatalogCount(),
+    fetchGuildRoles(),
   ]);
 
   return {
@@ -30,6 +32,8 @@ export async function getMarketConfig() {
     maintenanceModeEnabled: config.maintenanceModeEnabled,
     optionsEnabled: config.optionsEnabled,
     optionsCatalogCount,
+    adminRoleIds: config.adminRoleIds,
+    guildRolesResult,
   };
 }
 
@@ -43,6 +47,25 @@ const updateConfigSchema = z.object({
   // el formulario nunca recibe el valor real, así que no puede reenviarlo).
   webhookUrl: z.string().trim().optional(),
 });
+
+// IDs de rol de Discord (snowflakes): solo dígitos. Se filtra en vez de
+// rechazar todo el formulario por una línea mal pegada — es una lista de
+// texto libre en el caso sin bot, conviene ser tolerante.
+const SNOWFLAKE = /^\d{15,25}$/;
+
+function parseAdminRoleIds(formData: FormData): string[] {
+  // Modo con bot: <select multiple name="adminRoleIds"> manda varias
+  // entradas con el mismo nombre. Modo sin bot: un único textarea con un
+  // ID por línea/coma. Solo uno de los dos se renderiza a la vez, así que
+  // no hay ambigüedad sobre cuál usar.
+  const textarea = formData.get("adminRoleIdsText");
+  const raw =
+    typeof textarea === "string"
+      ? textarea.split(/[\n,]/)
+      : formData.getAll("adminRoleIds").filter((v): v is string => typeof v === "string");
+
+  return Array.from(new Set(raw.map((id) => id.trim()).filter((id) => SNOWFLAKE.test(id))));
+}
 
 export async function updateMarketConfig(formData: FormData) {
   await requireAdmin();
@@ -58,6 +81,7 @@ export async function updateMarketConfig(formData: FormData) {
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Datos inválidos");
   }
+  const adminRoleIds = parseAdminRoleIds(formData);
 
   await prisma.marketConfig.upsert({
     where: { id: 1 },
@@ -69,6 +93,7 @@ export async function updateMarketConfig(formData: FormData) {
       maintenanceModeEnabled: parsed.data.maintenanceModeEnabled,
       optionsEnabled: parsed.data.optionsEnabled,
       webhookUrl: parsed.data.webhookUrl ?? null,
+      adminRoleIds,
     },
     update: {
       maxRefineLevel: parsed.data.maxRefineLevel,
@@ -77,6 +102,7 @@ export async function updateMarketConfig(formData: FormData) {
       maintenanceModeEnabled: parsed.data.maintenanceModeEnabled,
       optionsEnabled: parsed.data.optionsEnabled,
       ...(parsed.data.webhookUrl ? { webhookUrl: parsed.data.webhookUrl } : {}),
+      adminRoleIds,
     },
   });
 

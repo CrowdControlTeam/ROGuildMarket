@@ -1,6 +1,7 @@
 import NextAuth from "next-auth";
 import Discord from "next-auth/providers/discord";
 import { prisma } from "@/lib/prisma";
+import { loadMarketConfig } from "@/lib/market-config";
 
 const GUILD_ID = process.env.DISCORD_GUILD_ID;
 
@@ -117,29 +118,34 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           profile.avatar as string | null,
         );
 
-        // El nombre a mostrar (apodo del servidor si lo tiene) ya lo
-        // calculó y guardó signIn(); lo leemos de vuelta en vez de
-        // recalcularlo aquí, que exigiría una segunda llamada a la API de
-        // Discord para el mismo dato.
+        // El nombre a mostrar (apodo del servidor si lo tiene) y los roles
+        // del guild ya los calculó y guardó signIn(); se leen de vuelta en
+        // vez de recalcularlos aquí, que exigiría otra llamada a Discord.
+        let guildRoles: string[] = [];
         try {
           const dbUser = await prisma.user.findUnique({
             where: { id: discordId },
-            select: { username: true },
+            select: { username: true, guildRoles: true },
           });
           token.username =
             dbUser?.username ??
             ((profile.global_name ?? profile.username) as string);
+          guildRoles = dbUser?.guildRoles ?? [];
         } catch {
           token.username = (profile.global_name ?? profile.username) as string;
         }
 
         // Se recalcula en cada login (la sesión ya caduca a las 24h y
         // fuerza reautenticar, ver arriba), así que si a alguien le quitan
-        // el permiso de Administrator en Discord, lo pierde aquí también
-        // sin necesidad de guardar/mantener nada aparte.
-        token.isAdmin = account.access_token
+        // el permiso de Administrator o el rol en Discord, lo pierde aquí
+        // también sin necesidad de guardar/mantener nada aparte. Los roles
+        // configurados en /admin se SUMAN al permiso nativo, no lo sustituyen.
+        const hasAdminPermission = account.access_token
           ? await isGuildAdmin(account.access_token)
           : false;
+        const { adminRoleIds } = await loadMarketConfig();
+        const hasAdminRole = guildRoles.some((r) => adminRoleIds.includes(r));
+        token.isAdmin = hasAdminPermission || hasAdminRole;
       }
       return token;
     },
