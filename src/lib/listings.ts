@@ -6,6 +6,9 @@ import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/guard";
 import { sendListingCreatedWebhook } from "@/lib/discord-webhook";
+import { sendDirectMessage } from "@/lib/discord-bot";
+import { DISCORD_EMBED_COLOR } from "@/lib/discord-colors";
+import { formatPrice } from "@/lib/price";
 import {
   MAX_OPTION_SLOTS,
   getItemOptionGroup,
@@ -279,8 +282,8 @@ export async function purchaseListing(listingId: string, formData: FormData) {
   }
   const { quantity } = parsed.data;
 
-  await prisma.$transaction(async (tx) => {
-    const listing = await tx.listing.findUnique({ where: { id: listingId } });
+  const listing = await prisma.$transaction(async (tx) => {
+    const listing = await tx.listing.findUnique({ where: { id: listingId }, include: { item: true } });
     if (!listing) throw new Error("Publicación no encontrada");
     if (listing.sellerId === session.user.discordId) {
       throw new Error("No puedes comprar tu propia publicación");
@@ -311,6 +314,23 @@ export async function purchaseListing(listingId: string, formData: FormData) {
         status: newSold >= listing.quantity ? "SOLD" : "ACTIVE",
       },
     });
+
+    return listing;
+  });
+
+  // Fuera de la transacción a propósito: una llamada de red no debe alargar
+  // el bloqueo de DB, y un fallo de DM (norma 2.10) nunca debe deshacer una
+  // compra que ya se confirmó.
+  const appUrl = process.env.APP_URL ?? "http://localhost:3000";
+  await sendDirectMessage(listing.sellerId, {
+    title: `${session.user.username} ha comprado tu ${formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}`,
+    url: `${appUrl}/market/${listingId}`,
+    color: DISCORD_EMBED_COLOR.SALE,
+    itemIconUrl: `${appUrl}${listing.item.iconUrl}`,
+    fields: [
+      { name: "Cantidad", value: String(quantity), inline: true },
+      { name: "Precio total", value: formatPrice(quantity * listing.price), inline: true },
+    ],
   });
 
   revalidatePath("/market");

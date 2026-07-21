@@ -198,6 +198,13 @@ model MarketConfig {
   // barato/rápido, pero puede fallar contando slots).
   geminiModel String @default("gemini-flash-latest")
 
+  // DMs de transacción (norma 2.10) necesitan esto Y la variable de entorno
+  // DISCORD_BOT_TOKEN seteada — el token en sí nunca se guarda en base de
+  // datos, solo el toggle (ver sendDirectMessage en src/lib/discord-bot.ts).
+  // Activo por defecto: no hay nada que "deshacer" al desactivarlo, solo
+  // deja de intentarlo.
+  dmNotificationsEnabled Boolean @default(true)
+
   // Random options necesita esto Y que el catálogo (ItemOptionDef) tenga
   // filas — pensado para cuando el mercado sirva a versiones de RO además
   // de RO Zero que todavía no tengan su catálogo de options importado (ver

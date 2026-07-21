@@ -12,7 +12,9 @@ especificación original y puede haber quedado desactualizado en detalles.
 - Credenciales (Discord, Supabase, `AUTH_SECRET`, etc.): en `.env.local`/`.env`/`.env.production` en local (gitignorados, nunca commiteados) y en las variables de entorno del proyecto en Vercel. Ninguna vive en este repo ni en este documento.
 
 **Progreso**: Fase 0 y Fase 1 completas (marcadas más abajo), incluido el
-despliegue. Fases 2-4 sin empezar, salvo varios adelantos explicados abajo
+despliegue. Fase 2 (subastas) aparcada por decisión explícita del usuario —
+se salta de momento. **Fase 3 empezada** (peticiones de compra, trades,
+regalos — ver más abajo), además de varios adelantos ya en producción
 (compras parciales, random options, refine, reconocimiento por captura,
 panel de administración, slots de carta).
 
@@ -190,8 +192,56 @@ slots), así que vive en `Listing.cardSlots`, no en `Item`.
   en una captura real); `gemini-flash-latest` sí, y pasa a ser el valor por
   defecto.
 
-**Próximo paso natural**: Fase 2 (subastas) tal como está descrita más abajo,
-o seguir puliendo el mercado de venta directa — sin decidir todavía, a
+**Fase 3 en marcha (2026-07-21) — peticiones de compra, trades y regalos,
+sin subastas:** decisión explícita del usuario de saltarse la Fase 2 por
+ahora y construir el resto de formas de comercio de la Fase 3 directamente.
+Diseño acordado (importante para retomar sin perder el hilo):
+- **El problema de fondo**: la app no modela qué items posee cada jugador
+  (solo hay catálogo de referencia y `Listing` = lo que está publicado). Eso
+  no afecta a las peticiones de compra (nadie tiene el item todavía), pero
+  trades y regalos necesitan "un item mío real" como objeto.
+- **Trade**: no es un modelo nuevo — es un nuevo `Listing.type` (`SALE` |
+  `TRADE`). Se publica igual que una venta (mismo formulario, mismo
+  listado del mercado), pero sin precio; en el detalle, si no eres el
+  vendedor, en vez de "Comprar" aparece "Ofrecer items". Un `TradeOffer`
+  nuevo guarda la oferta (item + refine/slots, compensación opcional en
+  zeny, estado); el dueño acepta o rechaza (sin contraoferta en esta
+  primera versión, para no disparar el alcance). Al aceptar: se cierra el
+  listing y se manda DM a ambas partes.
+- **Petición de compra**: modelo `BuyRequest` deliberadamente simple para
+  esta v1 — crear/listar/cancelar, con webhook al crear. Sin mecanismo de
+  "ofrecer/aceptar" dentro de la app; la resolución (quién la cumple) pasa
+  fuera (Discord, en persona) y el propio comprador la cierra a mano.
+- **Regalo**: no es un listing público (no lo navega nadie), es un envío
+  directo 1 a 1. Modelo `Gift` propio y simple: item + destinatario +
+  confirmar → DM al destinatario. El destinatario solo se puede elegir
+  entre usuarios que ya han iniciado sesión alguna vez (son los únicos de
+  los que hay registro en la tabla `User`).
+- **DMs (norma 2.10)**: pieza de infraestructura compartida por las tres,
+  construida primero — `sendDirectMessage` en `src/lib/discord-bot.ts`
+  (abre canal + embed, con fallback a texto plano si Discord rechaza el
+  embed en sí; fallo de entrega silencioso, nunca reintenta ni tumba la
+  transacción — verificado enviándose una compra a un vendedor con ID
+  inválido: la compra se completa igual). Ya aplicado también de forma
+  retroactiva a las compras directas existentes (DM al vendedor al
+  completarse una compra), tal como pedía el documento original.
+  - Igual que el resto de funciones opcionales del mercado, tiene su propio
+    toggle (`MarketConfig.dmNotificationsEnabled`, activo por defecto) Y
+    necesita `DISCORD_BOT_TOKEN` seteado — el gating se centraliza dentro de
+    la propia `sendDirectMessage` (no en cada caller) para que peticiones de
+    compra/trades/regalos no tengan que reimplementar la comprobación al
+    llegar. Verificado en vivo leyendo el historial real del canal DM: con
+    el toggle apagado, o sin token, no llega nada; con ambos activos, sí.
+  - `/admin` gana una sección "Notificaciones privadas (DM)" con el toggle
+    y un indicador de solo lectura de si el bot está configurado — **el
+    token del bot todavía solo está en `.env.local`, falta añadirlo a
+    Vercel** para que las DMs funcionen en producción (misma situación que
+    ya pasó con `GEMINI_API_KEY`).
+- Se organiza en 4 PRs independientes, cada uno revisable/mergeable por
+  separado: (1) infraestructura de DMs — hecho; (2) peticiones de compra;
+  (3) trades; (4) regalos.
+
+**Próximo paso natural**: PR 2 de Fase 3 (peticiones de compra) — a
 confirmar con el usuario al retomar.
 
 ---

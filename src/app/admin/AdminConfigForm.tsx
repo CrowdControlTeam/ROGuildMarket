@@ -93,6 +93,24 @@ export function AdminConfigForm({ config }: { config: Config }) {
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-semibold text-ro-text">Notificaciones privadas (DM)</legend>
+        <ToggleSwitch
+          name="dmNotificationsEnabled"
+          defaultChecked={config.dmNotificationsEnabled}
+          label="Avisar por DM al destinatario de una transacción (compra, trade, regalo...)"
+        />
+        <p className="text-xs text-ro-text-muted">
+          Bot de Discord:{" "}
+          {config.hasDiscordBotToken ? (
+            <span className="text-green-700">configurado</span>
+          ) : (
+            <span className="text-red-700">no configurado (variable de entorno DISCORD_BOT_TOKEN)</span>
+          )}
+          . Hace falta esto Y el toggle activo para que se manden los DMs.
+        </p>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-semibold text-ro-text">Reconocimiento por captura</legend>
         <ToggleSwitch
           name="imageRecognitionEnabled"

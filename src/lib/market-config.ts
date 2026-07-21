@@ -14,6 +14,7 @@ export type MarketConfigValues = {
   webhookEnabled: boolean;
   imageRecognitionEnabled: boolean;
   geminiModel: GeminiModel;
+  dmNotificationsEnabled: boolean;
   maintenanceModeEnabled: boolean;
   optionsEnabled: boolean;
   adminRoleIds: string[];
@@ -32,6 +33,7 @@ export async function loadMarketConfig(): Promise<MarketConfigValues> {
     // del desplegable más adelante) — se cae al default en vez de mandarle
     // a Gemini un modelo que ya no ofrecemos.
     geminiModel: config?.geminiModel && isGeminiModel(config.geminiModel) ? config.geminiModel : DEFAULT_GEMINI_MODEL,
+    dmNotificationsEnabled: config?.dmNotificationsEnabled ?? true,
     maintenanceModeEnabled: config?.maintenanceModeEnabled ?? false,
     optionsEnabled: config?.optionsEnabled ?? true,
     adminRoleIds: config?.adminRoleIds ?? [],
