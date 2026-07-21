@@ -14,7 +14,7 @@ especificación original y puede haber quedado desactualizado en detalles.
 **Progreso**: Fase 0 y Fase 1 completas (marcadas más abajo), incluido el
 despliegue. Fases 2-4 sin empezar, salvo varios adelantos explicados abajo
 (compras parciales, random options, refine, reconocimiento por captura,
-panel de administración).
+panel de administración, slots de carta).
 
 **Git flow** (en vigor desde que hay repo remoto, sustituye a cualquier
 mención de trabajar directo en local): `main` protegida, todo por rama
@@ -152,6 +152,43 @@ aparece en el menú de usuario (sidebar "Tu cuenta") para quien es admin.
 - Iconos: se introdujo `lucide-react` como primera dependencia de iconos del
   proyecto (antes todo era SVG/CSS a mano) — engranaje en "Configuración",
   puerta con flecha en "Cerrar sesión".
+
+**Adelanto sobre el roadmap — slots de carta (2026-07-21):** no se tenían en
+cuenta hasta ahora. Igual que el refine, es un dato **por listing** (no del
+catálogo — dos unidades del mismo item pueden tener distinto número de
+slots), así que vive en `Listing.cardSlots`, no en `Item`.
+- **Elegibilidad y máximos por categoría, sin excepciones item a item**
+  (decisión explícita: perseguir precisión real por item complicaría
+  demasiado tener una base de datos fiable) — ver
+  `src/lib/card-slots-constants.ts`: arma hasta 4; armadura hasta 1
+  (incluidos accesorios); casco inferior, único caso especial, hasta 0 (sin
+  selector, por ser prácticamente siempre sin slot en RO clásico); el resto
+  de categorías, 0.
+- No fuerza cantidad a 1 (a diferencia de las options) — mismo criterio que
+  el refine, varias copias con igual número de slots sí tiene sentido.
+- Nuevo filtro `Slots mín./máx.` en el mercado, mismo patrón que el de
+  refine. El filtro que ya existía con la etiqueta "Slot" (en realidad la
+  ubicación/tipo de la armadura: casco, cuerpo, escudo...) se renombró a
+  "Armadura" para no chocar conceptualmente con los slots de carta.
+- Formato de nombre: sufijo `[N]` pegado sin espacio, combinable con el
+  prefijo de refine — `+7 Silk Robe[1]` (`formatItemDisplayName` en
+  `src/lib/card-slots-constants.ts`, sustituye a `formatRefinedName` en los
+  sitios donde se muestra el nombre del item).
+- El reconocimiento por captura también extrae `cardSlots`, con el mismo
+  clamp de seguridad `[0, máximo del item]` que ya se aplica a refine/options.
+  Única fuente fiable: la fila de iconos de slot del tooltip (contar solo
+  los que tienen color/tinte, parar en el primer gris plano) — el `[N]` en
+  el nombre es una convención de *nuestra* app para mostrarlo
+  (`formatItemDisplayName`), nunca algo que aparezca en el tooltip real del
+  juego, así que el prompt no debe buscarlo ahí (error corregido tras
+  probarlo con una captura real).
+- **Modelo de Gemini configurable desde `/admin`** (`MarketConfig.geminiModel`,
+  desplegable curado en `src/lib/gemini-model-constants.ts`, sin
+  redesplegar — es solo un string en la URL de la llamada). Verificado que
+  `gemini-flash-lite-latest` no distingue de forma fiable los iconos de
+  slot con color de los de relleno gris (fallaba devolviendo 0 en vez de 2
+  en una captura real); `gemini-flash-latest` sí, y pasa a ser el valor por
+  defecto.
 
 **Próximo paso natural**: Fase 2 (subastas) tal como está descrita más abajo,
 o seguir puliendo el mercado de venta directa — sin decidir todavía, a

@@ -10,6 +10,7 @@ import {
   isOptionsFeatureAvailable,
 } from "@/lib/item-options";
 import { isRefineEligible, loadMaxRefineLevel } from "@/lib/refine";
+import { getMaxCardSlots } from "@/lib/card-slots-constants";
 import { findBestMatch } from "@/lib/fuzzy-match";
 import { loadMarketConfig } from "@/lib/market-config";
 
@@ -23,11 +24,6 @@ export async function isImageRecognitionAvailable(): Promise<boolean> {
   return config.imageRecognitionEnabled && !!process.env.GEMINI_API_KEY;
 }
 
-// flash-lite en vez del flash "grande": esta tarea es extracción
-// estructurada simple, no necesita razonamiento profundo, y flash-lite es
-// más barato/rápido y tiene cuota gratuita propia.
-const GEMINI_MODEL = "gemini-flash-lite-latest";
-
 // Umbrales deliberadamente permisivos: un OCR/lectura de la IA no va a ser
 // perfecto, pero solo hace falta acercarse lo suficiente a UNA entrada real
 // del catálogo (nombres de item y labels de option son bastante distintos
@@ -40,6 +36,7 @@ const PROMPT = `You are looking at a screenshot of an item tooltip from the MMOR
 Extract the following as JSON:
 - itemName: the base item name as shown, WITHOUT any refine level prefix (e.g. "+7") and WITHOUT any slot count suffix (e.g. "[4]"). Null if you cannot read a name at all.
 - refineLevel: the refine level shown as a "+N" prefix before the item name, as an integer. 0 if there is no such prefix.
+- cardSlots: the number of card slots (sockets) the item actually has, as an integer. The ONLY reliable indicator is a row of small diamond-shaped icons near the bottom of the tooltip — the item name itself never shows a "[N]" bracket suffix in this game's tooltips, so do not infer cardSlots from the name text. That icon row always shows the item category's maximum possible slots, padded with extra plain flat-grey diamonds — it can show MORE icons than the item actually has. Read the row strictly left to right: count only the leading icons that have any color/tint (pink, white, purple, etc.) and stop counting the moment you reach the first plain flat-grey icon, even if there are more icons after it — everything from that point on is just padding, never slots. 0 if there is no icon row at all.
 - options: the "random option" bonus lines shown on the tooltip — extra rolled stat bonuses, usually listed separately from the item's fixed base stats/description, in the exact top-to-bottom order they appear. For each one, return the stat label text (without its numeric value) and its numeric value as an integer. Empty array if there are none.
 Respond with only the JSON object, no extra commentary.`;
 
@@ -48,6 +45,7 @@ const RESPONSE_SCHEMA = {
   properties: {
     itemName: { type: "STRING", nullable: true },
     refineLevel: { type: "INTEGER" },
+    cardSlots: { type: "INTEGER" },
     options: {
       type: "ARRAY",
       items: {
@@ -60,12 +58,13 @@ const RESPONSE_SCHEMA = {
       },
     },
   },
-  required: ["itemName", "refineLevel", "options"],
+  required: ["itemName", "refineLevel", "cardSlots", "options"],
 };
 
 type GeminiExtraction = {
   itemName: string | null;
   refineLevel: number;
+  cardSlots: number;
   options: { label: string; value: number }[];
 };
 
@@ -78,14 +77,14 @@ function isRawOption(value: unknown): value is { label: string; value: number } 
   );
 }
 
-async function callGemini(base64: string, mimeType: string): Promise<GeminiExtraction> {
+async function callGemini(base64: string, mimeType: string, model: string): Promise<GeminiExtraction> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("El reconocimiento por captura no está configurado (falta GEMINI_API_KEY)");
   }
 
   const res = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
@@ -118,6 +117,7 @@ async function callGemini(base64: string, mimeType: string): Promise<GeminiExtra
   return {
     itemName: typeof parsed.itemName === "string" ? parsed.itemName : null,
     refineLevel: Number.isInteger(parsed.refineLevel) ? parsed.refineLevel : 0,
+    cardSlots: Number.isInteger(parsed.cardSlots) ? parsed.cardSlots : 0,
     options: Array.isArray(parsed.options) ? parsed.options.filter(isRawOption) : [],
   };
 }
@@ -135,6 +135,7 @@ export type RecognitionResult =
         optionGroup: ItemOptionGroup | null;
       };
       refineLevel: number;
+      cardSlots: number;
       options: { slotIndex: number; defId: string; value: number }[];
     }
   | { status: "no_match"; detectedName: string | null }
@@ -163,7 +164,7 @@ export async function recognizeItemFromScreenshot(formData: FormData): Promise<R
   let extraction: GeminiExtraction;
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
-    extraction = await callGemini(buffer.toString("base64"), file.type || "image/png");
+    extraction = await callGemini(buffer.toString("base64"), file.type || "image/png", config.geminiModel);
   } catch (err) {
     return {
       status: "error",
@@ -196,6 +197,9 @@ export async function recognizeItemFromScreenshot(formData: FormData): Promise<R
     refineLevel = Math.min(Math.max(extraction.refineLevel, 0), maxRefineLevel);
   }
 
+  const maxCardSlots = getMaxCardSlots(matchedItem);
+  const cardSlots = maxCardSlots > 0 ? Math.min(Math.max(extraction.cardSlots, 0), maxCardSlots) : 0;
+
   const options: { slotIndex: number; defId: string; value: number }[] = [];
   if (optionGroup) {
     const defs = await prisma.itemOptionDef.findMany({ where: { group: optionGroup } });
@@ -217,6 +221,7 @@ export async function recognizeItemFromScreenshot(formData: FormData): Promise<R
     status: "matched",
     item: { ...matchedItem, optionGroup },
     refineLevel,
+    cardSlots,
     options,
   };
 }

@@ -26,6 +26,8 @@ const searchParamsSchema = z.object({
   option3Max: z.coerce.number().int().optional(),
   refineMin: z.coerce.number().int().nonnegative().optional(),
   refineMax: z.coerce.number().int().nonnegative().optional(),
+  cardSlotsMin: z.coerce.number().int().nonnegative().optional(),
+  cardSlotsMax: z.coerce.number().int().nonnegative().optional(),
   minPrice: z.coerce.number().int().nonnegative().optional(),
   maxPrice: z.coerce.number().int().nonnegative().optional(),
   sort: z
@@ -57,6 +59,8 @@ export default async function MarketPage({
     option3Max: firstValue(raw.option3Max),
     refineMin: firstValue(raw.refineMin),
     refineMax: firstValue(raw.refineMax),
+    cardSlotsMin: firstValue(raw.cardSlotsMin),
+    cardSlotsMax: firstValue(raw.cardSlotsMax),
     minPrice: firstValue(raw.minPrice),
     maxPrice: firstValue(raw.maxPrice),
     sort: firstValue(raw.sort),

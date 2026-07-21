@@ -7,6 +7,7 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { loadMarketConfig } from "@/lib/market-config";
 import { getOptionsCatalogCount } from "@/lib/item-options";
 import { fetchGuildRoles } from "@/lib/discord-bot";
+import { GEMINI_MODEL_OPTIONS, isGeminiModel } from "@/lib/gemini-model-constants";
 
 // El valor real de un secreto nunca sale del servidor una vez guardado —
 // esto es lo único que llega al cliente para representarlo en el formulario.
@@ -29,6 +30,8 @@ export async function getMarketConfig() {
     webhookUrlMasked: config.webhookUrl ? maskSecret(config.webhookUrl) : null,
     imageRecognitionEnabled: config.imageRecognitionEnabled,
     hasGeminiApiKey: !!process.env.GEMINI_API_KEY,
+    geminiModel: config.geminiModel,
+    geminiModelOptions: GEMINI_MODEL_OPTIONS,
     maintenanceModeEnabled: config.maintenanceModeEnabled,
     optionsEnabled: config.optionsEnabled,
     optionsCatalogCount,
@@ -41,6 +44,7 @@ const updateConfigSchema = z.object({
   maxRefineLevel: z.coerce.number().int().nonnegative(),
   webhookEnabled: z.boolean(),
   imageRecognitionEnabled: z.boolean(),
+  geminiModel: z.string().refine(isGeminiModel, "Modelo de Gemini no soportado"),
   maintenanceModeEnabled: z.boolean(),
   optionsEnabled: z.boolean(),
   // Vacío = no tocar el valor ya guardado (patrón "enmascarado + reemplazar":
@@ -74,6 +78,7 @@ export async function updateMarketConfig(formData: FormData) {
     maxRefineLevel: formData.get("maxRefineLevel"),
     webhookEnabled: formData.get("webhookEnabled") === "on",
     imageRecognitionEnabled: formData.get("imageRecognitionEnabled") === "on",
+    geminiModel: formData.get("geminiModel"),
     maintenanceModeEnabled: formData.get("maintenanceModeEnabled") === "on",
     optionsEnabled: formData.get("optionsEnabled") === "on",
     webhookUrl: formData.get("webhookUrl") || undefined,
@@ -90,6 +95,7 @@ export async function updateMarketConfig(formData: FormData) {
       maxRefineLevel: parsed.data.maxRefineLevel,
       webhookEnabled: parsed.data.webhookEnabled,
       imageRecognitionEnabled: parsed.data.imageRecognitionEnabled,
+      geminiModel: parsed.data.geminiModel,
       maintenanceModeEnabled: parsed.data.maintenanceModeEnabled,
       optionsEnabled: parsed.data.optionsEnabled,
       webhookUrl: parsed.data.webhookUrl ?? null,
@@ -99,6 +105,7 @@ export async function updateMarketConfig(formData: FormData) {
       maxRefineLevel: parsed.data.maxRefineLevel,
       webhookEnabled: parsed.data.webhookEnabled,
       imageRecognitionEnabled: parsed.data.imageRecognitionEnabled,
+      geminiModel: parsed.data.geminiModel,
       maintenanceModeEnabled: parsed.data.maintenanceModeEnabled,
       optionsEnabled: parsed.data.optionsEnabled,
       ...(parsed.data.webhookUrl ? { webhookUrl: parsed.data.webhookUrl } : {}),

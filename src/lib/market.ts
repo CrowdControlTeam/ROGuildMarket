@@ -38,6 +38,8 @@ export type MarketFilters = {
   option3Max?: number;
   refineMin?: number;
   refineMax?: number;
+  cardSlotsMin?: number;
+  cardSlotsMax?: number;
   minPrice?: number;
   maxPrice?: number;
   sort: MarketSort;
@@ -215,6 +217,14 @@ export async function getListings(filters: MarketFilters) {
           refineLevel: {
             ...(filters.refineMin !== undefined ? { gte: filters.refineMin } : {}),
             ...(filters.refineMax !== undefined ? { lte: filters.refineMax } : {}),
+          },
+        }
+      : {}),
+    ...(filters.cardSlotsMin !== undefined || filters.cardSlotsMax !== undefined
+      ? {
+          cardSlots: {
+            ...(filters.cardSlotsMin !== undefined ? { gte: filters.cardSlotsMin } : {}),
+            ...(filters.cardSlotsMax !== undefined ? { lte: filters.cardSlotsMax } : {}),
           },
         }
       : {}),
