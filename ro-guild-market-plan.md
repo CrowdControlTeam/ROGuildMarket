@@ -233,16 +233,23 @@ Diseño acordado (importante para retomar sin perder el hilo):
     llegar. Verificado en vivo leyendo el historial real del canal DM: con
     el toggle apagado, o sin token, no llega nada; con ambos activos, sí.
   - `/admin` gana una sección "Notificaciones privadas (DM)" con el toggle
-    y un indicador de solo lectura de si el bot está configurado — **el
-    token del bot todavía solo está en `.env.local`, falta añadirlo a
-    Vercel** para que las DMs funcionen en producción (misma situación que
-    ya pasó con `GEMINI_API_KEY`).
+    y un indicador de solo lectura de si el bot está configurado —
+    `DISCORD_BOT_TOKEN` ya está tanto en `.env.local` como en las
+    variables de entorno de Vercel, así que las DMs también funcionan en
+    producción.
+- **Petición de compra — hecho**: `BuyRequest` (comprador, item, cantidad,
+  precio máximo, estado), crear/listar (con búsqueda simple por nombre,
+  sin paginación por cursor — volumen bajo esperado)/cancelar/marcar como
+  cumplida, con webhook al crear (`DISCORD_EMBED_COLOR.BUY_REQUEST`, ya
+  existente de antes). Nueva entrada de menú "Petición de compra"
+  habilitada (antes placeholder). Sin filtros avanzados (categoría, precio,
+  etc.) en esta v1 — solo nombre, a diferencia del mercado de venta directa.
 - Se organiza en 4 PRs independientes, cada uno revisable/mergeable por
-  separado: (1) infraestructura de DMs — hecho; (2) peticiones de compra;
-  (3) trades; (4) regalos.
+  separado: (1) infraestructura de DMs — hecho; (2) peticiones de compra —
+  hecho; (3) trades; (4) regalos.
 
-**Próximo paso natural**: PR 2 de Fase 3 (peticiones de compra) — a
-confirmar con el usuario al retomar.
+**Próximo paso natural**: PR 3 de Fase 3 (trades) — a confirmar con el
+usuario al retomar.
 
 ---
 
