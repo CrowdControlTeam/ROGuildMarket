@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { z } from "zod";
-import { ItemCategory, EquipSlot, WeaponType } from "@prisma/client";
+import { ItemCategory, EquipSlot, WeaponType, ListingType } from "@prisma/client";
 import { getListings, isMarketSort, type MarketFilters as MarketFiltersType } from "@/lib/market";
 import { requireSession } from "@/lib/guard";
 import { loadMarketConfig } from "@/lib/market-config";
@@ -15,6 +15,7 @@ const searchParamsSchema = z.object({
   category: z.enum(ItemCategory).optional(),
   slot: z.enum(EquipSlot).optional(),
   weaponType: z.enum(WeaponType).optional(),
+  type: z.enum(ListingType).optional(),
   option1DefId: z.string().trim().min(1).optional(),
   option1Min: z.coerce.number().int().optional(),
   option1Max: z.coerce.number().int().optional(),
@@ -48,6 +49,7 @@ export default async function MarketPage({
     category: firstValue(raw.category),
     slot: firstValue(raw.slot),
     weaponType: firstValue(raw.weaponType),
+    type: firstValue(raw.type),
     option1DefId: firstValue(raw.option1DefId),
     option1Min: firstValue(raw.option1Min),
     option1Max: firstValue(raw.option1Max),

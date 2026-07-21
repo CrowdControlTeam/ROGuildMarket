@@ -15,9 +15,10 @@ type Seller = { id: string; username: string };
 type ListingOption = { slotIndex: number; value: number; def: { label: string } };
 type Listing = {
   id: string;
+  type: "SALE" | "TRADE";
   quantity: number;
   quantitySold: number;
-  price: number;
+  price: number | null;
   refineLevel: number;
   cardSlots: number;
   item: Item;
@@ -73,8 +74,13 @@ export function MarketResults({
                 height={40}
               />
               <div className="flex-1">
-                <p className="font-semibold">
+                <p className="flex items-center gap-2 font-semibold">
                   {formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}
+                  {listing.type === "TRADE" && (
+                    <span className="rounded border border-blue-500/50 bg-blue-500/10 px-1.5 py-0.5 text-xs font-normal text-blue-600">
+                      Intercambio
+                    </span>
+                  )}
                 </p>
                 <p className="text-sm text-ro-text-muted">
                   x{listing.quantity - listing.quantitySold} disponibles ·
@@ -98,9 +104,11 @@ export function MarketResults({
                   </p>
                 )}
               </div>
-              <p className={`font-bold ${priceColorClass(listing.price)}`}>
-                {formatPrice(listing.price)}
-              </p>
+              {listing.type === "SALE" && listing.price !== null && (
+                <p className={`font-bold ${priceColorClass(listing.price)}`}>
+                  {formatPrice(listing.price)}
+                </p>
+              )}
             </Link>
           </li>
         ))}

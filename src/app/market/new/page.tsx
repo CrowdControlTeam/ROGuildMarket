@@ -17,7 +17,7 @@ export default async function NewListingPage() {
   return (
     <main className="mx-auto max-w-lg px-6 py-8">
       <BackLink href="/market" label="Volver al mercado" />
-      <Panel title="Nueva venta">
+      <Panel title="Nueva publicación">
         <NewListingForm recognitionEnabled={recognitionEnabled} />
       </Panel>
     </main>

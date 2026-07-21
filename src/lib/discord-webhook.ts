@@ -5,7 +5,8 @@ import { loadMarketConfig } from "@/lib/market-config";
 type ListingWebhookPayload = {
   itemName: string;
   itemIconUrl: string; // absoluta
-  price: number;
+  type: "SALE" | "TRADE";
+  price: number | null; // null cuando type = TRADE
   quantity: number;
   sellerUsername: string;
   sellerAvatarUrl: string | null;
@@ -20,24 +21,23 @@ export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) 
   // manda nada (ver src/lib/market-config.ts).
   if (!config.webhookEnabled || !config.webhookUrl) return;
   const webhookUrl = config.webhookUrl;
+  const isTrade = payload.type === "TRADE";
 
   const body = {
     embeds: [
       {
-        title: `Nueva venta: ${payload.itemName}`,
+        title: `${isTrade ? "Nuevo intercambio" : "Nueva venta"}: ${payload.itemName}`,
         url: payload.listingUrl,
-        color: DISCORD_EMBED_COLOR.SALE,
+        color: isTrade ? DISCORD_EMBED_COLOR.TRADE : DISCORD_EMBED_COLOR.SALE,
         thumbnail: { url: payload.itemIconUrl },
         author: {
           name: payload.sellerUsername,
           icon_url: payload.sellerAvatarUrl ?? undefined,
         },
         fields: [
-          {
-            name: "Precio",
-            value: formatPrice(payload.price),
-            inline: true,
-          },
+          ...(isTrade
+            ? []
+            : [{ name: "Precio", value: formatPrice(payload.price!), inline: true }]),
           { name: "Cantidad", value: String(payload.quantity), inline: true },
           ...(payload.options && payload.options.length > 0
             ? [

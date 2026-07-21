@@ -244,11 +244,43 @@ Diseño acordado (importante para retomar sin perder el hilo):
   existente de antes). Nueva entrada de menú "Petición de compra"
   habilitada (antes placeholder). Sin filtros avanzados (categoría, precio,
   etc.) en esta v1 — solo nombre, a diferencia del mercado de venta directa.
+- **Trade — hecho**: `Listing.type` (`SALE` | `TRADE`, default `SALE`) +
+  `price` ahora nullable (null solo en trades). El formulario de venta gana
+  un selector Venta/Intercambio: en modo trade se oculta el precio y la
+  cantidad queda fija a 1 (igual que un item con random options — un
+  `TradeOffer` no lleva cuánto del listing original se lleva a cambio,
+  aceptar una oferta cierra el listing entero). El mercado tiene filtro por
+  tipo y las cards ocultan el precio + muestran badge "Intercambio" en los
+  trades; ordenar por precio excluye los trades de esa vista (no tienen con
+  qué compararse) en vez de intentar resolverles una posición.
+  - `TradeOffer` (oferente, item ofrecido con refine/slots propios —sin
+    random options, para no disparar el alcance del formulario—, zeny
+    opcional, estado). El item ofrecido **no** tiene que estar publicado
+    como listing propio — decisión explícita, misma laxitud que
+    `BuyRequest`: no se persigue verificar que el oferente "realmente" tiene
+    el item. Sin contraoferta en esta v1.
+  - En el detalle: si no eres el vendedor y el listing es un trade, aparece
+    el formulario "Ofrecer items" en vez de "Comprar"; el vendedor ve sus
+    ofertas pendientes con Aceptar/Rechazar, el oferente ve las suyas con
+    Cancelar.
+  - Al aceptar: transacción que marca la oferta ACCEPTED, rechaza
+    automáticamente el resto de ofertas PENDING del mismo listing, y cierra
+    el listing (se reutiliza `ListingStatus.SOLD` — no hay `Purchase`
+    asociada, ese modelo exige precio — la UI lo muestra como
+    "Intercambiada" en vez de "Vendida" cuando `type = TRADE`). DM a
+    **ambas partes** con lo que ha recibido cada una (norma 2.10: a
+    diferencia de una compra normal, en un trade las dos partes reciben
+    algo, así que las dos tienen su propio DM, no solo la pasiva).
+  - Verificado en vivo: creación de listing trade, filtro por tipo, y el
+    flujo completo oferta→aceptar (con 2 ofertas simultáneas, confirmando
+    que la no aceptada pasa a REJECTED) usando la cuenta de prueba
+    `TestSeller` como contraparte — incluida la lectura del DM real
+    recibido en Discord tras aceptar.
 - Se organiza en 4 PRs independientes, cada uno revisable/mergeable por
   separado: (1) infraestructura de DMs — hecho; (2) peticiones de compra —
-  hecho; (3) trades; (4) regalos.
+  hecho; (3) trades — hecho; (4) regalos.
 
-**Próximo paso natural**: PR 3 de Fase 3 (trades) — a confirmar con el
+**Próximo paso natural**: PR 4 de Fase 3 (regalos) — a confirmar con el
 usuario al retomar.
 
 ---
@@ -397,19 +429,19 @@ Al crear una publicación, el vendedor elige un **modo** (obligatorio indicar al
 - [ ] Extender la búsqueda, filtros y orden de la Fase 1 para incluir también las subastas.
 
 ### Fase 3 — Peticiones de compra, trades y regalos
-- [ ] Modelo `BuyRequest` (petición de compra) + notificación Discord.
-- [ ] Extender la búsqueda, filtros y orden de las Fases 1-2 para incluir también las peticiones de compra.
-- [ ] Modelo `TradeOffer` (propuesta, contraoferta, aceptación/rechazo).
+- [x] Modelo `BuyRequest` (petición de compra) + notificación Discord.
+- [ ] Extender la búsqueda, filtros y orden de las Fases 1-2 para incluir también las peticiones de compra. *(v1 deliberadamente simple: página propia con solo búsqueda por nombre, no integrada en `getListings` — ver nota de estado actual)*
+- [x] Modelo `TradeOffer` (propuesta, aceptación/rechazo). *(sin contraoferta — decisión explícita v1, ver nota de estado actual)*
 - [ ] Modelo `Gift` (registro de regalos, sin lógica de precio).
-- [ ] Actualizar UI del mercado para filtrar por tipo de publicación (venta/subasta/petición/trade), combinable con los filtros de nombre/categoría/precio ya existentes.
-- [ ] Dar de alta un bot de Discord (Discord Developer Portal) e invitarlo al servidor de la guild, con permiso para enviar mensajes privados a sus miembros.
-- [ ] Servicio de envío de DMs (tarjeta/embed con fallback a texto plano) reutilizable para todos los eventos de transacción.
-- [ ] DM al vendedor al completarse una compra (venta directa o subasta).
-- [ ] DM al ganador de una subasta al cerrarse.
-- [ ] DM a quien publicó la petición de compra cuando esta se acepta.
-- [ ] DM a cada parte de un trade aceptado, con el objeto que ha recibido.
+- [x] Actualizar UI del mercado para filtrar por tipo de publicación (venta/trade), combinable con los filtros de nombre/categoría/precio ya existentes. *(subasta no aplica — Fase 2 aparcada; petición/regalo no aplica — no son listings del mercado público)*
+- [x] Dar de alta un bot de Discord (Discord Developer Portal) e invitarlo al servidor de la guild, con permiso para enviar mensajes privados a sus miembros.
+- [x] Servicio de envío de DMs (tarjeta/embed con fallback a texto plano) reutilizable para todos los eventos de transacción.
+- [x] DM al vendedor al completarse una compra (venta directa).
+- [ ] DM al ganador de una subasta al cerrarse. *(no aplica — Fase 2 aparcada)*
+- [ ] DM a quien publicó la petición de compra cuando esta se acepta. *(no aplica al diseño v1 — sin oferta/aceptación dentro de la app, el propio comprador cierra la petición a mano, ver nota de estado actual)*
+- [x] DM a cada parte de un trade aceptado, con el objeto que ha recibido.
 - [ ] DM a quien recibe un regalo.
-- [ ] Manejo de fallos de envío de DM (usuario con los DMs cerrados): no reintentar, no bloquear el flujo de la transacción.
+- [x] Manejo de fallos de envío de DM (usuario con los DMs cerrados): no reintentar, no bloquear el flujo de la transacción.
 
 ### Fase 4 — Pulido y extras
 - [ ] Ampliar el bot creado en la Fase 3 con comandos rápidos (`/mercado buscar item`) y funciones de roles/moderación.
