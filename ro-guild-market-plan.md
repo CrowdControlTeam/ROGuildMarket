@@ -13,7 +13,7 @@ especificación original y puede haber quedado desactualizado en detalles.
 
 **Progreso**: Fase 0 y Fase 1 completas (marcadas más abajo), incluido el
 despliegue. Fase 2 (subastas) aparcada por decisión explícita del usuario —
-se salta de momento. **Fase 3 empezada** (peticiones de compra, trades,
+se salta de momento. **Fase 3 completa** (peticiones de compra, trades y
 regalos — ver más abajo), además de varios adelantos ya en producción
 (compras parciales, random options, refine, reconocimiento por captura,
 panel de administración, slots de carta).
@@ -276,12 +276,37 @@ Diseño acordado (importante para retomar sin perder el hilo):
     que la no aceptada pasa a REJECTED) usando la cuenta de prueba
     `TestSeller` como contraparte — incluida la lectura del DM real
     recibido en Discord tras aceptar.
+- **Regalo — hecho**: modelo `Gift` (sender, recipient, item, cantidad,
+  refine/slots propios de la instancia —sin random options, mismo criterio
+  que `TradeOffer`—, fecha). Sin estado: enviar un regalo es instantáneo y
+  definitivo, la tabla es solo el registro histórico (transparencia, evitar
+  disputas, norma 2.6) además de lo que dispara el DM. No es un listing
+  público — no se anuncia por webhook, no aparece en `/market`, no hay
+  modelo de aceptación — es un envío directo 1 a 1.
+  - Nuevo `UserPicker` (mismo patrón que `ItemPicker`, pero busca por
+    `username` en vez de por nombre de item) para elegir destinatario entre
+    los usuarios que ya existen en `User` (los únicos de los que hay
+    registro, al no haber gestión de miembros propia).
+  - `/market/gifts` es el historial propio (enviados + recibidos, marcados
+    con dirección); `/market/gifts/new` es el formulario de envío. DM solo
+    al destinatario (norma 2.10: aquí sí es asimétrico, como una compra
+    normal — quien envía ya sabe que lo ha hecho).
+  - Verificado en vivo: envío completo con refine seleccionado y
+    destinatario real (`TestSeller`), aparición correcta en el historial en
+    ambas direcciones (probado también sembrando un regalo en sentido
+    contrario), y el formato exacto del embed del DM confirmado leyendo el
+    historial real del canal DM tras invocar `sendDirectMessage` con el
+    mismo payload que construye `sendGift`.
 - Se organiza en 4 PRs independientes, cada uno revisable/mergeable por
   separado: (1) infraestructura de DMs — hecho; (2) peticiones de compra —
-  hecho; (3) trades — hecho; (4) regalos.
+  hecho; (3) trades — hecho; (4) regalos — hecho. **Fase 3 completa.**
 
-**Próximo paso natural**: PR 4 de Fase 3 (regalos) — a confirmar con el
-usuario al retomar.
+**Próximo paso natural**: con los cuatro tipos de listado ya construidos
+(venta, petición de compra, trade, regalo), toca el refactor de componentes
+compartidos que se aplazó explícitamente durante la Fase 3 (ver decisión del
+usuario tras el PR de peticiones de compra) — a confirmar con el usuario al
+retomar, ya que también podría optarse por seguir directamente con la Fase 4
+(pulido y extras) sin ese refactor previo.
 
 ---
 
@@ -432,7 +457,7 @@ Al crear una publicación, el vendedor elige un **modo** (obligatorio indicar al
 - [x] Modelo `BuyRequest` (petición de compra) + notificación Discord.
 - [ ] Extender la búsqueda, filtros y orden de las Fases 1-2 para incluir también las peticiones de compra. *(v1 deliberadamente simple: página propia con solo búsqueda por nombre, no integrada en `getListings` — ver nota de estado actual)*
 - [x] Modelo `TradeOffer` (propuesta, aceptación/rechazo). *(sin contraoferta — decisión explícita v1, ver nota de estado actual)*
-- [ ] Modelo `Gift` (registro de regalos, sin lógica de precio).
+- [x] Modelo `Gift` (registro de regalos, sin lógica de precio).
 - [x] Actualizar UI del mercado para filtrar por tipo de publicación (venta/trade), combinable con los filtros de nombre/categoría/precio ya existentes. *(subasta no aplica — Fase 2 aparcada; petición/regalo no aplica — no son listings del mercado público)*
 - [x] Dar de alta un bot de Discord (Discord Developer Portal) e invitarlo al servidor de la guild, con permiso para enviar mensajes privados a sus miembros.
 - [x] Servicio de envío de DMs (tarjeta/embed con fallback a texto plano) reutilizable para todos los eventos de transacción.
@@ -440,7 +465,7 @@ Al crear una publicación, el vendedor elige un **modo** (obligatorio indicar al
 - [ ] DM al ganador de una subasta al cerrarse. *(no aplica — Fase 2 aparcada)*
 - [ ] DM a quien publicó la petición de compra cuando esta se acepta. *(no aplica al diseño v1 — sin oferta/aceptación dentro de la app, el propio comprador cierra la petición a mano, ver nota de estado actual)*
 - [x] DM a cada parte de un trade aceptado, con el objeto que ha recibido.
-- [ ] DM a quien recibe un regalo.
+- [x] DM a quien recibe un regalo.
 - [x] Manejo de fallos de envío de DM (usuario con los DMs cerrados): no reintentar, no bloquear el flujo de la transacción.
 
 ### Fase 4 — Pulido y extras

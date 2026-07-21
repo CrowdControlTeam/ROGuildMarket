@@ -8,7 +8,7 @@ const LINKS: { href: string; label: string; enabled: boolean }[] = [
   { href: "/market", label: "Comprar", enabled: true },
   { href: "/market/new", label: "Vender", enabled: true },
   { href: "/market/buy-requests", label: "Petición de compra", enabled: true },
-  { href: "#", label: "Regalar", enabled: false },
+  { href: "/market/gifts", label: "Regalar", enabled: true },
 ];
 
 export function HamburgerMenu() {
