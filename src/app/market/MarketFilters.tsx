@@ -6,10 +6,11 @@ import {
   ItemCategory,
   EquipSlot,
   WeaponType,
+  ListingType,
   type ItemOptionGroup,
   type ItemOptionDef,
 } from "@prisma/client";
-import { CATEGORY_LABELS, SLOT_LABELS, WEAPON_TYPE_LABELS } from "@/lib/market-labels";
+import { CATEGORY_LABELS, SLOT_LABELS, WEAPON_TYPE_LABELS, LISTING_TYPE_LABELS } from "@/lib/market-labels";
 import { getItemOptionGroup, MAX_OPTION_SLOTS } from "@/lib/item-options-constants";
 import { isRefineEligible, DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constants";
 import { getMaxCardSlots, MAX_WEAPON_CARD_SLOTS } from "@/lib/card-slots-constants";
@@ -33,6 +34,7 @@ export function MarketFilters() {
   const searchParams = useSearchParams();
 
   const [q, setQ] = useState(searchParams.get("q") ?? "");
+  const [type, setType] = useState(searchParams.get("type") ?? "");
   const [category, setCategory] = useState(searchParams.get("category") ?? "");
   const [slot, setSlot] = useState(searchParams.get("slot") ?? "");
   const [weaponType, setWeaponType] = useState(searchParams.get("weaponType") ?? "");
@@ -180,6 +182,7 @@ export function MarketFilters() {
     e.preventDefault();
     const params = new URLSearchParams(searchParams.toString());
     setOrDelete(params, "q", q.trim());
+    setOrDelete(params, "type", type);
     setOrDelete(params, "category", category);
     setOrDelete(params, "slot", slot);
     setOrDelete(params, "weaponType", weaponType);
@@ -224,6 +227,7 @@ export function MarketFilters() {
 
   function resetFilters() {
     setQ("");
+    setType("");
     setCategory("");
     setSlot("");
     setWeaponType("");
@@ -238,6 +242,7 @@ export function MarketFilters() {
     const params = new URLSearchParams(searchParams.toString());
     const keys = [
       "q",
+      "type",
       "category",
       "slot",
       "weaponType",
@@ -266,6 +271,18 @@ export function MarketFilters() {
           placeholder="Buscar item..."
           className={inputClass}
         />
+      </div>
+
+      <div>
+        <label className={labelClass}>Tipo</label>
+        <select value={type} onChange={(e) => setType(e.target.value)} className={selectClass}>
+          <option value="">Todas</option>
+          {Object.values(ListingType).map((t) => (
+            <option key={t} value={t}>
+              {LISTING_TYPE_LABELS[t]}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>

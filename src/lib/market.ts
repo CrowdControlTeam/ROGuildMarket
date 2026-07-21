@@ -1,4 +1,4 @@
-import { Prisma, ItemCategory, EquipSlot, WeaponType } from "@prisma/client";
+import { Prisma, ItemCategory, EquipSlot, WeaponType, ListingType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export const SORT_OPTIONS = [
@@ -23,6 +23,7 @@ export type MarketFilters = {
   category?: ItemCategory;
   slot?: EquipSlot;
   weaponType?: WeaponType;
+  type?: ListingType;
   // Filtro por random option, uno por slot posicional (1..MAX_OPTION_SLOTS
   // — ver src/lib/item-options-constants.ts). El cliente ya resuelve a qué
   // defId corresponde cada selección (no hace falta re-derivar el grupo
@@ -48,7 +49,11 @@ export type MarketFilters = {
 
 type Cursor = {
   id: string;
-  price: number;
+  // null quiere decir que el último listing cargado es un TRADE (sin
+  // precio) — solo pasa con sort=newest/oldest/name_*, ya que los sorts
+  // por precio excluyen los TRADE de la consulta (ver isPriceSort en
+  // getListings), así que ahí siempre llega un número real.
+  price: number | null;
   name: string;
   createdAt: string; // ISO
 };
@@ -63,7 +68,7 @@ function decodeCursor(raw: string | undefined): Cursor | null {
     const parsed = JSON.parse(Buffer.from(raw, "base64url").toString("utf-8"));
     if (
       typeof parsed?.id === "string" &&
-      typeof parsed?.price === "number" &&
+      (typeof parsed?.price === "number" || parsed?.price === null) &&
       typeof parsed?.name === "string" &&
       typeof parsed?.createdAt === "string"
     ) {
@@ -112,17 +117,20 @@ function cursorWhereFor(
           { createdAt: cursor.createdAt, id: { gt: cursor.id } },
         ],
       };
+    // El cursor de una página price_asc/price_desc siempre viene de una
+    // consulta que ya excluyó los TRADE (price null) — ver isPriceSort en
+    // getListings —, así que cursor.price es un número real aquí.
     case "price_asc":
       return {
         OR: [
-          { price: { gt: cursor.price } },
+          { price: { gt: cursor.price! } },
           { price: cursor.price, id: { gt: cursor.id } },
         ],
       };
     case "price_desc":
       return {
         OR: [
-          { price: { lt: cursor.price } },
+          { price: { lt: cursor.price! } },
           { price: cursor.price, id: { gt: cursor.id } },
         ],
       };
@@ -202,16 +210,22 @@ export async function getListings(filters: MarketFilters) {
   const cursorCondition = cursorWhereFor(filters.sort, cursor);
   const andConditions = [...(cursorCondition ? [cursorCondition] : []), ...optionConditions];
 
+  // Los listings de tipo TRADE no tienen precio (columna null) — al
+  // ordenar explícitamente por precio no tiene sentido mezclarlos (no hay
+  // con qué compararlos), así que se excluyen de esa vista en vez de
+  // intentar resolverles una posición. Fuera de esos dos sorts, sí
+  // aparecen con normalidad (recientes, nombre, etc.).
+  const isPriceSort = filters.sort === "price_asc" || filters.sort === "price_desc";
+  const priceFilter = {
+    ...(filters.minPrice !== undefined ? { gte: filters.minPrice } : {}),
+    ...(filters.maxPrice !== undefined ? { lte: filters.maxPrice } : {}),
+    ...(isPriceSort ? { not: null } : {}),
+  };
+
   const where: Prisma.ListingWhereInput = {
     status: "ACTIVE",
-    ...(filters.minPrice !== undefined || filters.maxPrice !== undefined
-      ? {
-          price: {
-            ...(filters.minPrice !== undefined ? { gte: filters.minPrice } : {}),
-            ...(filters.maxPrice !== undefined ? { lte: filters.maxPrice } : {}),
-          },
-        }
-      : {}),
+    ...(filters.type ? { type: filters.type } : {}),
+    ...(Object.keys(priceFilter).length > 0 ? { price: priceFilter } : {}),
     ...(filters.refineMin !== undefined || filters.refineMax !== undefined
       ? {
           refineLevel: {

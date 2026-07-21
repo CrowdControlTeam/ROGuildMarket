@@ -1,4 +1,12 @@
-import { ItemCategory, EquipSlot, ItemOptionGroup, WeaponType, BuyRequestStatus } from "@prisma/client";
+import {
+  ItemCategory,
+  EquipSlot,
+  ItemOptionGroup,
+  WeaponType,
+  BuyRequestStatus,
+  ListingType,
+  TradeOfferStatus,
+} from "@prisma/client";
 
 export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   WEAPON: "Arma",
@@ -59,5 +67,17 @@ export const OPTION_GROUP_LABELS: Record<ItemOptionGroup, string> = {
 export const BUY_REQUEST_STATUS_LABELS: Record<BuyRequestStatus, string> = {
   ACTIVE: "Activa",
   FULFILLED: "Cumplida",
+  CANCELLED: "Cancelada",
+};
+
+export const LISTING_TYPE_LABELS: Record<ListingType, string> = {
+  SALE: "Venta",
+  TRADE: "Intercambio",
+};
+
+export const OFFER_STATUS_LABEL: Record<TradeOfferStatus, string> = {
+  PENDING: "Pendiente",
+  ACCEPTED: "Aceptada",
+  REJECTED: "Rechazada",
   CANCELLED: "Cancelada",
 };

@@ -1,7 +1,7 @@
 "use server";
 
 import { z } from "zod";
-import { ItemOptionGroup } from "@prisma/client";
+import { ItemOptionGroup, ListingType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/guard";
@@ -82,8 +82,8 @@ export async function getOptionChoices(group: ItemOptionGroup) {
 
 const createListingSchema = z.object({
   itemId: z.string().min(1, "Selecciona un item"),
+  type: z.enum(ListingType).default("SALE"),
   quantity: z.coerce.number().int().positive("La cantidad debe ser mayor que 0"),
-  price: z.coerce.number().int().positive("El precio debe ser mayor que 0"),
 });
 
 // Las options van en campos planos option1DefId/option1Value, etc. (mismo
@@ -118,11 +118,27 @@ export async function createListing(formData: FormData) {
 
   const parsed = createListingSchema.safeParse({
     itemId: formData.get("itemId"),
+    type: formData.get("type") || "SALE",
     quantity: formData.get("quantity"),
-    price: formData.get("price"),
   });
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Datos inválidos");
+  }
+
+  // El precio solo tiene sentido en una venta directa — un trade se
+  // intercambia por otro item, nunca por zeny fijo (ver TradeOffer.zenyOffered
+  // para la compensación opcional en la oferta).
+  let price: number | null = null;
+  if (parsed.data.type === "SALE") {
+    const pricedParsed = z.coerce
+      .number()
+      .int()
+      .positive("El precio debe ser mayor que 0")
+      .safeParse(formData.get("price"));
+    if (!pricedParsed.success) {
+      throw new Error(pricedParsed.error.issues[0]?.message ?? "Precio inválido");
+    }
+    price = pricedParsed.data;
   }
 
   const item = await prisma.item.findUnique({
@@ -167,7 +183,10 @@ export async function createListing(formData: FormData) {
   // Se fuerza aquí también (no solo ocultando el campo en el form) porque
   // no hay que confiar en lo que mande el cliente. El refine, en cambio,
   // sí admite varias copias al mismo nivel (ver decisión con el usuario).
-  const quantity = optionGroup ? 1 : parsed.data.quantity;
+  // Un trade tampoco admite cantidad > 1: TradeOffer no lleva cuánto del
+  // listing original se lleva a cambio, aceptar una oferta cierra el
+  // listing entero.
+  const quantity = optionGroup || parsed.data.type === "TRADE" ? 1 : parsed.data.quantity;
 
   const refineEligible = isRefineEligible(item);
   let refineLevel = 0;
@@ -200,8 +219,9 @@ export async function createListing(formData: FormData) {
     data: {
       sellerId: session.user.discordId,
       itemId: parsed.data.itemId,
+      type: parsed.data.type,
       quantity,
-      price: parsed.data.price,
+      price,
       refineLevel,
       cardSlots,
       options:
@@ -221,6 +241,7 @@ export async function createListing(formData: FormData) {
   await sendListingCreatedWebhook({
     itemName: formatItemDisplayName(item.name, refineLevel, cardSlots),
     itemIconUrl: `${appUrl}${item.iconUrl}`,
+    type: listing.type,
     price: listing.price,
     quantity: listing.quantity,
     sellerUsername: session.user.username,
@@ -282,7 +303,7 @@ export async function purchaseListing(listingId: string, formData: FormData) {
   }
   const { quantity } = parsed.data;
 
-  const listing = await prisma.$transaction(async (tx) => {
+  const { listing, unitPrice } = await prisma.$transaction(async (tx) => {
     const listing = await tx.listing.findUnique({ where: { id: listingId }, include: { item: true } });
     if (!listing) throw new Error("Publicación no encontrada");
     if (listing.sellerId === session.user.discordId) {
@@ -291,6 +312,10 @@ export async function purchaseListing(listingId: string, formData: FormData) {
     if (listing.status !== "ACTIVE") {
       throw new Error("Esta publicación ya no está activa");
     }
+    if (listing.type !== "SALE" || listing.price === null) {
+      throw new Error("Esta publicación es un intercambio, no una venta directa");
+    }
+    const unitPrice = listing.price;
 
     const remaining = listing.quantity - listing.quantitySold;
     if (quantity > remaining) {
@@ -302,7 +327,7 @@ export async function purchaseListing(listingId: string, formData: FormData) {
         listingId,
         buyerId: session.user.discordId,
         quantity,
-        unitPrice: listing.price,
+        unitPrice,
       },
     });
 
@@ -315,7 +340,7 @@ export async function purchaseListing(listingId: string, formData: FormData) {
       },
     });
 
-    return listing;
+    return { listing, unitPrice };
   });
 
   // Fuera de la transacción a propósito: una llamada de red no debe alargar
@@ -329,7 +354,7 @@ export async function purchaseListing(listingId: string, formData: FormData) {
     itemIconUrl: `${appUrl}${listing.item.iconUrl}`,
     fields: [
       { name: "Cantidad", value: String(quantity), inline: true },
-      { name: "Precio total", value: formatPrice(quantity * listing.price), inline: true },
+      { name: "Precio total", value: formatPrice(quantity * unitPrice), inline: true },
     ],
   });
 

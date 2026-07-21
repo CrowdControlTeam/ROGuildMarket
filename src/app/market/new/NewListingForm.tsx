@@ -20,6 +20,7 @@ import { ScreenshotDropzone } from "./ScreenshotDropzone";
 
 export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boolean }) {
   const router = useRouter();
+  const [listingType, setListingType] = useState<"SALE" | "TRADE">("SALE");
   const [selectedItem, setSelectedItem] = useState<ItemResult | null>(null);
   const [optionDefs, setOptionDefs] = useState<ItemOptionDef[]>([]);
   const [optionSelections, setOptionSelections] = useState<OptionSelection[]>(
@@ -39,6 +40,10 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
   const optionGroup = selectedItem?.optionGroup ?? null;
   const refineEligible = selectedItem !== null && isRefineEligible(selectedItem);
   const maxCardSlots = selectedItem !== null ? getMaxCardSlots(selectedItem) : 0;
+  // Un trade tampoco admite cantidad > 1 (ver nota en listings.ts) — misma
+  // regla que un item con random options, así que reutiliza el mismo campo
+  // bloqueado en vez de duplicar el bloque de UI.
+  const quantityLocked = optionGroup !== null || listingType === "TRADE";
 
   // El reset de optionSelections se dispara desde el evento de selección de
   // item (handleItemSelect más abajo), no aquí: sincronizar dos piezas de
@@ -127,6 +132,30 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
       }}
       className="flex flex-col gap-4"
     >
+      <input type="hidden" name="type" value={listingType} />
+
+      <div>
+        <label className={labelClass}>Tipo de publicación</label>
+        <div className="flex gap-4 text-sm text-ro-text">
+          <label className="flex items-center gap-1.5">
+            <input
+              type="radio"
+              checked={listingType === "SALE"}
+              onChange={() => setListingType("SALE")}
+            />
+            Venta
+          </label>
+          <label className="flex items-center gap-1.5">
+            <input
+              type="radio"
+              checked={listingType === "TRADE"}
+              onChange={() => setListingType("TRADE")}
+            />
+            Intercambio
+          </label>
+        </div>
+      </div>
+
       {recognitionEnabled && (
         <div>
           <label className={labelClass}>Reconocer desde captura (opcional)</label>
@@ -147,7 +176,7 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
 
       <div>
         <label className={labelClass}>Cantidad</label>
-        {optionGroup ? (
+        {quantityLocked ? (
           <>
             <p className="text-sm text-ro-text-muted">1</p>
             <input type="hidden" name="quantity" value={1} />
@@ -194,10 +223,12 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
         </div>
       )}
 
-      <div>
-        <label className={labelClass}>Precio (z)</label>
-        <PriceInput name="price" placeholder="0" />
-      </div>
+      {listingType === "SALE" && (
+        <div>
+          <label className={labelClass}>Precio (z)</label>
+          <PriceInput name="price" placeholder="0" />
+        </div>
+      )}
 
       {hasOptionCatalog && (
         <div>
@@ -268,7 +299,7 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
         disabled={!selectedItem}
         className={buttonClass("primary")}
       >
-        Publicar venta
+        {listingType === "SALE" ? "Publicar venta" : "Publicar intercambio"}
       </button>
     </form>
   );
