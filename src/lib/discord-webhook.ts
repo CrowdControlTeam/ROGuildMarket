@@ -13,8 +13,6 @@ type ListingWebhookPayload = {
   options?: { label: string; value: number }[];
 };
 
-// Un fallo aquí nunca debe tumbar la publicación en sí (ya se guardó en la
-// DB): se registra el error y ya está, sin reintentos.
 export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) {
   const config = await loadMarketConfig();
   // Configurable desde /admin en vez de una variable de entorno — hace
@@ -56,6 +54,49 @@ export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) 
     ],
   };
 
+  await postWebhook(webhookUrl, body);
+}
+
+type BuyRequestWebhookPayload = {
+  itemName: string;
+  itemIconUrl: string; // absoluta
+  maxPrice: number;
+  quantity: number;
+  buyerUsername: string;
+  buyerAvatarUrl: string | null;
+  requestUrl: string; // absoluta
+};
+
+export async function sendBuyRequestCreatedWebhook(payload: BuyRequestWebhookPayload) {
+  const config = await loadMarketConfig();
+  if (!config.webhookEnabled || !config.webhookUrl) return;
+
+  const body = {
+    embeds: [
+      {
+        title: `Petición de compra: ${payload.itemName}`,
+        url: payload.requestUrl,
+        color: DISCORD_EMBED_COLOR.BUY_REQUEST,
+        thumbnail: { url: payload.itemIconUrl },
+        author: {
+          name: payload.buyerUsername,
+          icon_url: payload.buyerAvatarUrl ?? undefined,
+        },
+        fields: [
+          { name: "Pago hasta", value: formatPrice(payload.maxPrice), inline: true },
+          { name: "Cantidad", value: String(payload.quantity), inline: true },
+        ],
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  };
+
+  await postWebhook(config.webhookUrl, body);
+}
+
+// Un fallo aquí nunca debe tumbar la publicación en sí (ya se guardó en la
+// DB): se registra el error y ya está, sin reintentos.
+async function postWebhook(webhookUrl: string, body: unknown) {
   try {
     const res = await fetch(webhookUrl, {
       method: "POST",

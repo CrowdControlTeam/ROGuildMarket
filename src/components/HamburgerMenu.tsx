@@ -7,7 +7,7 @@ import { Sidebar } from "./Sidebar";
 const LINKS: { href: string; label: string; enabled: boolean }[] = [
   { href: "/market", label: "Comprar", enabled: true },
   { href: "/market/new", label: "Vender", enabled: true },
-  { href: "#", label: "Petición de compra", enabled: false },
+  { href: "/market/buy-requests", label: "Petición de compra", enabled: true },
   { href: "#", label: "Regalar", enabled: false },
 ];
 
