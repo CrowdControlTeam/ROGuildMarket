@@ -4,6 +4,7 @@
 // configurado, el panel cae a introducir IDs a mano — ver
 // AdminConfigForm.tsx) y para las DMs de transacción (ver sendDirectMessage
 // más abajo).
+import { loadMarketConfig } from "@/lib/market-config";
 
 export type GuildRolesResult =
   | { status: "no_bot" }
@@ -57,9 +58,15 @@ export type DirectMessagePayload = {
 // transacción que la origina (ya se guardó en la DB) ni reintentar si
 // falla — motivos típicos: el bot no está configurado, el destinatario
 // tiene los DMs cerrados a miembros del servidor, o le ha bloqueado.
+// Centraliza el gating (toggle + token) aquí en vez de en cada caller —
+// peticiones de compra, trades y regalos llamarán a esto más adelante, así
+// que conviene que sea imposible olvidarse de comprobarlo en algún sitio.
 export async function sendDirectMessage(discordId: string, payload: DirectMessagePayload): Promise<void> {
   const token = process.env.DISCORD_BOT_TOKEN;
   if (!token) return;
+
+  const { dmNotificationsEnabled } = await loadMarketConfig();
+  if (!dmNotificationsEnabled) return;
 
   try {
     const channelRes = await fetch("https://discord.com/api/users/@me/channels", {

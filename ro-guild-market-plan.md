@@ -225,6 +225,18 @@ Diseño acordado (importante para retomar sin perder el hilo):
   inválido: la compra se completa igual). Ya aplicado también de forma
   retroactiva a las compras directas existentes (DM al vendedor al
   completarse una compra), tal como pedía el documento original.
+  - Igual que el resto de funciones opcionales del mercado, tiene su propio
+    toggle (`MarketConfig.dmNotificationsEnabled`, activo por defecto) Y
+    necesita `DISCORD_BOT_TOKEN` seteado — el gating se centraliza dentro de
+    la propia `sendDirectMessage` (no en cada caller) para que peticiones de
+    compra/trades/regalos no tengan que reimplementar la comprobación al
+    llegar. Verificado en vivo leyendo el historial real del canal DM: con
+    el toggle apagado, o sin token, no llega nada; con ambos activos, sí.
+  - `/admin` gana una sección "Notificaciones privadas (DM)" con el toggle
+    y un indicador de solo lectura de si el bot está configurado — **el
+    token del bot todavía solo está en `.env.local`, falta añadirlo a
+    Vercel** para que las DMs funcionen en producción (misma situación que
+    ya pasó con `GEMINI_API_KEY`).
 - Se organiza en 4 PRs independientes, cada uno revisable/mergeable por
   separado: (1) infraestructura de DMs — hecho; (2) peticiones de compra;
   (3) trades; (4) regalos.
