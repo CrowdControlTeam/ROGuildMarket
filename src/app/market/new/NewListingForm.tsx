@@ -14,6 +14,7 @@ import {
   type OptionSelection,
 } from "@/lib/item-options-constants";
 import { isRefineEligible, DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constants";
+import { getMaxCardSlots } from "@/lib/card-slots-constants";
 import { ItemPicker, type ItemResult } from "./ItemPicker";
 import { ScreenshotDropzone } from "./ScreenshotDropzone";
 
@@ -25,6 +26,7 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
     emptyOptionSelections(),
   );
   const [refineLevel, setRefineLevel] = useState(0);
+  const [cardSlots, setCardSlots] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [maxRefineLevel, setMaxRefineLevel] = useState(DEFAULT_MAX_REFINE_LEVEL);
   const [isRecognizing, startRecognizeTransition] = useTransition();
@@ -36,6 +38,7 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
 
   const optionGroup = selectedItem?.optionGroup ?? null;
   const refineEligible = selectedItem !== null && isRefineEligible(selectedItem);
+  const maxCardSlots = selectedItem !== null ? getMaxCardSlots(selectedItem) : 0;
 
   // El reset de optionSelections se dispara desde el evento de selección de
   // item (handleItemSelect más abajo), no aquí: sincronizar dos piezas de
@@ -53,6 +56,7 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
     setSelectedItem(item);
     setOptionSelections(emptyOptionSelections());
     setRefineLevel(0);
+    setCardSlots(0);
     setRecognitionNote(null);
   }
 
@@ -78,6 +82,7 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
 
       setSelectedItem(result.item);
       setRefineLevel(result.refineLevel);
+      setCardSlots(result.cardSlots);
       setOptionSelections(buildOptionSelectionsFromDetected(result.options));
       setRecognitionNote(`Detectado: ${result.item.name}. Revisa los datos antes de publicar.`);
     });
@@ -169,6 +174,21 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
             max={maxRefineLevel}
             value={refineLevel}
             onChange={(e) => setRefineLevel(e.target.value === "" ? 0 : Number(e.target.value))}
+            className={inputClass}
+          />
+        </div>
+      )}
+
+      {maxCardSlots > 0 && (
+        <div>
+          <label className={labelClass}>Slots de carta</label>
+          <input
+            type="number"
+            name="cardSlots"
+            min={0}
+            max={maxCardSlots}
+            value={cardSlots}
+            onChange={(e) => setCardSlots(e.target.value === "" ? 0 : Number(e.target.value))}
             className={inputClass}
           />
         </div>

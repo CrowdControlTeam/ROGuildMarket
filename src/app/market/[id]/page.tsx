@@ -5,7 +5,7 @@ import { requireSession } from "@/lib/guard";
 import { Panel } from "@/components/Panel";
 import { BackLink } from "@/components/BackLink";
 import { formatPrice, priceColorClass } from "@/lib/price";
-import { formatRefinedName } from "@/lib/refine-constants";
+import { formatItemDisplayName } from "@/lib/card-slots-constants";
 import { labelClass } from "@/lib/ui";
 import { UserMention } from "@/components/UserMention";
 import { CancelListingButton } from "./CancelListingButton";
@@ -52,7 +52,7 @@ export default async function ListingDetailPage({
           />
           <div>
             <h1 className="font-heading text-sm text-ro-text">
-              {formatRefinedName(listing.item.name, listing.refineLevel)}
+              {formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}
             </h1>
             <p className="mt-1 text-sm text-ro-text-muted">
               {STATUS_LABEL[listing.status]}

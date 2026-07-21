@@ -12,7 +12,8 @@ import {
   loadMagicalWeaponTypes,
   isOptionsFeatureAvailable,
 } from "@/lib/item-options";
-import { isRefineEligible, formatRefinedName, loadMaxRefineLevel } from "@/lib/refine";
+import { isRefineEligible, loadMaxRefineLevel } from "@/lib/refine";
+import { getMaxCardSlots, formatItemDisplayName } from "@/lib/card-slots-constants";
 import { loadMarketConfig } from "@/lib/market-config";
 
 export async function searchItems(query: string) {
@@ -179,6 +180,19 @@ export async function createListing(formData: FormData) {
     }
   }
 
+  const maxCardSlots = getMaxCardSlots(item);
+  let cardSlots = 0;
+  if (maxCardSlots > 0) {
+    const rawCardSlots = formData.get("cardSlots");
+    cardSlots = typeof rawCardSlots === "string" && rawCardSlots !== "" ? Number(rawCardSlots) : 0;
+    if (!Number.isInteger(cardSlots) || cardSlots < 0) {
+      throw new Error("Los slots deben ser un número entero positivo");
+    }
+    if (cardSlots > maxCardSlots) {
+      throw new Error(`Este item admite como máximo ${maxCardSlots} slots`);
+    }
+  }
+
   const listing = await prisma.listing.create({
     data: {
       sellerId: session.user.discordId,
@@ -186,6 +200,7 @@ export async function createListing(formData: FormData) {
       quantity,
       price: parsed.data.price,
       refineLevel,
+      cardSlots,
       options:
         rawOptions.length > 0
           ? {
@@ -201,7 +216,7 @@ export async function createListing(formData: FormData) {
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   await sendListingCreatedWebhook({
-    itemName: formatRefinedName(item.name, refineLevel),
+    itemName: formatItemDisplayName(item.name, refineLevel, cardSlots),
     itemIconUrl: `${appUrl}${item.iconUrl}`,
     price: listing.price,
     quantity: listing.quantity,

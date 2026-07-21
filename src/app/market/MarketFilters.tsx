@@ -12,6 +12,7 @@ import {
 import { CATEGORY_LABELS, SLOT_LABELS, WEAPON_TYPE_LABELS } from "@/lib/market-labels";
 import { getItemOptionGroup, MAX_OPTION_SLOTS } from "@/lib/item-options-constants";
 import { isRefineEligible, DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constants";
+import { getMaxCardSlots, MAX_WEAPON_CARD_SLOTS } from "@/lib/card-slots-constants";
 import {
   getMagicalWeaponTypes,
   getOptionChoices,
@@ -51,6 +52,12 @@ export function MarketFilters() {
   useEffect(() => {
     getMaxRefineLevel().then(setMaxRefineLevel);
   }, []);
+  const [cardSlotsMin, setCardSlotsMin] = useState<number | "">(
+    toNumberOrEmpty(searchParams.get("cardSlotsMin")),
+  );
+  const [cardSlotsMax, setCardSlotsMax] = useState<number | "">(
+    toNumberOrEmpty(searchParams.get("cardSlotsMax")),
+  );
 
   const [optionSelections, setOptionSelections] = useState<OptionFilterSelection[]>(() =>
     Array.from({ length: MAX_OPTION_SLOTS }, (_, i) => {
@@ -90,6 +97,20 @@ export function MarketFilters() {
     category === ItemCategory.WEAPON ||
     (category === ItemCategory.ARMOR &&
       (slot === "" || isRefineEligible({ category: ItemCategory.ARMOR, slot: slot as EquipSlot })));
+
+  // Mismo patrón que refineFilterEnabled — el tope varía según la categoría
+  // (arma hasta 4, armadura hasta 1, salvo casco inferior 0), así que
+  // también se recalcula el máximo permitido en el input, no solo si está
+  // habilitado.
+  const cardSlotsFilterEnabled =
+    category === "" ||
+    category === ItemCategory.WEAPON ||
+    (category === ItemCategory.ARMOR &&
+      (slot === "" || getMaxCardSlots({ category: ItemCategory.ARMOR, slot: slot as EquipSlot }) > 0));
+  const cardSlotsFilterMax =
+    category === ItemCategory.ARMOR && slot
+      ? getMaxCardSlots({ category: ItemCategory.ARMOR, slot: slot as EquipSlot })
+      : MAX_WEAPON_CARD_SLOTS;
 
   // undefined: todavía no se puede saber (falta magicalTypes). null: esta
   // combinación de filtros no tiene options. Un ItemOptionGroup: resuelto.
@@ -184,6 +205,17 @@ export function MarketFilters() {
       refineFilterEnabled && refineMax !== "" ? String(refineMax) : "",
     );
 
+    setOrDelete(
+      params,
+      "cardSlotsMin",
+      cardSlotsFilterEnabled && cardSlotsMin !== "" ? String(cardSlotsMin) : "",
+    );
+    setOrDelete(
+      params,
+      "cardSlotsMax",
+      cardSlotsFilterEnabled && cardSlotsMax !== "" ? String(cardSlotsMax) : "",
+    );
+
     setOrDelete(params, "minPrice", minPrice === "" ? "" : String(minPrice));
     setOrDelete(params, "maxPrice", maxPrice === "" ? "" : String(maxPrice));
     // Cambiar filtros reinicia la paginación (sin cursor).
@@ -199,10 +231,23 @@ export function MarketFilters() {
     setOptionDefs([]);
     setRefineMin("");
     setRefineMax("");
+    setCardSlotsMin("");
+    setCardSlotsMax("");
     setMinPrice("");
     setMaxPrice("");
     const params = new URLSearchParams(searchParams.toString());
-    const keys = ["q", "category", "slot", "weaponType", "refineMin", "refineMax", "minPrice", "maxPrice"];
+    const keys = [
+      "q",
+      "category",
+      "slot",
+      "weaponType",
+      "refineMin",
+      "refineMax",
+      "cardSlotsMin",
+      "cardSlotsMax",
+      "minPrice",
+      "maxPrice",
+    ];
     for (let n = 1; n <= MAX_OPTION_SLOTS; n++) {
       keys.push(`option${n}DefId`, `option${n}Min`, `option${n}Max`);
     }
@@ -248,7 +293,7 @@ export function MarketFilters() {
       </div>
 
       <div>
-        <label className={labelClass}>Slot</label>
+        <label className={labelClass}>Armadura</label>
         <select
           value={slot}
           disabled={!showSlot}
@@ -306,6 +351,36 @@ export function MarketFilters() {
             value={refineMax}
             disabled={!refineFilterEnabled}
             onChange={(e) => setRefineMax(e.target.value === "" ? "" : Number(e.target.value))}
+            className={`w-20 ${inputBaseClass}`}
+          />
+        </div>
+      </div>
+
+      {/* Agrupados para que salten de línea juntos al hacer wrap, en vez de
+          partirse por la mitad. */}
+      <div className="flex gap-3">
+        <div>
+          <label className={labelClass}>Slots mín.</label>
+          <input
+            type="number"
+            min={0}
+            max={cardSlotsFilterMax}
+            value={cardSlotsMin}
+            disabled={!cardSlotsFilterEnabled}
+            onChange={(e) => setCardSlotsMin(e.target.value === "" ? "" : Number(e.target.value))}
+            className={`w-20 ${inputBaseClass}`}
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>Slots máx.</label>
+          <input
+            type="number"
+            min={0}
+            max={cardSlotsFilterMax}
+            value={cardSlotsMax}
+            disabled={!cardSlotsFilterEnabled}
+            onChange={(e) => setCardSlotsMax(e.target.value === "" ? "" : Number(e.target.value))}
             className={`w-20 ${inputBaseClass}`}
           />
         </div>

@@ -7,7 +7,7 @@ import { loadMoreListings } from "@/lib/market-actions";
 import type { MarketFilters } from "@/lib/market";
 import { buttonClass } from "@/lib/ui";
 import { formatPrice, priceColorClass } from "@/lib/price";
-import { formatRefinedName } from "@/lib/refine-constants";
+import { formatItemDisplayName } from "@/lib/card-slots-constants";
 import { UserMention } from "@/components/UserMention";
 
 type Item = { id: string; name: string; iconUrl: string };
@@ -19,6 +19,7 @@ type Listing = {
   quantitySold: number;
   price: number;
   refineLevel: number;
+  cardSlots: number;
   item: Item;
   seller: Seller;
   options: ListingOption[];
@@ -73,7 +74,7 @@ export function MarketResults({
               />
               <div className="flex-1">
                 <p className="font-semibold">
-                  {formatRefinedName(listing.item.name, listing.refineLevel)}
+                  {formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}
                 </p>
                 <p className="text-sm text-ro-text-muted">
                   x{listing.quantity - listing.quantitySold} disponibles ·

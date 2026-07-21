@@ -10,6 +10,7 @@ import {
   isOptionsFeatureAvailable,
 } from "@/lib/item-options";
 import { isRefineEligible, loadMaxRefineLevel } from "@/lib/refine";
+import { getMaxCardSlots } from "@/lib/card-slots-constants";
 import { findBestMatch } from "@/lib/fuzzy-match";
 import { loadMarketConfig } from "@/lib/market-config";
 
@@ -40,6 +41,7 @@ const PROMPT = `You are looking at a screenshot of an item tooltip from the MMOR
 Extract the following as JSON:
 - itemName: the base item name as shown, WITHOUT any refine level prefix (e.g. "+7") and WITHOUT any slot count suffix (e.g. "[4]"). Null if you cannot read a name at all.
 - refineLevel: the refine level shown as a "+N" prefix before the item name, as an integer. 0 if there is no such prefix.
+- cardSlots: the number of card slots (sockets) the item has, as an integer. This is usually shown either as a "[N]" suffix right after the item name, or as a row of small empty/filled diamond-shaped slot icons near the bottom of the tooltip — if you see such a row, count the icons. 0 if there is no slot indicator at all.
 - options: the "random option" bonus lines shown on the tooltip — extra rolled stat bonuses, usually listed separately from the item's fixed base stats/description, in the exact top-to-bottom order they appear. For each one, return the stat label text (without its numeric value) and its numeric value as an integer. Empty array if there are none.
 Respond with only the JSON object, no extra commentary.`;
 
@@ -48,6 +50,7 @@ const RESPONSE_SCHEMA = {
   properties: {
     itemName: { type: "STRING", nullable: true },
     refineLevel: { type: "INTEGER" },
+    cardSlots: { type: "INTEGER" },
     options: {
       type: "ARRAY",
       items: {
@@ -60,12 +63,13 @@ const RESPONSE_SCHEMA = {
       },
     },
   },
-  required: ["itemName", "refineLevel", "options"],
+  required: ["itemName", "refineLevel", "cardSlots", "options"],
 };
 
 type GeminiExtraction = {
   itemName: string | null;
   refineLevel: number;
+  cardSlots: number;
   options: { label: string; value: number }[];
 };
 
@@ -118,6 +122,7 @@ async function callGemini(base64: string, mimeType: string): Promise<GeminiExtra
   return {
     itemName: typeof parsed.itemName === "string" ? parsed.itemName : null,
     refineLevel: Number.isInteger(parsed.refineLevel) ? parsed.refineLevel : 0,
+    cardSlots: Number.isInteger(parsed.cardSlots) ? parsed.cardSlots : 0,
     options: Array.isArray(parsed.options) ? parsed.options.filter(isRawOption) : [],
   };
 }
@@ -135,6 +140,7 @@ export type RecognitionResult =
         optionGroup: ItemOptionGroup | null;
       };
       refineLevel: number;
+      cardSlots: number;
       options: { slotIndex: number; defId: string; value: number }[];
     }
   | { status: "no_match"; detectedName: string | null }
@@ -196,6 +202,9 @@ export async function recognizeItemFromScreenshot(formData: FormData): Promise<R
     refineLevel = Math.min(Math.max(extraction.refineLevel, 0), maxRefineLevel);
   }
 
+  const maxCardSlots = getMaxCardSlots(matchedItem);
+  const cardSlots = maxCardSlots > 0 ? Math.min(Math.max(extraction.cardSlots, 0), maxCardSlots) : 0;
+
   const options: { slotIndex: number; defId: string; value: number }[] = [];
   if (optionGroup) {
     const defs = await prisma.itemOptionDef.findMany({ where: { group: optionGroup } });
@@ -217,6 +226,7 @@ export async function recognizeItemFromScreenshot(formData: FormData): Promise<R
     status: "matched",
     item: { ...matchedItem, optionGroup },
     refineLevel,
+    cardSlots,
     options,
   };
 }

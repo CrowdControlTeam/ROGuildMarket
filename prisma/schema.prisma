@@ -140,6 +140,13 @@ model Listing {
   // cualquier otro item, y no se muestra como prefijo "+N" hasta 1.
   refineLevel Int @default(0)
 
+  // Número de slots de carta del ejemplar concreto (no del catálogo: dos
+  // unidades del mismo item pueden tener distinto número) — arma hasta 4,
+  // armadura hasta 1 salvo casco inferior (0). Ver
+  // src/lib/card-slots-constants.ts. Se muestra como sufijo "[N]" pegado al
+  // nombre, nunca en 0.
+  cardSlots Int @default(0)
+
   purchases Purchase[]
   options   ListingOption[]
 
