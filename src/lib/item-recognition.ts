@@ -24,10 +24,13 @@ export async function isImageRecognitionAvailable(): Promise<boolean> {
   return config.imageRecognitionEnabled && !!process.env.GEMINI_API_KEY;
 }
 
-// flash-lite en vez del flash "grande": esta tarea es extracción
-// estructurada simple, no necesita razonamiento profundo, y flash-lite es
-// más barato/rápido y tiene cuota gratuita propia.
-const GEMINI_MODEL = "gemini-flash-lite-latest";
+// El flash "grande" en vez de flash-lite: verificado con una captura real
+// que flash-lite no distingue de forma fiable los iconos de slot con relleno
+// (color = slot real) de los de relleno gris plano (solo relleno hasta el
+// máximo de la categoría) — devolvía 0 en vez de 2. El resto de la
+// extracción (nombre, refine, options) ya iba igual de bien con cualquiera
+// de los dos, así que se sube de modelo por este detalle concreto.
+const GEMINI_MODEL = "gemini-flash-latest";
 
 // Umbrales deliberadamente permisivos: un OCR/lectura de la IA no va a ser
 // perfecto, pero solo hace falta acercarse lo suficiente a UNA entrada real
@@ -41,7 +44,7 @@ const PROMPT = `You are looking at a screenshot of an item tooltip from the MMOR
 Extract the following as JSON:
 - itemName: the base item name as shown, WITHOUT any refine level prefix (e.g. "+7") and WITHOUT any slot count suffix (e.g. "[4]"). Null if you cannot read a name at all.
 - refineLevel: the refine level shown as a "+N" prefix before the item name, as an integer. 0 if there is no such prefix.
-- cardSlots: the number of card slots (sockets) the item has, as an integer. This is usually shown either as a "[N]" suffix right after the item name, or as a row of small empty/filled diamond-shaped slot icons near the bottom of the tooltip — if you see such a row, count the icons. 0 if there is no slot indicator at all.
+- cardSlots: the number of card slots (sockets) the item actually has, as an integer. This is sometimes shown as a "[N]" suffix right after the item name. It can also be shown as a row of small diamond-shaped icons near the bottom of the tooltip. That row always shows the item category's maximum possible slots, padded with extra plain flat-grey diamonds — it can show MORE icons than the item actually has. Read the row strictly left to right: count only the leading icons that have any color/tint (pink, white, purple, etc.) and stop counting the moment you reach the first plain flat-grey icon, even if there are more icons after it — everything from that point on is just padding, never slots. 0 if there is no slot indicator at all.
 - options: the "random option" bonus lines shown on the tooltip — extra rolled stat bonuses, usually listed separately from the item's fixed base stats/description, in the exact top-to-bottom order they appear. For each one, return the stat label text (without its numeric value) and its numeric value as an integer. Empty array if there are none.
 Respond with only the JSON object, no extra commentary.`;
 
