@@ -174,10 +174,21 @@ slots), así que vive en `Listing.cardSlots`, no en `Item`.
   prefijo de refine — `+7 Silk Robe[1]` (`formatItemDisplayName` en
   `src/lib/card-slots-constants.ts`, sustituye a `formatRefinedName` en los
   sitios donde se muestra el nombre del item).
-- El reconocimiento por captura también extrae `cardSlots` (cuenta los
-  iconos de slot del tooltip, o lee el `[N]` si aparece en el nombre), con
-  el mismo clamp de seguridad `[0, máximo del item]` que ya se aplica a
-  refine/options.
+- El reconocimiento por captura también extrae `cardSlots`, con el mismo
+  clamp de seguridad `[0, máximo del item]` que ya se aplica a refine/options.
+  Única fuente fiable: la fila de iconos de slot del tooltip (contar solo
+  los que tienen color/tinte, parar en el primer gris plano) — el `[N]` en
+  el nombre es una convención de *nuestra* app para mostrarlo
+  (`formatItemDisplayName`), nunca algo que aparezca en el tooltip real del
+  juego, así que el prompt no debe buscarlo ahí (error corregido tras
+  probarlo con una captura real).
+- **Modelo de Gemini configurable desde `/admin`** (`MarketConfig.geminiModel`,
+  desplegable curado en `src/lib/gemini-model-constants.ts`, sin
+  redesplegar — es solo un string en la URL de la llamada). Verificado que
+  `gemini-flash-lite-latest` no distingue de forma fiable los iconos de
+  slot con color de los de relleno gris (fallaba devolviendo 0 en vez de 2
+  en una captura real); `gemini-flash-latest` sí, y pasa a ser el valor por
+  defecto.
 
 **Próximo paso natural**: Fase 2 (subastas) tal como está descrita más abajo,
 o seguir puliendo el mercado de venta directa — sin decidir todavía, a

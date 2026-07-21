@@ -6,12 +6,14 @@
 // listings.ts, item-recognition.ts, páginas server component).
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constants";
+import { DEFAULT_GEMINI_MODEL, isGeminiModel, type GeminiModel } from "@/lib/gemini-model-constants";
 
 export type MarketConfigValues = {
   maxRefineLevel: number;
   webhookUrl: string | null;
   webhookEnabled: boolean;
   imageRecognitionEnabled: boolean;
+  geminiModel: GeminiModel;
   maintenanceModeEnabled: boolean;
   optionsEnabled: boolean;
   adminRoleIds: string[];
@@ -26,6 +28,10 @@ export async function loadMarketConfig(): Promise<MarketConfigValues> {
     webhookUrl: config?.webhookUrl ?? null,
     webhookEnabled: config?.webhookEnabled ?? false,
     imageRecognitionEnabled: config?.imageRecognitionEnabled ?? false,
+    // Por si el valor guardado dejara de ser una opción soportada (se quita
+    // del desplegable más adelante) — se cae al default en vez de mandarle
+    // a Gemini un modelo que ya no ofrecemos.
+    geminiModel: config?.geminiModel && isGeminiModel(config.geminiModel) ? config.geminiModel : DEFAULT_GEMINI_MODEL,
     maintenanceModeEnabled: config?.maintenanceModeEnabled ?? false,
     optionsEnabled: config?.optionsEnabled ?? true,
     adminRoleIds: config?.adminRoleIds ?? [],

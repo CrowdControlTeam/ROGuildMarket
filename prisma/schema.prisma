@@ -191,6 +191,12 @@ model MarketConfig {
   // de datos, solo el toggle (ver src/lib/item-recognition.ts). Si falta
   // cualquiera de los dos, el bloque ni se renderiza en el formulario.
   imageRecognitionEnabled Boolean @default(false)
+  // Qué modelo de Gemini usar para el reconocimiento — editable sin
+  // redesplegar (solo es un string en la URL de la llamada). Valores
+  // soportados por el desplegable de /admin: "gemini-flash-latest"
+  // (detecta bien los iconos de slot) y "gemini-flash-lite-latest" (más
+  // barato/rápido, pero puede fallar contando slots).
+  geminiModel String @default("gemini-flash-latest")
 
   // Random options necesita esto Y que el catálogo (ItemOptionDef) tenga
   // filas — pensado para cuando el mercado sirva a versiones de RO además

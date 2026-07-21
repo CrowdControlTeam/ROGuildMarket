@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { updateMarketConfig, type getMarketConfig } from "@/lib/admin-config";
-import { buttonClass, inputClass, labelClass } from "@/lib/ui";
+import { buttonClass, inputClass, labelClass, selectClass } from "@/lib/ui";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
 
 type Config = Awaited<ReturnType<typeof getMarketConfig>>;
@@ -108,6 +108,23 @@ export function AdminConfigForm({ config }: { config: Config }) {
           )}
           . Hace falta esto Y el toggle activo para que la función funcione.
         </p>
+        <div>
+          <label className={labelClass}>Modelo de Gemini</label>
+          <select name="geminiModel" defaultValue={config.geminiModel} className={selectClass}>
+            {config.geminiModelOptions.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
+              </option>
+            ))}
+          </select>
+          <ul className="mt-1 flex flex-col gap-0.5 text-xs text-ro-text-muted">
+            {config.geminiModelOptions.map((m) => (
+              <li key={m.value}>
+                <span className="font-semibold">{m.label}:</span> {m.description}
+              </li>
+            ))}
+          </ul>
+        </div>
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
