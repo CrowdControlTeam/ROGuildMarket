@@ -5,13 +5,19 @@ import { loadMarketConfig } from "@/lib/market-config";
 type ListingWebhookPayload = {
   itemName: string;
   itemIconUrl: string; // absoluta
-  type: "SALE" | "TRADE";
-  price: number | null; // null cuando type = TRADE
+  type: "SALE" | "TRADE" | "BUY";
+  price: number | null; // null cuando type = TRADE; en BUY es el precio máximo a pagar
   quantity: number;
-  sellerUsername: string;
-  sellerAvatarUrl: string | null;
+  posterUsername: string;
+  posterAvatarUrl: string | null;
   listingUrl: string; // absoluta
   options?: { label: string; value: number }[];
+};
+
+const LISTING_TITLE_PREFIX: Record<ListingWebhookPayload["type"], string> = {
+  SALE: "Nueva venta",
+  TRADE: "Nuevo intercambio",
+  BUY: "Petición de compra",
 };
 
 export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) {
@@ -21,23 +27,28 @@ export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) 
   // manda nada (ver src/lib/market-config.ts).
   if (!config.webhookEnabled || !config.webhookUrl) return;
   const webhookUrl = config.webhookUrl;
-  const isTrade = payload.type === "TRADE";
 
   const body = {
     embeds: [
       {
-        title: `${isTrade ? "Nuevo intercambio" : "Nueva venta"}: ${payload.itemName}`,
+        title: `${LISTING_TITLE_PREFIX[payload.type]}: ${payload.itemName}`,
         url: payload.listingUrl,
-        color: isTrade ? DISCORD_EMBED_COLOR.TRADE : DISCORD_EMBED_COLOR.SALE,
+        color: DISCORD_EMBED_COLOR[payload.type],
         thumbnail: { url: payload.itemIconUrl },
         author: {
-          name: payload.sellerUsername,
-          icon_url: payload.sellerAvatarUrl ?? undefined,
+          name: payload.posterUsername,
+          icon_url: payload.posterAvatarUrl ?? undefined,
         },
         fields: [
-          ...(isTrade
+          ...(payload.type === "TRADE"
             ? []
-            : [{ name: "Precio", value: formatPrice(payload.price!), inline: true }]),
+            : [
+                {
+                  name: payload.type === "BUY" ? "Pago hasta" : "Precio",
+                  value: formatPrice(payload.price!),
+                  inline: true,
+                },
+              ]),
           { name: "Cantidad", value: String(payload.quantity), inline: true },
           ...(payload.options && payload.options.length > 0
             ? [
@@ -55,43 +66,6 @@ export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) 
   };
 
   await postWebhook(webhookUrl, body);
-}
-
-type BuyRequestWebhookPayload = {
-  itemName: string;
-  itemIconUrl: string; // absoluta
-  maxPrice: number;
-  quantity: number;
-  buyerUsername: string;
-  buyerAvatarUrl: string | null;
-  requestUrl: string; // absoluta
-};
-
-export async function sendBuyRequestCreatedWebhook(payload: BuyRequestWebhookPayload) {
-  const config = await loadMarketConfig();
-  if (!config.webhookEnabled || !config.webhookUrl) return;
-
-  const body = {
-    embeds: [
-      {
-        title: `Petición de compra: ${payload.itemName}`,
-        url: payload.requestUrl,
-        color: DISCORD_EMBED_COLOR.BUY_REQUEST,
-        thumbnail: { url: payload.itemIconUrl },
-        author: {
-          name: payload.buyerUsername,
-          icon_url: payload.buyerAvatarUrl ?? undefined,
-        },
-        fields: [
-          { name: "Pago hasta", value: formatPrice(payload.maxPrice), inline: true },
-          { name: "Cantidad", value: String(payload.quantity), inline: true },
-        ],
-        timestamp: new Date().toISOString(),
-      },
-    ],
-  };
-
-  await postWebhook(config.webhookUrl, body);
 }
 
 // Un fallo aquí nunca debe tumbar la publicación en sí (ya se guardó en la

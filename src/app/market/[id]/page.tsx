@@ -6,26 +6,13 @@ import { Panel } from "@/components/Panel";
 import { BackLink } from "@/components/BackLink";
 import { formatPrice, priceColorClass } from "@/lib/price";
 import { formatItemDisplayName } from "@/lib/card-slots-constants";
-import { OFFER_STATUS_LABEL } from "@/lib/market-labels";
+import { OFFER_STATUS_LABEL, LISTING_TYPE_BADGE, POSTER_LABEL, listingStatusLabel } from "@/lib/market-labels";
 import { labelClass } from "@/lib/ui";
 import { UserMention } from "@/components/UserMention";
 import { CancelListingButton } from "./CancelListingButton";
 import { BuyForm } from "./BuyForm";
 import { TradeOfferForm } from "./TradeOfferForm";
 import { TradeOfferActions } from "./TradeOfferActions";
-
-// SOLD se reutiliza también para trades cerrados (ver acceptTradeOffer en
-// src/lib/trade-offers.ts) — "Vendida" no encaja ahí, de ahí la excepción.
-function statusLabel(status: string, type: "SALE" | "TRADE") {
-  if (status === "SOLD" && type === "TRADE") return "Intercambiada";
-  const labels: Record<string, string> = {
-    ACTIVE: "Activa",
-    SOLD: "Vendida",
-    CANCELLED: "Cancelada",
-    EXPIRED: "Expirada",
-  };
-  return labels[status] ?? status;
-}
 
 export default async function ListingDetailPage({
   params,
@@ -39,7 +26,7 @@ export default async function ListingDetailPage({
     where: { id },
     include: {
       item: true,
-      seller: true,
+      poster: true,
       options: { include: { def: true }, orderBy: { slotIndex: "asc" } },
       tradeOffers: {
         include: { offerer: true, item: true },
@@ -49,9 +36,10 @@ export default async function ListingDetailPage({
   });
   if (!listing) notFound();
 
-  const isSeller = listing.sellerId === session.user.discordId;
+  const isPoster = listing.posterId === session.user.discordId;
   const remaining = listing.quantity - listing.quantitySold;
   const isTrade = listing.type === "TRADE";
+  const isBuy = listing.type === "BUY";
   const pendingOffers = listing.tradeOffers.filter((o) => o.status === "PENDING");
   const myOffers = listing.tradeOffers.filter((o) => o.offererId === session.user.discordId);
 
@@ -69,37 +57,39 @@ export default async function ListingDetailPage({
           <div>
             <h1 className="flex items-center gap-2 font-heading text-sm text-ro-text">
               {formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}
-              {isTrade && (
-                <span className="rounded border border-blue-500/50 bg-blue-500/10 px-1.5 py-0.5 text-xs font-normal text-blue-600">
-                  Intercambio
+              {listing.type !== "SALE" && (
+                <span
+                  className={`rounded border px-1.5 py-0.5 text-xs font-normal ${LISTING_TYPE_BADGE[listing.type].className}`}
+                >
+                  {LISTING_TYPE_BADGE[listing.type].label}
                 </span>
               )}
             </h1>
             <p className="mt-1 text-sm text-ro-text-muted">
-              {statusLabel(listing.status, listing.type)}
+              {listingStatusLabel(listing.status, listing.type)}
             </p>
           </div>
         </div>
 
         <dl className="mt-6 flex flex-col gap-2 text-sm">
           <div className="flex justify-between border-b border-ro-panel-border/30 pb-2">
-            <dt className="text-ro-text-muted">Disponibles</dt>
-            <dd>{remaining}</dd>
+            <dt className="text-ro-text-muted">{isBuy ? "Cantidad" : "Disponibles"}</dt>
+            <dd>{isBuy ? listing.quantity : remaining}</dd>
           </div>
           {!isTrade && listing.price !== null && (
             <div className="flex justify-between border-b border-ro-panel-border/30 pb-2">
-              <dt className="text-ro-text-muted">Precio por unidad</dt>
+              <dt className="text-ro-text-muted">{isBuy ? "Pago hasta" : "Precio por unidad"}</dt>
               <dd className={`font-bold ${priceColorClass(listing.price)}`}>
                 {formatPrice(listing.price)}
               </dd>
             </div>
           )}
           <div className="flex justify-between border-b border-ro-panel-border/30 pb-2">
-            <dt className="text-ro-text-muted">Vendedor</dt>
+            <dt className="text-ro-text-muted">{POSTER_LABEL[listing.type]}</dt>
             <dd>
               <UserMention
-                userId={listing.sellerId}
-                username={listing.seller.username}
+                userId={listing.posterId}
+                username={listing.poster.username}
                 viewerId={session.user.discordId}
                 capitalize
               />
@@ -107,15 +97,15 @@ export default async function ListingDetailPage({
           </div>
           <div
             className={`flex justify-between ${
-              listing.quantity > 1 ? "border-b border-ro-panel-border/30 pb-2" : ""
+              !isBuy && listing.quantity > 1 ? "border-b border-ro-panel-border/30 pb-2" : ""
             }`}
           >
             <dt className="text-ro-text-muted">Publicado</dt>
             <dd>{listing.createdAt.toLocaleString()}</dd>
           </div>
           {/* Con 1 sola unidad, "Vendidos: 0 de 1" no aporta nada que
-              "Disponibles" ya no diga. */}
-          {listing.quantity > 1 && (
+              "Disponibles" ya no diga. quantitySold no se usa en BUY. */}
+          {!isBuy && listing.quantity > 1 && (
             <div className="flex justify-between">
               <dt className="text-ro-text-muted">Vendidos</dt>
               <dd>
@@ -141,19 +131,17 @@ export default async function ListingDetailPage({
 
         {listing.status === "ACTIVE" && (
           <div className="mt-6">
-            {isSeller ? (
-              <CancelListingButton listingId={listing.id} />
+            {isPoster ? (
+              <CancelListingButton listingId={listing.id} showFulfill={isBuy} />
             ) : isTrade ? (
               <TradeOfferForm listingId={listing.id} />
-            ) : (
-              listing.price !== null && (
-                <BuyForm
-                  listingId={listing.id}
-                  remaining={remaining}
-                  unitPrice={listing.price}
-                />
-              )
-            )}
+            ) : listing.type === "SALE" && listing.price !== null ? (
+              <BuyForm
+                listingId={listing.id}
+                remaining={remaining}
+                unitPrice={listing.price}
+              />
+            ) : null}
           </div>
         )}
 
@@ -179,24 +167,24 @@ export default async function ListingDetailPage({
           </p>
         )}
 
-        {isTrade && (isSeller ? pendingOffers.length > 0 : myOffers.length > 0) && (
+        {isTrade && (isPoster ? pendingOffers.length > 0 : myOffers.length > 0) && (
           <div className="mt-6">
-            <p className={labelClass}>{isSeller ? "Ofertas recibidas" : "Tus ofertas"}</p>
+            <p className={labelClass}>{isPoster ? "Ofertas recibidas" : "Tus ofertas"}</p>
             <ul className="mt-2 flex flex-col gap-3">
-              {(isSeller ? pendingOffers : myOffers).map((offer) => (
+              {(isPoster ? pendingOffers : myOffers).map((offer) => (
                 <li key={offer.id} className="rounded-md border-2 border-ro-panel-border/30 p-3 text-sm">
                   <div className="flex items-center justify-between">
                     <span className="font-semibold">
                       {formatItemDisplayName(offer.item.name, offer.refineLevel, offer.cardSlots)}
                       {offer.quantity > 1 && ` x${offer.quantity}`}
                     </span>
-                    {!isSeller && (
+                    {!isPoster && (
                       <span className="text-xs text-ro-text-muted">
                         {OFFER_STATUS_LABEL[offer.status]}
                       </span>
                     )}
                   </div>
-                  {isSeller && (
+                  {isPoster && (
                     <p className="mt-1 text-ro-text-muted">
                       De{" "}
                       <UserMention
@@ -211,7 +199,7 @@ export default async function ListingDetailPage({
                   )}
                   {offer.status === "PENDING" && (
                     <div className="mt-2">
-                      <TradeOfferActions offerId={offer.id} role={isSeller ? "seller" : "offerer"} />
+                      <TradeOfferActions offerId={offer.id} role={isPoster ? "seller" : "offerer"} />
                     </div>
                   )}
                 </li>

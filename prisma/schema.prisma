@@ -43,10 +43,19 @@ enum ListingStatus {
 
 // SALE = venta directa (con precio). TRADE = se publica el item para
 // intercambiarlo por otro, sin precio — en el detalle, quien no es el
-// vendedor ve "Ofrecer items" en vez de "Comprar" (ver TradeOffer).
+// vendedor ve "Ofrecer items" en vez de "Comprar" (ver TradeOffer). BUY =
+// petición de compra ("busco X, pago hasta Y") — mismo ciclo de vida que
+// SALE/TRADE (se publica, queda abierto, algo externo lo cierra después),
+// solo que quien publica busca comprar en vez de vender. En BUY, `price`
+// significa "precio máximo que pagaría" en vez de precio de venta, y
+// `posterId` es quien compra, no quien vende — mismos campos, doble
+// sentido según `type`. Sin oferta/aceptación dentro de la app: quien
+// publica cierra la petición a mano (norma 2.4 del plan, deliberadamente
+// simple v1).
 enum ListingType {
   SALE
   TRADE
+  BUY
 }
 
 // Solo relevante cuando category = WEAPON. Taxonomía estándar de tipos de
@@ -100,7 +109,6 @@ model User {
 
   listings      Listing[]
   purchases     Purchase[]
-  buyRequests   BuyRequest[]
   tradeOffers   TradeOffer[]
   giftsSent     Gift[]       @relation("GiftsSent")
   giftsReceived Gift[]       @relation("GiftsReceived")
@@ -125,7 +133,6 @@ model Item {
   updatedAt   DateTime     @updatedAt
 
   listings    Listing[]
-  buyRequests BuyRequest[]
   tradeOffers TradeOffer[]
   gifts       Gift[]
 
@@ -134,20 +141,25 @@ model Item {
 }
 
 // Fase 1: solo venta directa. Fase 3 añade el tipo TRADE (ver ListingType).
-// Los campos de subasta se añaden en la Fase 2 (aparcada por ahora).
+// El refactor "listings" fusiona BuyRequest aquí como type=BUY. Los campos
+// de subasta se añaden en la Fase 2 (aparcada por ahora).
 model Listing {
   id           String        @id @default(cuid())
-  seller       User          @relation(fields: [sellerId], references: [id])
-  sellerId     String
+  // Quien publica — vendedor en SALE/TRADE, comprador en BUY (ver
+  // ListingType). Nombre neutro a propósito: "seller" no encajaría con BUY.
+  poster       User          @relation(fields: [posterId], references: [id])
+  posterId     String
   item         Item          @relation(fields: [itemId], references: [id])
   itemId       String
   type         ListingType   @default(SALE)
   quantity     Int           @default(1)
   // Suma desnormalizada de Purchase.quantity, para no recalcularla en cada
   // lectura. Se actualiza en la misma transacción que crea cada Purchase.
+  // Sin uso real en BUY (no hay Purchase asociada, se cierra a mano).
   quantitySold Int           @default(0)
   // Null solo cuando type = TRADE (no tiene precio, se intercambia por
-  // otro item — ver TradeOffer).
+  // otro item — ver TradeOffer). En BUY, precio máximo que pagaría en vez
+  // de precio de venta — mismo campo, doble sentido según `type`.
   price        Int?
   status       ListingStatus @default(ACTIVE)
   createdAt    DateTime      @default(now())
@@ -191,32 +203,6 @@ model Purchase {
   @@index([buyerId])
 }
 
-enum BuyRequestStatus {
-  ACTIVE
-  FULFILLED
-  CANCELLED
-}
-
-// Fase 3, v1 deliberadamente simple (norma 2.4 del plan): "busco X, pago
-// hasta Y". Sin mecanismo de oferta/aceptación dentro de la app — la
-// resolución pasa fuera (Discord, en persona) y el propio comprador la
-// cierra a mano con fulfillBuyRequest/cancelBuyRequest. Igual que Listing,
-// nunca se borra, solo cambia de estado (norma 3: transacciones inmutables).
-model BuyRequest {
-  id        String           @id @default(cuid())
-  buyer     User             @relation(fields: [buyerId], references: [id])
-  buyerId   String
-  item      Item             @relation(fields: [itemId], references: [id])
-  itemId    String
-  quantity  Int              @default(1)
-  maxPrice  Int
-  status    BuyRequestStatus @default(ACTIVE)
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
-
-  @@index([status, createdAt])
-}
-
 enum TradeOfferStatus {
   PENDING
   ACCEPTED
@@ -226,8 +212,8 @@ enum TradeOfferStatus {
 
 // Oferta de un jugador contra un Listing de tipo TRADE. El item ofrecido NO
 // tiene que estar publicado como Listing propia (decisión explícita: igual
-// de laxo que BuyRequest, no perseguimos verificar que el oferente
-// "realmente" tiene el item) — se elige libremente del catálogo. Sin
+// de laxo que un listing de tipo BUY, no perseguimos verificar que el
+// oferente "realmente" tiene el item) — se elige libremente del catálogo. Sin
 // contraoferta en esta v1 (norma 2.5 del plan, simplificado a propósito):
 // solo aceptar/rechazar. Al aceptar una oferta, las demás PENDING del mismo
 // listing pasan a REJECTED automáticamente.

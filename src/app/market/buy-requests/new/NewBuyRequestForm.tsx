@@ -18,7 +18,7 @@ export function NewBuyRequestForm() {
         setError(null);
         try {
           const { id } = await createBuyRequest(formData);
-          router.push(`/market/buy-requests/${id}`);
+          router.push(`/market/${id}`);
         } catch (err) {
           setError(err instanceof Error ? err.message : "Error inesperado");
         }

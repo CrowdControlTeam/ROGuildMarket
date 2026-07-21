@@ -28,7 +28,7 @@ export async function createTradeOffer(listingId: string, formData: FormData) {
   if (!listing) throw new Error("Publicación no encontrada");
   if (listing.type !== "TRADE") throw new Error("Esta publicación no es un intercambio");
   if (listing.status !== "ACTIVE") throw new Error("Esta publicación ya no está activa");
-  if (listing.sellerId === session.user.discordId) {
+  if (listing.posterId === session.user.discordId) {
     throw new Error("No puedes ofertar en tu propia publicación");
   }
 
@@ -88,7 +88,7 @@ export async function createTradeOffer(listingId: string, formData: FormData) {
 
 // Ownership + estado se comparten entre aceptar/rechazar/cancelar — solo
 // cambia quién puede hacerlo y a qué estado se mueve.
-async function loadOwnedPendingOffer(offerId: string, expectedOwnerField: "sellerId" | "offererId", discordId: string) {
+async function loadOwnedPendingOffer(offerId: string, expectedOwnerField: "posterId" | "offererId", discordId: string) {
   const offer = await prisma.tradeOffer.findUnique({
     where: { id: offerId },
     include: { listing: { include: { item: true } }, item: true, offerer: true },
@@ -96,7 +96,7 @@ async function loadOwnedPendingOffer(offerId: string, expectedOwnerField: "selle
   if (!offer) throw new Error("Oferta no encontrada");
   if (offer.status !== "PENDING") throw new Error("Esta oferta ya no está pendiente");
 
-  const ownerId = expectedOwnerField === "sellerId" ? offer.listing.sellerId : offer.offererId;
+  const ownerId = expectedOwnerField === "posterId" ? offer.listing.posterId : offer.offererId;
   if (ownerId !== discordId) throw new Error("No tienes permiso sobre esta oferta");
 
   return offer;
@@ -105,7 +105,7 @@ async function loadOwnedPendingOffer(offerId: string, expectedOwnerField: "selle
 export async function acceptTradeOffer(offerId: string) {
   const session = await requireSession();
 
-  const offer = await loadOwnedPendingOffer(offerId, "sellerId", session.user.discordId);
+  const offer = await loadOwnedPendingOffer(offerId, "posterId", session.user.discordId);
 
   await prisma.$transaction(async (tx) => {
     await tx.tradeOffer.update({ where: { id: offerId }, data: { status: "ACCEPTED" } });
@@ -158,7 +158,7 @@ export async function acceptTradeOffer(offerId: string) {
 
 export async function rejectTradeOffer(offerId: string) {
   const session = await requireSession();
-  const offer = await loadOwnedPendingOffer(offerId, "sellerId", session.user.discordId);
+  const offer = await loadOwnedPendingOffer(offerId, "posterId", session.user.discordId);
 
   await prisma.tradeOffer.update({ where: { id: offerId }, data: { status: "REJECTED" } });
   revalidatePath(`/market/${offer.listingId}`);

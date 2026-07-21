@@ -125,11 +125,13 @@ export async function createListing(formData: FormData) {
     throw new Error(parsed.error.issues[0]?.message ?? "Datos inválidos");
   }
 
-  // El precio solo tiene sentido en una venta directa — un trade se
-  // intercambia por otro item, nunca por zeny fijo (ver TradeOffer.zenyOffered
-  // para la compensación opcional en la oferta).
+  // El precio no aplica a un trade (se intercambia por otro item, nunca
+  // por zeny fijo — ver TradeOffer.zenyOffered para la compensación
+  // opcional en la oferta). En SALE es el precio de venta; en BUY el mismo
+  // campo significa "precio máximo que pagaría" — mismo campo, doble
+  // sentido según `type` (ver comentario en schema.prisma).
   let price: number | null = null;
-  if (parsed.data.type === "SALE") {
+  if (parsed.data.type === "SALE" || parsed.data.type === "BUY") {
     const pricedParsed = z.coerce
       .number()
       .int()
@@ -156,6 +158,13 @@ export async function createListing(formData: FormData) {
   if (rawOptions.length > 0 && !optionGroup) {
     throw new Error("Este item no admite random options");
   }
+  // Una petición de compra describe lo que se quiere comprar, no una
+  // instancia física concreta — no tiene sentido pedir un roll exacto de
+  // options ahí (a diferencia de SALE/TRADE, que sí representan un
+  // ejemplar real).
+  if (rawOptions.length > 0 && parsed.data.type === "BUY") {
+    throw new Error("Una petición de compra no admite random options");
+  }
 
   // defsById también se reutiliza para el webhook más abajo, sin otra query.
   const defsById = new Map<string, { id: string; label: string; group: ItemOptionGroup; slotIndex: number; minValue: number; maxValue: number }>();
@@ -179,14 +188,18 @@ export async function createListing(formData: FormData) {
   }
 
   // Un item con random options es una instancia única (el roll de options
-  // no es igual entre copias) — no tiene sentido apilar cantidad > 1.
-  // Se fuerza aquí también (no solo ocultando el campo en el form) porque
-  // no hay que confiar en lo que mande el cliente. El refine, en cambio,
-  // sí admite varias copias al mismo nivel (ver decisión con el usuario).
+  // no es igual entre copias) — no tiene sentido apilar cantidad > 1. Solo
+  // aplica a SALE (representa un ejemplar real); en BUY no describe una
+  // instancia, así que un item option-eligible no fuerza nada ahí. Se
+  // fuerza aquí también (no solo ocultando el campo en el form) porque no
+  // hay que confiar en lo que mande el cliente. El refine, en cambio, sí
+  // admite varias copias al mismo nivel (ver decisión con el usuario).
   // Un trade tampoco admite cantidad > 1: TradeOffer no lleva cuánto del
   // listing original se lleva a cambio, aceptar una oferta cierra el
   // listing entero.
-  const quantity = optionGroup || parsed.data.type === "TRADE" ? 1 : parsed.data.quantity;
+  const forcesQuantityOne =
+    parsed.data.type === "TRADE" || (parsed.data.type === "SALE" && optionGroup !== null);
+  const quantity = forcesQuantityOne ? 1 : parsed.data.quantity;
 
   const refineEligible = isRefineEligible(item);
   let refineLevel = 0;
@@ -217,7 +230,7 @@ export async function createListing(formData: FormData) {
 
   const listing = await prisma.listing.create({
     data: {
-      sellerId: session.user.discordId,
+      posterId: session.user.discordId,
       itemId: parsed.data.itemId,
       type: parsed.data.type,
       quantity,
@@ -244,8 +257,8 @@ export async function createListing(formData: FormData) {
     type: listing.type,
     price: listing.price,
     quantity: listing.quantity,
-    sellerUsername: session.user.username,
-    sellerAvatarUrl: session.user.avatarUrl,
+    posterUsername: session.user.username,
+    posterAvatarUrl: session.user.avatarUrl,
     listingUrl: `${appUrl}/market/${listing.id}`,
     options: rawOptions.map((o) => ({
       label: defsById.get(o.defId)!.label,
@@ -257,9 +270,11 @@ export async function createListing(formData: FormData) {
   return { id: listing.id };
 }
 
-// El vendedor cierra la publicación con stock restante sin vender (p.ej.
-// lo vendió fuera de la web). SOLD queda reservado para cuando se agota
-// por compras hechas aquí — ver purchaseListing.
+// Quien publica cierra la publicación con stock restante sin vender (p.ej.
+// lo vendió fuera de la web), o retira una petición de compra que ya no
+// quiere. SOLD queda reservado para cuando se agota por compras hechas
+// aquí (SALE, ver purchaseListing) o se marca cumplida a mano (BUY, ver
+// fulfillListing) o se acepta una oferta (TRADE, ver trade-offers.ts).
 export async function cancelListing(listingId: string) {
   const session = await requireSession();
 
@@ -267,8 +282,8 @@ export async function cancelListing(listingId: string) {
     where: { id: listingId },
   });
   if (!listing) throw new Error("Publicación no encontrada");
-  if (listing.sellerId !== session.user.discordId) {
-    throw new Error("Solo el vendedor puede cancelar la publicación");
+  if (listing.posterId !== session.user.discordId) {
+    throw new Error("Solo quien la publicó puede cancelarla");
   }
   if (listing.status !== "ACTIVE") {
     throw new Error("Esta publicación ya no está activa");
@@ -277,6 +292,36 @@ export async function cancelListing(listingId: string) {
   await prisma.listing.update({
     where: { id: listingId },
     data: { status: "CANCELLED" },
+  });
+
+  revalidatePath("/market");
+  revalidatePath(`/market/${listingId}`);
+}
+
+// Cierre manual de una petición de compra (type=BUY) cuando ya se ha
+// resuelto fuera de la app (Discord, en persona) — sin oferta/aceptación
+// dentro de la app (norma 2.4 del plan, deliberadamente simple v1). Se
+// reutiliza ListingStatus.SOLD, la UI lo muestra como "Cumplida".
+export async function fulfillListing(listingId: string) {
+  const session = await requireSession();
+
+  const listing = await prisma.listing.findUnique({
+    where: { id: listingId },
+  });
+  if (!listing) throw new Error("Publicación no encontrada");
+  if (listing.type !== "BUY") {
+    throw new Error("Solo una petición de compra se puede marcar como cumplida a mano");
+  }
+  if (listing.posterId !== session.user.discordId) {
+    throw new Error("Solo quien la publicó puede marcarla como cumplida");
+  }
+  if (listing.status !== "ACTIVE") {
+    throw new Error("Esta publicación ya no está activa");
+  }
+
+  await prisma.listing.update({
+    where: { id: listingId },
+    data: { status: "SOLD" },
   });
 
   revalidatePath("/market");
@@ -306,14 +351,14 @@ export async function purchaseListing(listingId: string, formData: FormData) {
   const { listing, unitPrice } = await prisma.$transaction(async (tx) => {
     const listing = await tx.listing.findUnique({ where: { id: listingId }, include: { item: true } });
     if (!listing) throw new Error("Publicación no encontrada");
-    if (listing.sellerId === session.user.discordId) {
+    if (listing.posterId === session.user.discordId) {
       throw new Error("No puedes comprar tu propia publicación");
     }
     if (listing.status !== "ACTIVE") {
       throw new Error("Esta publicación ya no está activa");
     }
     if (listing.type !== "SALE" || listing.price === null) {
-      throw new Error("Esta publicación es un intercambio, no una venta directa");
+      throw new Error("Esta publicación no es una venta directa");
     }
     const unitPrice = listing.price;
 
@@ -347,7 +392,7 @@ export async function purchaseListing(listingId: string, formData: FormData) {
   // el bloqueo de DB, y un fallo de DM (norma 2.10) nunca debe deshacer una
   // compra que ya se confirmó.
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
-  await sendDirectMessage(listing.sellerId, {
+  await sendDirectMessage(listing.posterId, {
     title: `${session.user.username} ha comprado tu ${formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}`,
     url: `${appUrl}/market/${listingId}`,
     color: DISCORD_EMBED_COLOR.SALE,

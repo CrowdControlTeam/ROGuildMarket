@@ -8,21 +8,22 @@ import type { MarketFilters } from "@/lib/market";
 import { buttonClass } from "@/lib/ui";
 import { formatPrice, priceColorClass } from "@/lib/price";
 import { formatItemDisplayName } from "@/lib/card-slots-constants";
+import { LISTING_TYPE_BADGE } from "@/lib/market-labels";
 import { UserMention } from "@/components/UserMention";
 
 type Item = { id: string; name: string; iconUrl: string };
-type Seller = { id: string; username: string };
+type Poster = { id: string; username: string };
 type ListingOption = { slotIndex: number; value: number; def: { label: string } };
 type Listing = {
   id: string;
-  type: "SALE" | "TRADE";
+  type: "SALE" | "TRADE" | "BUY";
   quantity: number;
   quantitySold: number;
   price: number | null;
   refineLevel: number;
   cardSlots: number;
   item: Item;
-  seller: Seller;
+  poster: Poster;
   options: ListingOption[];
 };
 
@@ -76,18 +77,20 @@ export function MarketResults({
               <div className="flex-1">
                 <p className="flex items-center gap-2 font-semibold">
                   {formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}
-                  {listing.type === "TRADE" && (
-                    <span className="rounded border border-blue-500/50 bg-blue-500/10 px-1.5 py-0.5 text-xs font-normal text-blue-600">
-                      Intercambio
+                  {listing.type !== "SALE" && (
+                    <span
+                      className={`rounded border px-1.5 py-0.5 text-xs font-normal ${LISTING_TYPE_BADGE[listing.type].className}`}
+                    >
+                      {LISTING_TYPE_BADGE[listing.type].label}
                     </span>
                   )}
                 </p>
                 <p className="text-sm text-ro-text-muted">
-                  x{listing.quantity - listing.quantitySold} disponibles ·
-                  vendido por{" "}
+                  {listing.type !== "BUY" && `x${listing.quantity - listing.quantitySold} disponibles · `}
+                  {listing.type === "BUY" ? "buscado por" : "vendido por"}{" "}
                   <UserMention
-                    userId={listing.seller.id}
-                    username={listing.seller.username}
+                    userId={listing.poster.id}
+                    username={listing.poster.username}
                     viewerId={currentUserId}
                   />
                 </p>
@@ -104,8 +107,9 @@ export function MarketResults({
                   </p>
                 )}
               </div>
-              {listing.type === "SALE" && listing.price !== null && (
+              {listing.type !== "TRADE" && listing.price !== null && (
                 <p className={`font-bold ${priceColorClass(listing.price)}`}>
+                  {listing.type === "BUY" ? "hasta " : ""}
                   {formatPrice(listing.price)}
                 </p>
               )}
