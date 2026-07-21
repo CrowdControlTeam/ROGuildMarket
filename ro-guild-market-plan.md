@@ -301,12 +301,88 @@ Diseño acordado (importante para retomar sin perder el hilo):
   separado: (1) infraestructura de DMs — hecho; (2) peticiones de compra —
   hecho; (3) trades — hecho; (4) regalos — hecho. **Fase 3 completa.**
 
-**Próximo paso natural**: con los cuatro tipos de listado ya construidos
-(venta, petición de compra, trade, regalo), toca el refactor de componentes
-compartidos que se aplazó explícitamente durante la Fase 3 (ver decisión del
-usuario tras el PR de peticiones de compra) — a confirmar con el usuario al
-retomar, ya que también podría optarse por seguir directamente con la Fase 4
-(pulido y extras) sin ese refactor previo.
+**Refactor unificado en marcha (2026-07-21) — "listings", i18n, UX del
+menú/creación:** tras cerrar la Fase 3, decisión del usuario de fusionar el
+vocabulario y (donde tiene sentido) el modelo de datos de los cuatro tipos de
+publicación, más varias mejoras de UX que venían arrastrándose. Diseño
+acordado (importante para retomar sin perder el hilo), en 6 PRs:
+
+- **"Listing" pasa a ser el término para venta/intercambio/compra** — los
+  tres comparten de verdad la misma forma de datos (se publica una oferta
+  abierta, alguien más la cierra después), así que `BuyRequest` se fusiona
+  dentro de `Listing` con `type = BUY` (no `BUY_REQUEST`, para mantener el
+  estilo de una palabra de `SALE`/`TRADE`). `sellerId` pasa a `posterId`
+  (neutro: en `BUY` esa persona es quien compra, no quien vende). Se
+  reutiliza `price` (precio máximo a pagar en `BUY`) y `ListingStatus.SOLD`
+  ("Cumplida" en la UI para `BUY`, mismo patrón que "Intercambiada" en
+  `TRADE`) — sin añadir columnas nuevas. El cierre de un `BUY` sigue
+  autogestionado por quien lo publicó, sin oferta/aceptación — eso se
+  revisará más adelante si hace falta, no entra en este refactor.
+- **`Gift` se queda fuera de la fusión, a propósito**: no por ser privado
+  (eso es solo un filtro en la consulta), sino porque su forma de datos es
+  distinta — remitente y destinatario ya están fijados al crearlo, no hay
+  fase de "abierto, esperando que alguien actúe", es instantáneo. Forzarlo
+  en `Listing` dejaría columnas (`recipientId`, `status`) sin uso real en
+  el resto de tipos.
+- **Formulario común de creación**: `NewListingForm`/`NewBuyRequestForm`/
+  `NewGiftForm` se fusionan en uno solo con selector de tipo (Venta/Compra/
+  Intercambio/Regalo, por defecto Venta), en `/market/new?type=`. De paso se
+  corrige que los formularios de creación (y `BuyForm`) no bloqueaban el
+  botón mientras la petición estaba en curso — pulsar varias veces duplicaba
+  la publicación.
+- **Menú**: Mercado (`/market`) / Vender (`/market?type=SALE`) / Comprar
+  (`/market?type=BUY`, antes "Petición de compra") / Comerciar
+  (`/market?type=TRADE`) / Regalar (directo al formulario con Regalo
+  preseleccionado). El selector "Tipo" de `MarketFilters` se oculta cuando
+  la propia página ya fija el tipo. Botón "crear publicación" en la
+  cabecera. El historial de regalos (`/market/gifts`, se queda privado)
+  gana iconos de dirección (enviado/recibido) para no depender solo del
+  texto.
+- **Título del sitio configurable** (`MarketConfig.siteName`, editable desde
+  `/admin`, placeholder "RO Guild Market" hasta configurarse) — mismo
+  patrón que el resto de configuración, en vez de variable de entorno o
+  autodetección del nombre del guild de Discord (quita control al admin y
+  depende de que el bot esté configurado).
+- **Nombres clicables → mensaje directo**: `UserMention` clicable solo si
+  el bot de DM está activo, abre un modal con texto libre + contexto del
+  item asociado a esa mención, se manda como DM único vía
+  `sendDirectMessage` (sin hilo ni bandeja en la web — la conversación
+  sigue por Discord). Sin límite de frecuencia ni registro en v1.
+- **i18n**: se prepara la app para más idiomas aunque hoy solo haya
+  español — `next-intl`, **sin locale routing** (un único idioma activo
+  para toda la app, no una preferencia por usuario ni por URL, así que no
+  hace falta `[locale]` en las rutas ni tocar `proxy.js`). El locale activo
+  sale de `MarketConfig.locale` (nuevo, mismo patrón que `geminiModel`: el
+  catálogo de idiomas soportados vive en código —
+  `src/lib/locale-constants.ts` — porque un idioma "disponible" necesita de
+  verdad un fichero de mensajes traducido, no es un valor arbitrario).
+  Selector en `/admin`. Las keys de mensajes van anidadas bajo `market.*`:
+  las compartidas como hijos directos (`market.cancelar`), las ligadas a un
+  enum de Prisma bajo su sección (`market.category.WEAPON`). Migración
+  incremental — no se migran todos los literales existentes de golpe, se
+  van escribiendo con el nuevo sistema a medida que cada PR del refactor
+  toca esos componentes.
+
+Organizado en 6 PRs independientes:
+
+- **PR 0 — Infraestructura i18n — hecho**: `next-intl` instalado y
+  configurado sin locale routing (confirmado que este modo no necesita
+  tocar `proxy.js`), `MarketConfig.locale` + `src/lib/locale-constants.ts`,
+  `messages/es.json` con el esqueleto bajo `market.*` (primer literal
+  migrado como prueba: el disclaimer del footer), selector de idioma en
+  `/admin`. Verificado en navegador (app funciona igual, `<html lang>`
+  ahora dinámico desde `MarketConfig.locale`, footer renderiza vía
+  `next-intl`) y migración aplicada en local y producción.
+- PR 1 — fusión de `BuyRequest` en `Listing` (`type = BUY`, `posterId`,
+  labels dinámicos) — pendiente.
+- PR 2 — formulario común de creación + bloqueo de doble envío — pendiente.
+- PR 3 — menú, páginas por tipo, botón de cabecera, iconos de regalos —
+  pendiente.
+- PR 4 — título del sitio configurable — pendiente.
+- PR 5 — mensajes directos desde nombres clicables — pendiente.
+
+**Próximo paso natural**: PR 1 del refactor (fusión de `BuyRequest` en
+`Listing`) — a confirmar con el usuario al retomar.
 
 ---
 

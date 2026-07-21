@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Press_Start_2P } from "next/font/google";
+import { NextIntlClientProvider } from "next-intl";
+import { getLocale } from "next-intl/server";
 import { auth } from "@/auth";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
@@ -32,16 +34,19 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const session = await auth();
+  const locale = await getLocale();
 
   return (
     <html
-      lang="es"
+      lang={locale}
       className={`${geistSans.variable} ${geistMono.variable} ${pressStart2P.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col">
-        <SiteHeader user={session?.user ?? null} />
-        <div className="flex-1">{children}</div>
-        <SiteFooter />
+        <NextIntlClientProvider>
+          <SiteHeader user={session?.user ?? null} />
+          <div className="flex-1">{children}</div>
+          <SiteFooter />
+        </NextIntlClientProvider>
       </body>
     </html>
   );

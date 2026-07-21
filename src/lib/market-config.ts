@@ -7,6 +7,7 @@
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constants";
 import { DEFAULT_GEMINI_MODEL, isGeminiModel, type GeminiModel } from "@/lib/gemini-model-constants";
+import { DEFAULT_LOCALE, isAppLocale, type AppLocale } from "@/lib/locale-constants";
 
 export type MarketConfigValues = {
   maxRefineLevel: number;
@@ -18,6 +19,7 @@ export type MarketConfigValues = {
   maintenanceModeEnabled: boolean;
   optionsEnabled: boolean;
   adminRoleIds: string[];
+  locale: AppLocale;
 };
 
 // Si la fila (id=1) todavía no existe, se cae a los valores conservadores
@@ -37,5 +39,9 @@ export async function loadMarketConfig(): Promise<MarketConfigValues> {
     maintenanceModeEnabled: config?.maintenanceModeEnabled ?? false,
     optionsEnabled: config?.optionsEnabled ?? true,
     adminRoleIds: config?.adminRoleIds ?? [],
+    // Mismo criterio que geminiModel: si el valor guardado dejara de estar
+    // soportado, se cae al default en vez de pedirle a next-intl un locale
+    // sin fichero de mensajes.
+    locale: config?.locale && isAppLocale(config.locale) ? config.locale : DEFAULT_LOCALE,
   };
 }
