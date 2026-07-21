@@ -1,9 +1,9 @@
 // Llamadas autenticadas "como bot" (Authorization: Bot <token>), separadas
 // de auth.ts (que usa el access_token del usuario que hace login). El bot
-// es opcional: de momento solo se usa para listar roles con nombre real en
-// /admin — si no está configurado, el panel cae a introducir IDs a mano
-// (ver AdminConfigForm.tsx). El mismo token servirá en el futuro para las
-// DMs de Fase 3.
+// se usa para listar roles con nombre real en /admin (si no está
+// configurado, el panel cae a introducir IDs a mano — ver
+// AdminConfigForm.tsx) y para las DMs de transacción (ver sendDirectMessage
+// más abajo).
 
 export type GuildRolesResult =
   | { status: "no_bot" }
@@ -42,4 +42,61 @@ export async function fetchGuildRoles(): Promise<GuildRolesResult> {
       .filter((r) => r.name !== "@everyone")
       .sort((a, b) => a.name.localeCompare(b.name)),
   };
+}
+
+export type DirectMessagePayload = {
+  title: string;
+  color: number;
+  itemIconUrl: string;
+  url?: string;
+  fields: { name: string; value: string; inline?: boolean }[];
+};
+
+// Norma 2.10 del plan: DM al destinatario de una transacción (compra,
+// petición aceptada, trade aceptado, regalo). Nunca debe tumbar la
+// transacción que la origina (ya se guardó en la DB) ni reintentar si
+// falla — motivos típicos: el bot no está configurado, el destinatario
+// tiene los DMs cerrados a miembros del servidor, o le ha bloqueado.
+export async function sendDirectMessage(discordId: string, payload: DirectMessagePayload): Promise<void> {
+  const token = process.env.DISCORD_BOT_TOKEN;
+  if (!token) return;
+
+  try {
+    const channelRes = await fetch("https://discord.com/api/users/@me/channels", {
+      method: "POST",
+      headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ recipient_id: discordId }),
+    });
+    if (!channelRes.ok) return;
+    const channel = (await channelRes.json()) as { id: string };
+
+    const embed = {
+      title: payload.title,
+      url: payload.url,
+      color: payload.color,
+      thumbnail: { url: payload.itemIconUrl },
+      fields: payload.fields,
+      timestamp: new Date().toISOString(),
+    };
+
+    const msgRes = await fetch(`https://discord.com/api/channels/${channel.id}/messages`, {
+      method: "POST",
+      headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ embeds: [embed] }),
+    });
+
+    // Si Discord rechaza el embed en sí (400), se manda como alternativa un
+    // texto plano con la misma información — un fallo de entrega (bloqueo,
+    // DMs cerrados) no cae aquí, esos ya se filtran arriba en channelRes.
+    if (!msgRes.ok && msgRes.status === 400) {
+      const plain = [payload.title, ...payload.fields.map((f) => `${f.name}: ${f.value}`)].join("\n");
+      await fetch(`https://discord.com/api/channels/${channel.id}/messages`, {
+        method: "POST",
+        headers: { Authorization: `Bot ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ content: plain }),
+      });
+    }
+  } catch {
+    // Silencioso a propósito — ver comentario de la función.
+  }
 }
