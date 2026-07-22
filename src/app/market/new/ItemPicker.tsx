@@ -4,8 +4,20 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { searchItems } from "@/lib/listings";
 import { inputClass } from "@/lib/ui";
+import { CATEGORY_LABELS, WEAPON_TYPE_LABELS } from "@/lib/market-labels";
 
 export type ItemResult = Awaited<ReturnType<typeof searchItems>>[number];
+
+// El catálogo tiene bastantes nombres duplicados (p.ej. dos "Arc Wand": un
+// arma real y un costume cosmético) — sin esta pista, elegir el resultado
+// equivocado en la lista es indistinguible hasta publicar, y ese es
+// justo el item cuya categoría/tipo decide si aparecen refine/slots/options.
+function itemHint(item: ItemResult): string {
+  if (item.category === "WEAPON" && item.weaponType) {
+    return `${CATEGORY_LABELS[item.category]} · ${WEAPON_TYPE_LABELS[item.weaponType]}`;
+  }
+  return CATEGORY_LABELS[item.category];
+}
 
 export function ItemPicker({
   onSelect,
@@ -55,7 +67,10 @@ export function ItemPicker({
                 className="flex w-full items-center gap-2 rounded-md p-2 text-left text-ro-text hover:bg-ro-gold/20"
               >
                 <Image src={item.iconUrl} alt={item.name} width={24} height={24} />
-                <span>{item.name}</span>
+                <span className="flex-1">
+                  {item.name}
+                  <span className="block text-xs text-ro-text-muted">{itemHint(item)}</span>
+                </span>
               </button>
             </li>
           ))}
