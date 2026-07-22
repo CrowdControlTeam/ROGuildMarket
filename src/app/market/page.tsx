@@ -90,14 +90,15 @@ export default async function MarketPage({
       <h1 className="mb-6 font-heading text-lg text-ro-gold">{pageTitle}</h1>
 
       <Panel className="mb-6">
-        {/* key fuerza a remontar el componente al navegar entre vistas
-            (Mercado/Ventas/Compras/Intercambios) sin recarga completa —
-            mismo motivo que el key de MarketResults más abajo: sus
-            useState(() => searchParams.get(...)) solo leen la URL en el
-            montaje inicial, así que sin esto se quedaban con los valores
-            (tipo, categoría, options seleccionadas...) de la vista
-            anterior en vez de sincronizarse con la nueva. */}
-        <MarketFilters key={JSON.stringify(filters)} />
+        {/* key solo depende de `type`, no de filters entero — es lo único
+            que define "en qué vista" está (Mercado/Ventas/Compras/
+            Intercambios) y lo único que de verdad necesita forzar un
+            remount (sus useState(() => searchParams.get(...)) solo leen
+            la URL en el montaje inicial). Con JSON.stringify(filters)
+            completo remontaba también al cambiar sort, precio, etc. —
+            cualquier interacción normal reiniciaba el formulario entero
+            en vez de solo resincronizarlo cuando cambia de vista. */}
+        <MarketFilters key={filters.type ?? "none"} />
       </Panel>
 
       <SortSelect />
