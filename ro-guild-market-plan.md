@@ -23,6 +23,10 @@ mención de trabajar directo en local): `main` protegida, todo por rama
 `<tipo>/<descripcion_tarea>` (`feature`/`bugfix`/`hotfix`/`release`) +
 PR revisado y mergeado por el humano, nunca por el asistente. Commits
 `<tipo>: <mensaje>` con el tipo determinado por el tipo de rama.
+**Actualización (2026-07-22): git flow completo** — `develop` (creada
+desde `main`) pasa a ser la rama base para todo trabajo nuevo; `main`
+queda reservada a lo ya desplegado. Las ramas de tarea salen de `develop`
+y se mergean ahí, no directo a `main`.
 
 **Desviaciones/decisiones respecto al documento original:**
 - Next.js 16 (no 14) + Tailwind v4 (no v3) — el plan se escribió antes de esas versiones; NextAuth v5 (beta, pero es el estándar de facto para App Router).
@@ -526,9 +530,74 @@ Organizado en 6 PRs independientes:
 
 Refactor de 6 PRs (0 al 5) **completo**.
 
-**Próximo paso natural**: sin tarea explícita pendiente — a definir con el
-usuario (por ejemplo, retomar la Fase 4 "pulido y extras" del roadmap
-original).
+**Git flow adoptado (2026-07-22):** a partir de aquí, `develop` (creada
+desde `main`) es la rama base de trabajo, con `main` reservada a lo ya
+desplegado — cambia el flujo descrito al principio de este documento en
+todo lo que venga después. Rama de este primer lote de arreglos:
+`fix/publication-form-config`, contra `develop`.
+
+**Arreglos post-refactor tras revisión en producción (2026-07-22),
+`fix/publication-form-config`:**
+- **Selector de tipo como desplegable**: los 4 radio buttons de
+  "Tipo de publicación" en `NewPublicationForm` pasan a un `<select>`
+  (mismo `selectClass` que el resto de desplegables del form).
+- **Categoría/tipo de arma visible en el buscador de items**: el catálogo
+  tiene 53 nombres duplicados (p.ej. dos "Arc Wand": un báculo real y un
+  costume cosmético con el mismo nombre) — sin ninguna pista, elegir el
+  resultado equivocado en `ItemPicker` era indistinguible hasta publicar,
+  y es justo la categoría/tipo de arma lo que decide si aparecen
+  refine/slots/options. Cada resultado de búsqueda ahora muestra una
+  segunda línea con la categoría (y el tipo de arma, si aplica).
+- **Reconocimiento por captura desambiguado**: por el mismo problema de
+  nombres duplicados, el matching por nombre solo podía empatar entre las
+  dos "Arc Wand" y quedarse con la que devolviera Prisma primero, sin
+  relación con la imagen real. Gemini ahora también extrae la categoría
+  (y el tipo de arma, si aplica) que ya muestra el propio tooltip
+  (`RESPONSE_SCHEMA` con `enum` sobre los valores reales de
+  `ItemCategory`/`WeaponType`, no texto libre) — el match prueba primero
+  solo contra los candidatos de esa categoría/tipo antes de caer al
+  catálogo completo si no encuentra nada.
+- **Selección de item bloqueada + botón X**: `ItemPicker` dejaba editar el
+  texto del input libremente tras seleccionar un item sin que eso
+  limpiara la selección del padre, dejando visibles secciones
+  (refine/slots/options) de un item que ya no coincidía con el texto
+  mostrado. Pasa a ser un componente controlado (`selected`/`onSelect`/
+  `onClear` en vez de `initialQuery` + remount por `key`): con un item
+  elegido, el input queda de solo lectura y aparece una X para quitarlo
+  explícitamente, limpiando también las secciones dependientes — mismo
+  cambio en `NewPublicationForm` y `TradeOfferForm`.
+- **Options en Compra ("mínimo deseado") y Regalo ("roll exacto")**: hasta
+  ahora `BUY`/`GIFT` rechazaban random options sin más. Se reconsideró el
+  sentido: en `BUY` una option no describe una instancia real (todavía no
+  se tiene el item), así que pasa a significar "el mínimo de esa stat que
+  el comprador pide" — mismo patrón de doble sentido que ya tiene
+  `Listing.price` según `type`, sin columnas nuevas. En `GIFT` sí hay una
+  instancia real de por medio (igual que `SALE`/`TRADE`), así que es el
+  roll exacto — pero `Gift` no es un `Listing`, así que hizo falta un
+  modelo nuevo, `GiftOption` (mismo shape que `ListingOption`), con su
+  propia migración; fuerza cantidad a 1 cuando el item es
+  option-eligible, mismo criterio que una venta.
+  - Parseo/validación de options centralizado en `src/lib/item-options.ts`
+    (`parseOptionsFromFormData`/`validateOptions`, antes duplicado
+    inline en `listings.ts`), reutilizado ahora también por `gifts.ts`.
+  - Nuevo `formatOptionAmount` en `market-labels.ts`: dos formatos según
+    el sentido del valor — `"+20"` (roll real) o `"20+"` (mínimo
+    deseado), usado en las cards del mercado, la ficha del listing, el
+    embed del webhook y el DM de regalo.
+  - Filtro de mercado por option: con el tipo filtrado en `BUY`, el input
+    "mín." se oculta (no tiene sentido acotar por abajo el mínimo que pide
+    otro comprador) y el que queda ("máx.") se relee como "mi item tiene
+    este valor, ¿qué compras cumpliría?" — mismo `lte` que ya usaba el
+    filtro normal en `optionSlotWhere` (`market.ts`), sin cambios de query.
+  - Verificado en navegador: petición de compra con "MATK 15+" correcta en
+    card y ficha; el filtro con máx=20 la encuentra, con máx=10 no; regalo
+    con "MATK +30" correcto en el historial, cantidad forzada a 1.
+- Migración aplicada en local (`add_gift_options`) — pendiente aplicar en
+  producción antes o al mergear (ver checklist de migraciones).
+
+**Próximo paso natural**: verificar/mergear `fix/publication-form-config`
+contra `develop` (aplicando la migración `add_gift_options` en producción
+al desplegar) — sin más tareas explícitas pendientes tras eso.
 
 ---
 
