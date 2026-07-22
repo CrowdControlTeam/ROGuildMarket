@@ -257,7 +257,7 @@ export async function getListings(filters: MarketFilters) {
     take: PAGE_SIZE + 1,
     include: {
       item: true,
-      seller: true,
+      poster: true,
       options: { include: { def: true }, orderBy: { slotIndex: "asc" } },
     },
   });

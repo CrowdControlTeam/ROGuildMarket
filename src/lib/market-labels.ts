@@ -3,7 +3,6 @@ import {
   EquipSlot,
   ItemOptionGroup,
   WeaponType,
-  BuyRequestStatus,
   ListingType,
   TradeOfferStatus,
 } from "@prisma/client";
@@ -64,15 +63,49 @@ export const OPTION_GROUP_LABELS: Record<ItemOptionGroup, string> = {
   WEAPON_MAGICAL: "Arma mágica",
 };
 
-export const BUY_REQUEST_STATUS_LABELS: Record<BuyRequestStatus, string> = {
-  ACTIVE: "Activa",
-  FULFILLED: "Cumplida",
-  CANCELLED: "Cancelada",
-};
-
 export const LISTING_TYPE_LABELS: Record<ListingType, string> = {
   SALE: "Venta",
   TRADE: "Intercambio",
+  BUY: "Compra",
+};
+
+// Quien publica se llama distinto según el tipo — en BUY esa persona
+// compra, no vende (ver comentario de Listing.posterId en schema.prisma).
+export const POSTER_LABEL: Record<ListingType, string> = {
+  SALE: "Vendedor",
+  TRADE: "Vendedor",
+  BUY: "Comprador",
+};
+
+// SOLD se reutiliza para "cerrado con éxito" en los tres tipos (ver
+// comentarios en trade-offers.ts y listings.ts) — el texto mostrado
+// cambia según qué significa cerrarse en cada uno.
+export function listingStatusLabel(status: string, type: ListingType): string {
+  if (status === "SOLD") {
+    if (type === "TRADE") return "Intercambiada";
+    if (type === "BUY") return "Cumplida";
+    return "Vendida";
+  }
+  const labels: Record<string, string> = {
+    ACTIVE: "Activa",
+    CANCELLED: "Cancelada",
+    EXPIRED: "Expirada",
+  };
+  return labels[status] ?? status;
+}
+
+// Badge visible en las cards/detalle para lo que no sea una venta directa
+// (SALE no lleva badge, es el caso "normal"). Mismos colores que
+// DISCORD_EMBED_COLOR (ver discord-colors.ts) traducidos a Tailwind.
+export const LISTING_TYPE_BADGE: Record<"TRADE" | "BUY", { label: string; className: string }> = {
+  TRADE: {
+    label: "Intercambio",
+    className: "border-blue-500/50 bg-blue-500/10 text-blue-600",
+  },
+  BUY: {
+    label: "Compra",
+    className: "border-green-600/50 bg-green-600/10 text-green-700",
+  },
 };
 
 export const OFFER_STATUS_LABEL: Record<TradeOfferStatus, string> = {

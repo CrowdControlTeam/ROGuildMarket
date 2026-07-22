@@ -36,24 +36,26 @@ export default async function BuyRequestsPage({
           {buyRequests.map((req) => (
             <li key={req.id}>
               <Link
-                href={`/market/buy-requests/${req.id}`}
+                href={`/market/${req.id}`}
                 className="flex items-center gap-4 rounded-lg border-2 border-ro-panel-border bg-ro-panel p-4 text-ro-text transition-colors hover:border-ro-gold"
               >
                 <Image src={req.item.iconUrl} alt={req.item.name} width={40} height={40} />
                 <div className="flex-1">
                   <p className="font-semibold">{req.item.name}</p>
                   <p className="text-sm text-ro-text-muted">
-                    x{req.quantity} · busca{" "}
+                    x{req.quantity} · buscado por{" "}
                     <UserMention
-                      userId={req.buyerId}
-                      username={req.buyer.username}
+                      userId={req.posterId}
+                      username={req.poster.username}
                       viewerId={session.user.discordId}
                     />
                   </p>
                 </div>
-                <span className={`font-bold ${priceColorClass(req.maxPrice)}`}>
-                  hasta {formatPrice(req.maxPrice)}
-                </span>
+                {req.price !== null && (
+                  <span className={`font-bold ${priceColorClass(req.price)}`}>
+                    hasta {formatPrice(req.price)}
+                  </span>
+                )}
               </Link>
             </li>
           ))}

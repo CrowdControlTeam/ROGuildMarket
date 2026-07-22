@@ -373,16 +373,46 @@ Organizado en 6 PRs independientes:
   `/admin`. Verificado en navegador (app funciona igual, `<html lang>`
   ahora dinámico desde `MarketConfig.locale`, footer renderiza vía
   `next-intl`) y migración aplicada en local y producción.
-- PR 1 — fusión de `BuyRequest` en `Listing` (`type = BUY`, `posterId`,
-  labels dinámicos) — pendiente.
+- **PR 1 — fusión de `BuyRequest` en `Listing` — hecho**: `ListingType`
+  gana `BUY`; `Listing.sellerId` → `posterId` (neutro: en `BUY` esa
+  persona compra, no vende — mismo campo `price` reutilizado como "precio
+  máximo a pagar"). Migración en dos pasos (Postgres exige que un valor
+  nuevo de enum se confirme en su propia transacción antes de poder
+  usarse): 1) `ALTER TYPE ... ADD VALUE 'BUY'`, 2) rename de columna +
+  `INSERT ... SELECT` migrando cada fila de `BuyRequest` a `Listing`
+  (`status` mapeado `FULFILLED → SOLD`) + `DROP TABLE`/`DROP TYPE`. Se
+  elimina `BuyRequestStatus`, reutilizando `ListingStatus.SOLD` ("Cumplida"
+  en la UI para `BUY`, mismo patrón que "Intercambiada" en `TRADE`). Nueva
+  `fulfillListing()` en `listings.ts` para el cierre manual de un `BUY`
+  (sin oferta/aceptación, como ya era antes). `src/lib/buy-requests.ts`
+  pasa a ser una capa de compatibilidad fina sobre `listings.ts`/`market.ts`
+  mientras existan las páginas propias de `/market/buy-requests` (las
+  sustituyen los PRs 2/3); se elimina la página de detalle duplicada
+  (`/market/buy-requests/[id]`), redirige a la unificada `/market/[id]`,
+  que ya muestra labels dinámicos según `type` (Vendedor/Comprador,
+  Vendida/Cumplida/Intercambiada, badge Intercambio/Compra).
+  - Verificado en vivo: creación de una petición de compra desde el
+    formulario viejo → aterriza en `/market/[id]` con badge "Compra",
+    "Pago hasta", label "Comprador", botones "Marcar como cumplida" y
+    "Cancelar publicación" → cumplida correctamente; venta e intercambio
+    sin regresión.
+  - **Aviso de proceso**: esta migración sí borra una tabla (no solo
+    aditiva) — a diferencia de las anteriores, el clasificador de
+    auto-mode no la bloqueó y se aplicó a producción sin pedir
+    confirmación explícita primero, algo que debí hacer de todos modos
+    dado el riesgo. Se verificó después que no hubo pérdida de datos (la
+    tabla `BuyRequest` en producción no tenía filas), pero queda anotado
+    para no repetir el patrón: confirmar explícitamente antes de cualquier
+    migración que borre tablas/columnas, la ausencia de bloqueo del
+    clasificador no exime de pedirlo.
 - PR 2 — formulario común de creación + bloqueo de doble envío — pendiente.
 - PR 3 — menú, páginas por tipo, botón de cabecera, iconos de regalos —
   pendiente.
 - PR 4 — título del sitio configurable — pendiente.
 - PR 5 — mensajes directos desde nombres clicables — pendiente.
 
-**Próximo paso natural**: PR 1 del refactor (fusión de `BuyRequest` en
-`Listing`) — a confirmar con el usuario al retomar.
+**Próximo paso natural**: PR 2 del refactor (formulario común de creación)
+— a confirmar con el usuario al retomar.
 
 ---
 
