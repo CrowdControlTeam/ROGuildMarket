@@ -1,6 +1,7 @@
 import { DISCORD_EMBED_COLOR } from "@/lib/discord-colors";
 import { formatPrice } from "@/lib/price";
 import { loadMarketConfig } from "@/lib/market-config";
+import { formatOptionAmount } from "@/lib/market-labels";
 
 type ListingWebhookPayload = {
   itemName: string;
@@ -17,7 +18,7 @@ type ListingWebhookPayload = {
 const LISTING_TITLE_PREFIX: Record<ListingWebhookPayload["type"], string> = {
   SALE: "Nueva venta",
   TRADE: "Nuevo intercambio",
-  BUY: "Petición de compra",
+  BUY: "Nueva compra",
 };
 
 export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) {
@@ -54,7 +55,9 @@ export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) 
             ? [
                 {
                   name: "Options",
-                  value: payload.options.map((o) => `${o.label}: +${o.value}`).join("\n"),
+                  value: payload.options
+                    .map((o) => `${o.label}: ${formatOptionAmount(o.value, payload.type === "BUY")}`)
+                    .join("\n"),
                   inline: false,
                 },
               ]

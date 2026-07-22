@@ -6,7 +6,13 @@ import { Panel } from "@/components/Panel";
 import { BackLink } from "@/components/BackLink";
 import { formatPrice, priceColorClass } from "@/lib/price";
 import { formatItemDisplayName } from "@/lib/card-slots-constants";
-import { OFFER_STATUS_LABEL, LISTING_TYPE_BADGE, POSTER_LABEL, listingStatusLabel } from "@/lib/market-labels";
+import {
+  OFFER_STATUS_LABEL,
+  LISTING_TYPE_BADGE,
+  POSTER_LABEL,
+  listingStatusLabel,
+  formatOptionAmount,
+} from "@/lib/market-labels";
 import { labelClass } from "@/lib/ui";
 import { UserMention } from "@/components/UserMention";
 import { isDmFeatureAvailable } from "@/lib/discord-bot";
@@ -122,12 +128,12 @@ export default async function ListingDetailPage({
 
         {listing.options.length > 0 && (
           <div className="mt-4">
-            <p className={labelClass}>Options</p>
+            <p className={labelClass}>{isBuy ? "Stats mínimos buscados" : "Options"}</p>
             <ul className="flex flex-col gap-1 text-sm">
               {listing.options.map((o) => (
                 <li key={o.slotIndex} className="flex justify-between border-b border-ro-panel-border/30 pb-1">
                   <span className="text-ro-text-muted">{o.def.label}</span>
-                  <span className="font-semibold">+{o.value}</span>
+                  <span className="font-semibold">{formatOptionAmount(o.value, isBuy)}</span>
                 </li>
               ))}
             </ul>

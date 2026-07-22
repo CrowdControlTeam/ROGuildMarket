@@ -9,6 +9,14 @@ import { sendDirectMessage } from "@/lib/discord-bot";
 import { DISCORD_EMBED_COLOR } from "@/lib/discord-colors";
 import { isRefineEligible, loadMaxRefineLevel } from "@/lib/refine";
 import { getMaxCardSlots, formatItemDisplayName } from "@/lib/card-slots-constants";
+import { formatOptionAmount } from "@/lib/market-labels";
+import {
+  getItemOptionGroup,
+  loadMagicalWeaponTypes,
+  isOptionsFeatureAvailable,
+  parseOptionsFromFormData,
+  validateOptions,
+} from "@/lib/item-options";
 
 // El destinatario solo se puede elegir entre usuarios que ya han iniciado
 // sesión alguna vez (los únicos de los que hay registro en User) — mismo
@@ -62,6 +70,23 @@ export async function sendGift(formData: FormData) {
   if (!item) throw new Error("El item seleccionado no existe");
   if (!recipient) throw new Error("El destinatario seleccionado no existe");
 
+  const [magicalTypes, optionsAvailable] = await Promise.all([
+    loadMagicalWeaponTypes(),
+    isOptionsFeatureAvailable(),
+  ]);
+  const optionGroup = optionsAvailable ? getItemOptionGroup(item, magicalTypes) : null;
+
+  const rawOptions = parseOptionsFromFormData(formData);
+  // Roll exacto de una instancia real (mismo sentido que en SALE/TRADE, a
+  // diferencia del "mínimo deseado" de BUY — ver comentario de
+  // ListingOption en schema.prisma).
+  const defsById = await validateOptions(rawOptions, optionGroup);
+
+  // Un regalo con random options es una instancia única (mismo criterio
+  // que una venta option-eligible en listings.ts) — se fuerza aquí también
+  // porque no hay que confiar en lo que mande el cliente.
+  const quantity = optionGroup !== null ? 1 : parsed.data.quantity;
+
   const refineEligible = isRefineEligible(item);
   let refineLevel = 0;
   if (refineEligible) {
@@ -94,9 +119,19 @@ export async function sendGift(formData: FormData) {
       senderId: session.user.discordId,
       recipientId: parsed.data.recipientId,
       itemId: parsed.data.itemId,
-      quantity: parsed.data.quantity,
+      quantity,
       refineLevel,
       cardSlots,
+      options:
+        rawOptions.length > 0
+          ? {
+              create: rawOptions.map((o) => ({
+                slotIndex: o.slotIndex,
+                defId: o.defId,
+                value: o.value,
+              })),
+            }
+          : undefined,
     },
   });
 
@@ -107,7 +142,20 @@ export async function sendGift(formData: FormData) {
     url: `${appUrl}/market/gifts`,
     color: DISCORD_EMBED_COLOR.GIFT,
     itemIconUrl: `${appUrl}${item.iconUrl}`,
-    fields: [{ name: "Cantidad", value: String(parsed.data.quantity), inline: true }],
+    fields: [
+      { name: "Cantidad", value: String(quantity), inline: true },
+      ...(rawOptions.length > 0
+        ? [
+            {
+              name: "Options",
+              value: rawOptions
+                .map((o) => `${defsById.get(o.defId)!.label}: ${formatOptionAmount(o.value, false)}`)
+                .join("\n"),
+              inline: false,
+            },
+          ]
+        : []),
+    ],
   });
 
   revalidatePath("/market/gifts");
@@ -122,6 +170,11 @@ export async function getMyGifts() {
       OR: [{ senderId: session.user.discordId }, { recipientId: session.user.discordId }],
     },
     orderBy: { createdAt: "desc" },
-    include: { item: true, sender: true, recipient: true },
+    include: {
+      item: true,
+      sender: true,
+      recipient: true,
+      options: { include: { def: true }, orderBy: { slotIndex: "asc" } },
+    },
   });
 }

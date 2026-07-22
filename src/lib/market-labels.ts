@@ -69,6 +69,16 @@ export const LISTING_TYPE_LABELS: Record<ListingType, string> = {
   BUY: "Compra",
 };
 
+// Título de la vista filtrada por tipo — tanto la entrada del menú como el
+// <h1> de /market cuando llega `?type=` usan este mismo texto (plural, a
+// diferencia de LISTING_TYPE_LABELS que es singular para badges/desplegables),
+// para que no puedan divergir entre los dos sitios sin querer.
+export const MARKET_VIEW_TITLE: Record<ListingType, string> = {
+  SALE: "Ventas",
+  BUY: "Compras",
+  TRADE: "Intercambios",
+};
+
 // Quien publica se llama distinto según el tipo — en BUY esa persona
 // compra, no vende (ver comentario de Listing.posterId en schema.prisma).
 export const POSTER_LABEL: Record<ListingType, string> = {
@@ -94,10 +104,16 @@ export function listingStatusLabel(status: string, type: ListingType): string {
   return labels[status] ?? status;
 }
 
-// Badge visible en las cards/detalle para lo que no sea una venta directa
-// (SALE no lleva badge, es el caso "normal"). Mismos colores que
-// DISCORD_EMBED_COLOR (ver discord-colors.ts) traducidos a Tailwind.
-export const LISTING_TYPE_BADGE: Record<"TRADE" | "BUY", { label: string; className: string }> = {
+// Badge de tipo en las cards/detalle. Mismos colores que
+// DISCORD_EMBED_COLOR (ver discord-colors.ts) traducidos a Tailwind. Solo
+// tiene sentido en la vista general "Mercado" (mezcla los 3 tipos) — en
+// una vista ya filtrada por tipo (Ventas/Compras/Intercambios) el badge es
+// redundante, así que el caller lo omite ahí (ver MarketResults.tsx).
+export const LISTING_TYPE_BADGE: Record<ListingType, { label: string; className: string }> = {
+  SALE: {
+    label: "Venta",
+    className: "border-ro-gold-dark/50 bg-ro-gold/10 text-ro-gold-dark",
+  },
   TRADE: {
     label: "Intercambio",
     className: "border-blue-500/50 bg-blue-500/10 text-blue-600",
@@ -107,6 +123,16 @@ export const LISTING_TYPE_BADGE: Record<"TRADE" | "BUY", { label: string; classN
     className: "border-green-600/50 bg-green-600/10 text-green-700",
   },
 };
+
+// SALE/TRADE/GIFT muestran el roll exacto de una instancia real ("+20");
+// BUY muestra el mínimo que pide el comprador ("20+", sin usar el símbolo
+// ≥ para no depender de que todo el mundo lo entienda) — ver comentario de
+// ListingOption en schema.prisma sobre el doble sentido de `value` según
+// el tipo. Solo el número: cada sitio decide cómo pegarlo al label (badge
+// de mercado, campo del webhook, etc.).
+export function formatOptionAmount(value: number, isMinimum: boolean): string {
+  return isMinimum ? `${value}+` : `+${value}`;
+}
 
 export const OFFER_STATUS_LABEL: Record<TradeOfferStatus, string> = {
   PENDING: "Pendiente",

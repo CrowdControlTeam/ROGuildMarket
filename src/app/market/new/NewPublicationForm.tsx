@@ -36,14 +36,6 @@ const SUBMIT_LABEL: Record<PublicationType, string> = {
   GIFT: "Regalar",
 };
 
-// Options (random stats) solo tiene sentido en una instancia real ya
-// publicada para vender o intercambiar — no en una petición de compra
-// (no describe un ejemplar concreto) ni en un regalo (mismo criterio que
-// TradeOffer: no disparar el alcance de un formulario secundario).
-function optionsApplicable(type: PublicationType) {
-  return type === "SALE" || type === "TRADE";
-}
-
 export function NewPublicationForm({
   recognitionEnabled,
   initialType,
@@ -74,20 +66,22 @@ export function NewPublicationForm({
   const optionGroup = selectedItem?.optionGroup ?? null;
   const refineEligible = selectedItem !== null && isRefineEligible(selectedItem);
   const maxCardSlots = selectedItem !== null ? getMaxCardSlots(selectedItem) : 0;
-  // Un trade tampoco admite cantidad > 1 (ver nota en listings.ts) — misma
-  // regla que un item con random options en venta, así que reutiliza el
-  // mismo campo bloqueado en vez de duplicar el bloque de UI.
-  const quantityLocked = type === "TRADE" || (type === "SALE" && optionGroup !== null);
+  // Un trade tampoco admite cantidad > 1 (ver nota en listings.ts). Un
+  // regalo tiene el mismo criterio que una venta: si el item es
+  // option-eligible representa una instancia real única, no varias copias
+  // idénticas. BUY se queda fuera: ahí las options son un mínimo deseado,
+  // no el roll de un ejemplar concreto, así que no ata la cantidad.
+  const quantityLocked = type === "TRADE" || ((type === "SALE" || type === "GIFT") && optionGroup !== null);
 
   // El reset de optionSelections se dispara desde el evento de selección de
   // item (handleItemSelect más abajo), no aquí: sincronizar dos piezas de
   // estado dentro de un efecto dispara un render en cascada innecesario.
   useEffect(() => {
-    if (!optionsApplicable(type) || !optionGroup) return;
+    if (!optionGroup) return;
     getOptionChoices(optionGroup).then(setOptionDefs);
-  }, [optionGroup, type]);
+  }, [optionGroup]);
 
-  const hasOptionCatalog = optionsApplicable(type) && optionGroup !== null && optionDefs.length > 0;
+  const hasOptionCatalog = optionGroup !== null && optionDefs.length > 0;
 
   function handleTypeChange(next: PublicationType) {
     setType(next);
@@ -96,6 +90,14 @@ export function NewPublicationForm({
 
   function handleItemSelect(item: ItemResult) {
     setSelectedItem(item);
+    setOptionSelections(emptyOptionSelections());
+    setRefineLevel(0);
+    setCardSlots(0);
+    setRecognitionNote(null);
+  }
+
+  function handleItemClear() {
+    setSelectedItem(null);
     setOptionSelections(emptyOptionSelections());
     setRefineLevel(0);
     setCardSlots(0);
@@ -188,22 +190,20 @@ export function NewPublicationForm({
       }}
       className="flex flex-col gap-4"
     >
-      <input type="hidden" name="type" value={type} />
-
       <div>
         <label className={labelClass}>Tipo de publicación</label>
-        <div className="flex flex-wrap gap-4 text-sm text-ro-text">
+        <select
+          name="type"
+          value={type}
+          onChange={(e) => handleTypeChange(e.target.value as PublicationType)}
+          className={selectClass}
+        >
           {TYPE_OPTIONS.map((opt) => (
-            <label key={opt.value} className="flex items-center gap-1.5">
-              <input
-                type="radio"
-                checked={type === opt.value}
-                onChange={() => handleTypeChange(opt.value)}
-              />
+            <option key={opt.value} value={opt.value}>
               {opt.label}
-            </label>
+            </option>
           ))}
-        </div>
+        </select>
       </div>
 
       {recognitionEnabled && (
@@ -216,11 +216,7 @@ export function NewPublicationForm({
 
       <div>
         <label className={labelClass}>Item</label>
-        <ItemPicker
-          key={selectedItem?.id ?? "empty"}
-          onSelect={handleItemSelect}
-          initialQuery={selectedItem?.name}
-        />
+        <ItemPicker selected={selectedItem} onSelect={handleItemSelect} onClear={handleItemClear} />
         <input type="hidden" name="itemId" value={selectedItem?.id ?? ""} />
       </div>
 
@@ -290,7 +286,7 @@ export function NewPublicationForm({
 
       {hasOptionCatalog && (
         <div>
-          <label className={labelClass}>Options</label>
+          <label className={labelClass}>{type === "BUY" ? "Stats mínimos buscados" : "Options"}</label>
           <div className="flex flex-col gap-2">
             {Array.from({ length: MAX_OPTION_SLOTS }, (_, i) => i + 1).map((slotIndex) => {
               const index = slotIndex - 1;

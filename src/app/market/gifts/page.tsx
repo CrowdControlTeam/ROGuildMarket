@@ -5,6 +5,7 @@ import { getMyGifts } from "@/lib/gifts";
 import { formatItemDisplayName } from "@/lib/card-slots-constants";
 import { UserMention } from "@/components/UserMention";
 import { isDmFeatureAvailable } from "@/lib/discord-bot";
+import { formatOptionAmount } from "@/lib/market-labels";
 
 export default async function GiftsPage() {
   const session = await requireSession();
@@ -27,9 +28,23 @@ export default async function GiftsPage() {
                 className="flex items-center gap-4 rounded-lg border-2 border-ro-panel-border bg-ro-panel p-4 text-ro-text"
               >
                 {isSender ? (
-                  <ArrowUpRight className="shrink-0 text-ro-text-muted" size={20} aria-label="Enviado" />
+                  <ArrowUpRight
+                    className="shrink-0 text-ro-text-muted"
+                    size={20}
+                    aria-label="Enviado"
+                    role="img"
+                  >
+                    <title>Enviado</title>
+                  </ArrowUpRight>
                 ) : (
-                  <ArrowDownLeft className="shrink-0 text-green-700" size={20} aria-label="Recibido" />
+                  <ArrowDownLeft
+                    className="shrink-0 text-green-700"
+                    size={20}
+                    aria-label="Recibido"
+                    role="img"
+                  >
+                    <title>Recibido</title>
+                  </ArrowDownLeft>
                 )}
                 <Image src={gift.item.iconUrl} alt={gift.item.name} width={40} height={40} />
                 <div className="flex-1">
@@ -37,6 +52,18 @@ export default async function GiftsPage() {
                     {formatItemDisplayName(gift.item.name, gift.refineLevel, gift.cardSlots)}
                     {gift.quantity > 1 && ` x${gift.quantity}`}
                   </p>
+                  {gift.options.length > 0 && (
+                    <p className="mt-1 flex flex-wrap gap-1">
+                      {gift.options.map((o) => (
+                        <span
+                          key={o.slotIndex}
+                          className="rounded border border-ro-gold-dark/50 bg-ro-gold/10 px-1.5 py-0.5 text-xs text-ro-text-muted"
+                        >
+                          {o.def.label} {formatOptionAmount(o.value, false)}
+                        </span>
+                      ))}
+                    </p>
+                  )}
                   <p className="text-sm text-ro-text-muted">
                     {isSender ? (
                       <>

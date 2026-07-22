@@ -1,5 +1,8 @@
 {
   "market": {
-    "footerDisclaimer": "Proyecto de fans, sin afiliación con Gravity Co., Ltd."
+    "footerDisclaimer": "Proyecto de fans, sin afiliación con Gravity Co., Ltd.",
+    "filters": {
+      "buyOptionsHint": "Busca compras que cumplan estos valores."
+    }
   }
 }

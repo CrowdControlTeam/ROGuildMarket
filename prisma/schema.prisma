@@ -245,10 +245,12 @@ model TradeOffer {
 // plan): no es un listing, nadie lo navega. Sin estado — mandar el regalo
 // es instantáneo y definitivo, esta tabla es solo el registro histórico
 // (transparencia, evitar disputas) + lo que dispara el DM al destinatario.
-// Mismas reglas que TradeOffer para refine/slots (instancia propia, sin
-// random options: un formulario secundario no necesita ese nivel de
-// detalle). El destinatario solo puede elegir entre usuarios que ya
-// existan en la tabla User (los únicos de los que hay registro).
+// Mismas reglas que Listing para refine/slots/options: un regalo es una
+// instancia real (igual que SALE/TRADE), así que sus options son un roll
+// exacto — a diferencia de TradeOffer, que sí se queda fuera de esto por
+// ser un formulario secundario. El destinatario solo puede elegir entre
+// usuarios que ya existan en la tabla User (los únicos de los que hay
+// registro).
 model Gift {
   id          String   @id @default(cuid())
   sender      User     @relation("GiftsSent", fields: [senderId], references: [id])
@@ -261,6 +263,8 @@ model Gift {
   refineLevel Int      @default(0)
   cardSlots   Int      @default(0)
   createdAt   DateTime @default(now())
+
+  options GiftOption[]
 
   @@index([senderId, createdAt])
   @@index([recipientId, createdAt])
@@ -359,15 +363,21 @@ model ItemOptionDef {
   // Igual a minValue cuando el valor es fijo (p.ej. ASPD siempre +1).
   maxValue  Int
 
-  selections ListingOption[]
+  selections     ListingOption[]
+  giftSelections GiftOption[]
 
   @@unique([group, slotIndex, statCode])
   @@index([group, slotIndex])
 }
 
-// Random option concreta que el vendedor indica que tiene su listing —
-// hasta MAX_OPTION_SLOTS (ver src/lib/item-options.ts) por listing, siempre
-// ocupando las posiciones desde 1 en adelante sin huecos.
+// Random option concreta de un listing — hasta MAX_OPTION_SLOTS (ver
+// src/lib/item-options.ts) por listing, siempre ocupando las posiciones
+// desde 1 en adelante sin huecos. En SALE/TRADE, `value` es el roll exacto
+// que le salió a esa instancia real. En BUY no hay instancia (se publica
+// antes de tener el item) — ahí `value` es el mínimo que el comprador pide
+// para esa stat, mismo patrón de doble sentido que `Listing.price` según
+// `type`. Validado siempre contra [def.minValue, def.maxValue] en los dos
+// casos (no tiene sentido pedir, ni tener, algo fuera del rango real).
 model ListingOption {
   id        String        @id @default(cuid())
   listing   Listing       @relation(fields: [listingId], references: [id], onDelete: Cascade)
@@ -375,8 +385,24 @@ model ListingOption {
   slotIndex Int
   def       ItemOptionDef @relation(fields: [defId], references: [id])
   defId     String
-  // Valor concreto que le salió al vendedor, dentro de [def.minValue, def.maxValue].
   value     Int
 
   @@unique([listingId, slotIndex])
+}
+
+// Random option concreta de un regalo — mismo shape que ListingOption, en
+// tabla aparte porque Gift no es un Listing (ver comentario del modelo
+// Gift). Siempre es un roll exacto (un regalo es siempre una instancia
+// real que el remitente ya tiene), nunca el sentido "mínimo deseado" que
+// puede tener ListingOption en BUY.
+model GiftOption {
+  id        String        @id @default(cuid())
+  gift      Gift          @relation(fields: [giftId], references: [id], onDelete: Cascade)
+  giftId    String
+  slotIndex Int
+  def       ItemOptionDef @relation(fields: [defId], references: [id])
+  defId     String
+  value     Int
+
+  @@unique([giftId, slotIndex])
 }

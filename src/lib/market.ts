@@ -25,16 +25,18 @@ export type MarketFilters = {
   weaponType?: WeaponType;
   type?: ListingType;
   // Filtro por random option, uno por slot posicional (1..MAX_OPTION_SLOTS
-  // — ver src/lib/item-options-constants.ts). El cliente ya resuelve a qué
-  // defId corresponde cada selección (no hace falta re-derivar el grupo
-  // aquí), así que basta con filtrar directamente por defId+slotIndex.
-  option1DefId?: string;
+  // — ver src/lib/item-options-constants.ts). Filtra por statCode, no por
+  // defId: la misma stat (p.ej. MaxHP %) existe como filas de
+  // ItemOptionDef distintas en cada grupo (armadura/prenda/calzado/arma),
+  // y aquí interesa "cualquier equipo con esta stat en esta posición",
+  // sin exigir elegir antes una categoría/slot/tipo de arma concretos.
+  option1Stat?: string;
   option1Min?: number;
   option1Max?: number;
-  option2DefId?: string;
+  option2Stat?: string;
   option2Min?: number;
   option2Max?: number;
-  option3DefId?: string;
+  option3Stat?: string;
   option3Min?: number;
   option3Max?: number;
   refineMin?: number;
@@ -165,16 +167,16 @@ function cursorWhereFor(
 // separados y no uno solo con varias condiciones dentro).
 function optionSlotWhere(
   slotIndex: number,
-  defId?: string,
+  statCode?: string,
   min?: number,
   max?: number,
 ): Prisma.ListingWhereInput | null {
-  if (!defId) return null;
+  if (!statCode) return null;
   return {
     options: {
       some: {
         slotIndex,
-        defId,
+        def: { statCode },
         ...(min !== undefined || max !== undefined
           ? {
               value: {
@@ -202,9 +204,9 @@ export async function getListings(filters: MarketFilters) {
     (filters.category === ItemCategory.WEAPON || !filters.category);
 
   const optionConditions = [
-    optionSlotWhere(1, filters.option1DefId, filters.option1Min, filters.option1Max),
-    optionSlotWhere(2, filters.option2DefId, filters.option2Min, filters.option2Max),
-    optionSlotWhere(3, filters.option3DefId, filters.option3Min, filters.option3Max),
+    optionSlotWhere(1, filters.option1Stat, filters.option1Min, filters.option1Max),
+    optionSlotWhere(2, filters.option2Stat, filters.option2Min, filters.option2Max),
+    optionSlotWhere(3, filters.option3Stat, filters.option3Min, filters.option3Max),
   ].filter((c): c is Prisma.ListingWhereInput => c !== null);
 
   const cursorCondition = cursorWhereFor(filters.sort, cursor);
