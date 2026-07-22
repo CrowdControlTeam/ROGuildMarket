@@ -188,22 +188,20 @@ export function NewPublicationForm({
       }}
       className="flex flex-col gap-4"
     >
-      <input type="hidden" name="type" value={type} />
-
       <div>
         <label className={labelClass}>Tipo de publicación</label>
-        <div className="flex flex-wrap gap-4 text-sm text-ro-text">
+        <select
+          name="type"
+          value={type}
+          onChange={(e) => handleTypeChange(e.target.value as PublicationType)}
+          className={selectClass}
+        >
           {TYPE_OPTIONS.map((opt) => (
-            <label key={opt.value} className="flex items-center gap-1.5">
-              <input
-                type="radio"
-                checked={type === opt.value}
-                onChange={() => handleTypeChange(opt.value)}
-              />
+            <option key={opt.value} value={opt.value}>
               {opt.label}
-            </label>
+            </option>
           ))}
-        </div>
+        </select>
       </div>
 
       {recognitionEnabled && (
