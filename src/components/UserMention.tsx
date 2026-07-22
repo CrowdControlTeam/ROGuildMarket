@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
 import { sendContactMessage } from "@/lib/contact-messages";
@@ -92,9 +92,15 @@ function ContactModal({
   }
 
   // document no existe en el render de servidor — createPortal necesita un
-  // nodo real. No hace falta esperar a un efecto: al ser client component,
-  // el primer render en el cliente ya tiene window/document disponibles.
-  if (typeof window === "undefined") return null;
+  // nodo real. Comprobar `typeof window` directamente en el render rompía
+  // la hidratación: la primera pasada en cliente YA ve window definido, así
+  // que montaba el portal de golpe mientras el servidor había devuelto null
+  // (justo el "server/client branch" que advierte el error de Next.js). Se
+  // pospone a un useEffect para que la pasada de hidratación coincida en
+  // ambos lados, y el portal se cree recién en el render posterior.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
 
   // Portal a document.body: UserMention aparece dentro de texto en línea
   // (<p>, <dd>) e incluso dentro del <Link> que envuelve toda la tarjeta en
