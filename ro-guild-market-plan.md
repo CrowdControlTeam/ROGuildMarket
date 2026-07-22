@@ -592,12 +592,64 @@ todo lo que venga después. Rama de este primer lote de arreglos:
   - Verificado en navegador: petición de compra con "MATK 15+" correcta en
     card y ficha; el filtro con máx=20 la encuentra, con máx=10 no; regalo
     con "MATK +30" correcto en el historial, cantidad forzada a 1.
-- Migración aplicada en local (`add_gift_options`) — pendiente aplicar en
-  producción antes o al mergear (ver checklist de migraciones).
+- Migración aplicada en local (`add_gift_options`).
+- **Etiquetas de menú/página por tipo**: "Vender/Comprar/Comerciar/Regalar"
+  pasan a "Ventas/Compras/Intercambios/Regalos" (menú y `<h1>` de
+  `/market?type=...`), vía `MARKET_VIEW_TITLE` en `market-labels.ts`
+  (mismo texto en los dos sitios a propósito, para que no diverjan). El
+  enlace de "Regalar" en el menú vuelve a apuntar a `/market/gifts`
+  (estaba temporalmente en `/market/new?type=GIFT`).
+- **Badge de tipo también en Venta**: antes solo Compra/Intercambio tenían
+  badge en las cards de la vista general "Mercado"; se añadió el de Venta
+  (`LISTING_TYPE_BADGE.SALE`). Condición de visibilidad corregida de
+  `listing.type !== "SALE"` a `!filters.type`: el badge es redundante (y
+  se sigue ocultando) en una vista ya filtrada por tipo, sea cual sea.
+- **Filtro de options del mercado, rediseño por stat**: el filtro estaba
+  atado a `ItemOptionDef.id` (un grupo/categoría concreto), así que solo
+  aparecía si ya se había elegido categoría/slot/tipo de arma elegible.
+  Pasa a filtrar por `statCode`, cruzando grupos — cada uno de los 3 slots
+  posicionales (Option 1/2/3) busca en el pool combinado de todos los
+  grupos que tengan esa posición, independiente entre sí (se puede pedir
+  "Option 1 = HP, Option 2 = lo que sea, Option 3 = HP" sin elegir antes
+  ítem/categoría). Params URL renombrados `option{N}DefId` →
+  `option{N}Stat`. Nueva `getAllOptionChoices()` trae el catálogo completo
+  una vez; `dedupeByStat()` en cliente fusiona filas del mismo stat entre
+  grupos (solo para el rango del placeholder, la query real no depende de
+  eso).
+  - Bloque colapsable ("Options"), colapsado por defecto salvo que la URL
+    ya traiga un filtro de option aplicado.
+  - Validación de borde rojo fuera de rango, portada del form de creación
+    (antes solo estaba ahí) — mismo patrón de `style` inline en vez de
+    className condicional (el orden de clases generadas de Tailwind puede
+    hacer que gane el borde dorado del focus por encima del rojo).
+  - En modo Compra: el input "mín." se oculta, el placeholder del "máx."
+    muestra el rango real del stat elegido (`min-max`) en vez de un
+    "Tu valor" genérico, con un hint aparte (i18n,
+    `market.filters.buyOptionsHint`) explicando el sentido "mínimo
+    deseado".
+- **Reset conserva `?type=`**: `resetFilters` deja `type` intacto a
+  propósito (limpia el resto de filtros pero se queda en la vista
+  Ventas/Compras/Intercambios actual en vez de volver a Mercado).
+- **`MarketFilters` no se resincronizaba con la URL en navegación cliente**:
+  causa raíz de dos síntomas reportados por separado (Reset "perdía" el
+  tipo, y el bloque de options se quedaba con los valores de la vista
+  anterior al cambiar de Ventas a Compras por el menú) — los
+  `useState(() => searchParams.get(...))` solo leen la URL una vez al
+  montar, y sin `key` no había remount en navegación `Link`/`router.push`.
+  Corregido con `key={filters.type ?? "none"}` en `<MarketFilters>` (NO
+  `key={JSON.stringify(filters)}` como en `MarketResults` — esa versión más
+  amplia se probó primero pero reseteaba el formulario en cada cambio de
+  sort o de option, perdiendo texto sin aplicar todavía; el fix correcto
+  remonta solo cuando cambia el tipo, que es lo único que redefine "en qué
+  vista estamos").
 
-**Próximo paso natural**: verificar/mergear `fix/publication-form-config`
-contra `develop` (aplicando la migración `add_gift_options` en producción
-al desplegar) — sin más tareas explícitas pendientes tras eso.
+**Estado: PR #19 mergeada en `develop`, migración `add_gift_options`
+aplicada en producción (2026-07-23).** Rama `fix/publication-form-config`
+borrada (local y ya fusionada). Sin tareas explícitas pendientes; queda
+abierto (deferido por el usuario, no resuelto) el reporte original de que
+el filtro de options a veces no aparecía para ciertas combinaciones de
+categoría/slot — pendiente de que el usuario lo vuelva a probar tras este
+rediseño antes de decidir si sigue siendo un problema.
 
 ---
 
