@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { ItemCategory, EquipSlot, WeaponType, ListingType, type ItemOptionDef } from "@prisma/client";
 import { CATEGORY_LABELS, SLOT_LABELS, WEAPON_TYPE_LABELS, LISTING_TYPE_LABELS } from "@/lib/market-labels";
 import { MAX_OPTION_SLOTS } from "@/lib/item-options-constants";
@@ -89,6 +90,14 @@ export function MarketFilters() {
         max: toNumberOrEmpty(searchParams.get(`option${n}Max`)),
       };
     }),
+  );
+  // Colapsado por defecto salvo que ya llegue con algún filtro de option
+  // aplicado desde la URL — si no, el bloque entero (con hasta 3 filas de
+  // desplegable + inputs) ocuparía sitio en todas las vistas del mercado
+  // aunque casi nunca se use, ahora que ya no depende de elegir categoría
+  // para aparecer.
+  const [optionsExpanded, setOptionsExpanded] = useState(() =>
+    optionSelections.some((sel) => sel.statCode !== ""),
   );
   // Catálogo entero (194 filas), cargado una sola vez — a diferencia del
   // formulario de publicar, el filtro no necesita saber la categoría/slot/
@@ -438,10 +447,17 @@ export function MarketFilters() {
 
       {optionsFeatureAvailable && allOptionDefs.length > 0 && (
         <div className="flex w-full flex-col gap-2">
-          <label className={labelClass}>
+          <button
+            type="button"
+            onClick={() => setOptionsExpanded((prev) => !prev)}
+            aria-expanded={optionsExpanded}
+            className={`flex items-center gap-1 ${labelClass}`}
+          >
             {isBuyFilter ? "Options — compras que tu item cumpliría" : "Options"}
-          </label>
-          {Array.from({ length: MAX_OPTION_SLOTS }, (_, i) => i + 1).map((slotIndex) => {
+            {optionsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
+          {optionsExpanded &&
+          Array.from({ length: MAX_OPTION_SLOTS }, (_, i) => i + 1).map((slotIndex) => {
             const index = slotIndex - 1;
             const sel = optionSelections[index];
             const statsForSlot = statsBySlot[index];
