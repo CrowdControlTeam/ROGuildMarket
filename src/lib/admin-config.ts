@@ -19,13 +19,19 @@ function maskSecret(value: string): string {
 export async function getMarketConfig() {
   await requireAdmin();
 
-  const [config, optionsCatalogCount, guildRolesResult] = await Promise.all([
+  const [config, optionsCatalogCount, guildRolesResult, rawConfig] = await Promise.all([
     loadMarketConfig(),
     getOptionsCatalogCount(),
     fetchGuildRoles(),
+    prisma.marketConfig.findUnique({ where: { id: 1 }, select: { siteName: true } }),
   ]);
 
   return {
+    // Valor sin resolver (puede ser null) para que el campo del formulario
+    // arranque vacío con el placeholder hasta que se configure la primera
+    // vez, en vez de aparentar que "RO Guild Market" ya se guardó a mano.
+    siteName: rawConfig?.siteName ?? "",
+    siteNamePlaceholder: config.siteName,
     maxRefineLevel: config.maxRefineLevel,
     webhookEnabled: config.webhookEnabled,
     webhookUrlMasked: config.webhookUrl ? maskSecret(config.webhookUrl) : null,
@@ -57,6 +63,9 @@ const updateConfigSchema = z.object({
   // Vacío = no tocar el valor ya guardado (patrón "enmascarado + reemplazar":
   // el formulario nunca recibe el valor real, así que no puede reenviarlo).
   webhookUrl: z.string().trim().optional(),
+  // A diferencia de webhookUrl, este campo no está enmascarado — vacío
+  // aquí sí significa "volver a sin configurar" (cae al placeholder).
+  siteName: z.string().trim().optional(),
 });
 
 // IDs de rol de Discord (snowflakes): solo dígitos. Se filtra en vez de
@@ -91,6 +100,7 @@ export async function updateMarketConfig(formData: FormData) {
     maintenanceModeEnabled: formData.get("maintenanceModeEnabled") === "on",
     optionsEnabled: formData.get("optionsEnabled") === "on",
     webhookUrl: formData.get("webhookUrl") || undefined,
+    siteName: formData.get("siteName") || undefined,
   });
   if (!parsed.success) {
     throw new Error(parsed.error.issues[0]?.message ?? "Datos inválidos");
@@ -111,6 +121,7 @@ export async function updateMarketConfig(formData: FormData) {
       webhookUrl: parsed.data.webhookUrl ?? null,
       adminRoleIds,
       locale: parsed.data.locale,
+      siteName: parsed.data.siteName ?? null,
     },
     update: {
       maxRefineLevel: parsed.data.maxRefineLevel,
@@ -123,6 +134,7 @@ export async function updateMarketConfig(formData: FormData) {
       ...(parsed.data.webhookUrl ? { webhookUrl: parsed.data.webhookUrl } : {}),
       adminRoleIds,
       locale: parsed.data.locale,
+      siteName: parsed.data.siteName ?? null,
     },
   });
 

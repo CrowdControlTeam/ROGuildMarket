@@ -26,6 +26,24 @@ export function AdminConfigForm({ config }: { config: Config }) {
       className="flex flex-col gap-6"
     >
       <fieldset className="flex flex-col gap-2">
+        <legend className="mb-1 text-sm font-semibold text-ro-text">General</legend>
+        <div>
+          <label className={labelClass}>Nombre de la aplicación</label>
+          <input
+            type="text"
+            name="siteName"
+            defaultValue={config.siteName}
+            placeholder={config.siteNamePlaceholder}
+            className={inputClass}
+          />
+          <p className="mt-1 text-xs text-ro-text-muted">
+            Se muestra en la cabecera y en la pestaña del navegador. Vacío = usar
+            &quot;{config.siteNamePlaceholder}&quot; por defecto.
+          </p>
+        </div>
+      </fieldset>
+
+      <fieldset className="flex flex-col gap-2">
         <legend className="mb-1 text-sm font-semibold text-ro-text">Acceso al panel</legend>
         <p className="text-xs text-ro-text-muted">
           Quien tenga el permiso &quot;Administrator&quot; del servidor de Discord ya entra siempre. Estos

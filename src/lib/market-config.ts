@@ -9,6 +9,12 @@ import { DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constants";
 import { DEFAULT_GEMINI_MODEL, isGeminiModel, type GeminiModel } from "@/lib/gemini-model-constants";
 import { DEFAULT_LOCALE, isAppLocale, type AppLocale } from "@/lib/locale-constants";
 
+// Placeholder/fallback hasta que se configure — vive en código a
+// propósito, no en el default de la columna (ver comentario en
+// schema.prisma), para distinguir "sin configurar" de "configurado
+// literalmente a este valor".
+export const DEFAULT_SITE_NAME = "RO Guild Market";
+
 export type MarketConfigValues = {
   maxRefineLevel: number;
   webhookUrl: string | null;
@@ -20,6 +26,7 @@ export type MarketConfigValues = {
   optionsEnabled: boolean;
   adminRoleIds: string[];
   locale: AppLocale;
+  siteName: string;
 };
 
 // Si la fila (id=1) todavía no existe, se cae a los valores conservadores
@@ -43,5 +50,6 @@ export async function loadMarketConfig(): Promise<MarketConfigValues> {
     // soportado, se cae al default en vez de pedirle a next-intl un locale
     // sin fichero de mensajes.
     locale: config?.locale && isAppLocale(config.locale) ? config.locale : DEFAULT_LOCALE,
+    siteName: config?.siteName?.trim() || DEFAULT_SITE_NAME,
   };
 }

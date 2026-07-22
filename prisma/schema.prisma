@@ -324,6 +324,14 @@ model MarketConfig {
   // mismo patrón que geminiModel): un valor aquí no basta por sí solo, hace
   // falta que exista de verdad el fichero de mensajes traducido.
   locale String @default("es")
+
+  // Nombre de la app mostrado en la cabecera (enlaza a /market) y como
+  // <title> de la pestaña — cada guild pone el suyo. Null hasta
+  // configurarse la primera vez: el placeholder/fallback "RO Guild
+  // Market" vive en código (DEFAULT_SITE_NAME en src/lib/market-config.ts),
+  // no aquí, para no confundir "sin configurar" con "configurado
+  // literalmente a RO Guild Market".
+  siteName String?
 }
 
 // Qué WeaponType cuentan como "arma mágica" (pool WEAPON_MAGICAL) en vez de
