@@ -28,9 +28,23 @@ export default async function GiftsPage() {
                 className="flex items-center gap-4 rounded-lg border-2 border-ro-panel-border bg-ro-panel p-4 text-ro-text"
               >
                 {isSender ? (
-                  <ArrowUpRight className="shrink-0 text-ro-text-muted" size={20} aria-label="Enviado" />
+                  <ArrowUpRight
+                    className="shrink-0 text-ro-text-muted"
+                    size={20}
+                    aria-label="Enviado"
+                    role="img"
+                  >
+                    <title>Enviado</title>
+                  </ArrowUpRight>
                 ) : (
-                  <ArrowDownLeft className="shrink-0 text-green-700" size={20} aria-label="Recibido" />
+                  <ArrowDownLeft
+                    className="shrink-0 text-green-700"
+                    size={20}
+                    aria-label="Recibido"
+                    role="img"
+                  >
+                    <title>Recibido</title>
+                  </ArrowDownLeft>
                 )}
                 <Image src={gift.item.iconUrl} alt={gift.item.name} width={40} height={40} />
                 <div className="flex-1">
