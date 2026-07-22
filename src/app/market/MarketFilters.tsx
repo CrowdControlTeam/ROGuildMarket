@@ -492,7 +492,13 @@ export function MarketFilters() {
                 <input
                   type="number"
                   placeholder={
-                    isBuyFilter ? "Tu valor" : selectedStat ? String(selectedStat.maxValue) : "Máx"
+                    selectedStat
+                      ? isBuyFilter
+                        ? `${selectedStat.minValue}-${selectedStat.maxValue}`
+                        : String(selectedStat.maxValue)
+                      : isBuyFilter
+                        ? "Tu valor"
+                        : "Máx"
                   }
                   value={sel.max}
                   disabled={!sel.statCode}
