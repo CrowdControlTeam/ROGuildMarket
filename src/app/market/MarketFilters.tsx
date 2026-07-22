@@ -453,15 +453,31 @@ export function MarketFilters() {
             aria-expanded={optionsExpanded}
             className={`flex items-center gap-1 ${labelClass}`}
           >
-            {isBuyFilter ? "Options — compras que tu item cumpliría" : "Options"}
+            Options
             {optionsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
+          {optionsExpanded && isBuyFilter && (
+            <p className="-mt-1 text-xs italic text-ro-text-muted">
+              Busca compras que un item tuyo con estos valores cumpliría.
+            </p>
+          )}
           {optionsExpanded &&
           Array.from({ length: MAX_OPTION_SLOTS }, (_, i) => i + 1).map((slotIndex) => {
             const index = slotIndex - 1;
             const sel = optionSelections[index];
             const statsForSlot = statsBySlot[index];
             const selectedStat = statsForSlot.find((s) => s.statCode === sel.statCode);
+            // Mismo criterio que NewPublicationForm: solo se marca en rojo si
+            // hay un valor escrito y se sale del rango real de esa stat,
+            // nunca por estar vacío.
+            const isMinOutOfRange =
+              selectedStat !== undefined &&
+              sel.min !== "" &&
+              (sel.min < selectedStat.minValue || sel.min > selectedStat.maxValue);
+            const isMaxOutOfRange =
+              selectedStat !== undefined &&
+              sel.max !== "" &&
+              (sel.max < selectedStat.minValue || sel.max > selectedStat.maxValue);
 
             return (
               <div key={slotIndex} className="flex items-center gap-2">
@@ -487,6 +503,9 @@ export function MarketFilters() {
                       handleOptionMinChange(index, e.target.value === "" ? "" : Number(e.target.value))
                     }
                     className={`w-20 ${inputBaseClass}`}
+                    // Un className condicional no basta aquí — ver el mismo
+                    // comentario en NewPublicationForm.tsx.
+                    style={isMinOutOfRange ? { borderColor: "#dc2626" } : undefined}
                   />
                 )}
                 <input
@@ -497,7 +516,7 @@ export function MarketFilters() {
                         ? `${selectedStat.minValue}-${selectedStat.maxValue}`
                         : String(selectedStat.maxValue)
                       : isBuyFilter
-                        ? "Tu valor"
+                        ? "Valor"
                         : "Máx"
                   }
                   value={sel.max}
@@ -506,6 +525,7 @@ export function MarketFilters() {
                     handleOptionMaxChange(index, e.target.value === "" ? "" : Number(e.target.value))
                   }
                   className={`w-20 ${inputBaseClass}`}
+                  style={isMaxOutOfRange ? { borderColor: "#dc2626" } : undefined}
                 />
               </div>
             );

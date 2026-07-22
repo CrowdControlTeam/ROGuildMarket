@@ -90,7 +90,14 @@ export default async function MarketPage({
       <h1 className="mb-6 font-heading text-lg text-ro-gold">{pageTitle}</h1>
 
       <Panel className="mb-6">
-        <MarketFilters />
+        {/* key fuerza a remontar el componente al navegar entre vistas
+            (Mercado/Ventas/Compras/Intercambios) sin recarga completa —
+            mismo motivo que el key de MarketResults más abajo: sus
+            useState(() => searchParams.get(...)) solo leen la URL en el
+            montaje inicial, así que sin esto se quedaban con los valores
+            (tipo, categoría, options seleccionadas...) de la vista
+            anterior en vez de sincronizarse con la nueva. */}
+        <MarketFilters key={JSON.stringify(filters)} />
       </Panel>
 
       <SortSelect />
