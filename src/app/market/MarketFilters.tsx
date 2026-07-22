@@ -35,6 +35,11 @@ export function MarketFilters() {
 
   const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [type, setType] = useState(searchParams.get("type") ?? "");
+  // Cuando se llega con un tipo ya fijado en la URL (menú Vender/Comprar/
+  // Comerciar, o un filtro de Tipo ya aplicado), el selector se oculta —
+  // la propia vista pasa a "ser" de ese tipo. "Reset" (o volver a
+  // Mercado) lo despeja y el selector reaparece.
+  const typeLocked = !!searchParams.get("type");
   const [category, setCategory] = useState(searchParams.get("category") ?? "");
   const [slot, setSlot] = useState(searchParams.get("slot") ?? "");
   const [weaponType, setWeaponType] = useState(searchParams.get("weaponType") ?? "");
@@ -273,17 +278,19 @@ export function MarketFilters() {
         />
       </div>
 
-      <div>
-        <label className={labelClass}>Tipo</label>
-        <select value={type} onChange={(e) => setType(e.target.value)} className={selectClass}>
-          <option value="">Todas</option>
-          {Object.values(ListingType).map((t) => (
-            <option key={t} value={t}>
-              {LISTING_TYPE_LABELS[t]}
-            </option>
-          ))}
-        </select>
-      </div>
+      {!typeLocked && (
+        <div>
+          <label className={labelClass}>Tipo</label>
+          <select value={type} onChange={(e) => setType(e.target.value)} className={selectClass}>
+            <option value="">Todas</option>
+            {Object.values(ListingType).map((t) => (
+              <option key={t} value={t}>
+                {LISTING_TYPE_LABELS[t]}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div>
         <label className={labelClass}>Categoría</label>

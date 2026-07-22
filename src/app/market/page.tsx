@@ -1,11 +1,9 @@
-import Link from "next/link";
 import { z } from "zod";
 import { ItemCategory, EquipSlot, WeaponType, ListingType } from "@prisma/client";
 import { getListings, isMarketSort, type MarketFilters as MarketFiltersType } from "@/lib/market";
 import { requireSession } from "@/lib/guard";
 import { loadMarketConfig } from "@/lib/market-config";
 import { Panel } from "@/components/Panel";
-import { buttonClass } from "@/lib/ui";
 import { MarketFilters } from "./MarketFilters";
 import { MarketResults } from "./MarketResults";
 import { SortSelect } from "./SortSelect";
@@ -74,7 +72,6 @@ export default async function MarketPage({
 
   const { listings, nextCursor } = await getListings(filters);
   const { maintenanceModeEnabled } = await loadMarketConfig();
-  const blockedByMaintenance = maintenanceModeEnabled && !session.user.isAdmin;
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
@@ -86,14 +83,7 @@ export default async function MarketPage({
             : ": no se puede crear ventas ni comprar por ahora."}
         </p>
       )}
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-heading text-lg text-ro-gold">Mercado</h1>
-        {!blockedByMaintenance && (
-          <Link href="/market/new" className={buttonClass("primary")}>
-            Nueva venta
-          </Link>
-        )}
-      </div>
+      <h1 className="mb-6 font-heading text-lg text-ro-gold">Mercado</h1>
 
       <Panel className="mb-6">
         <MarketFilters />
