@@ -9,7 +9,7 @@ const LINKS: { href: string; label: string; enabled: boolean }[] = [
   { href: "/market?type=SALE", label: "Vender", enabled: true },
   { href: "/market?type=BUY", label: "Comprar", enabled: true },
   { href: "/market?type=TRADE", label: "Comerciar", enabled: true },
-  { href: "/market/new?type=GIFT", label: "Regalar", enabled: true },
+  { href: "/market/gifts", label: "Regalar", enabled: true },
 ];
 
 export function HamburgerMenu() {

@@ -18,7 +18,7 @@ type ListingWebhookPayload = {
 const LISTING_TITLE_PREFIX: Record<ListingWebhookPayload["type"], string> = {
   SALE: "Nueva venta",
   TRADE: "Nuevo intercambio",
-  BUY: "Petición de compra",
+  BUY: "Nueva compra",
 };
 
 export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) {
