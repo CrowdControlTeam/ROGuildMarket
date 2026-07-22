@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import type { ItemOptionDef } from "@prisma/client";
 import { createListing, getOptionChoices, getMaxRefineLevel } from "@/lib/listings";
+import { sendGift } from "@/lib/gifts";
 import { recognizeItemFromScreenshot } from "@/lib/item-recognition";
 import { buttonClass, inputClass, inputBaseClass, selectClass, labelClass } from "@/lib/ui";
 import { PriceInput } from "@/components/PriceInput";
@@ -17,11 +18,43 @@ import { isRefineEligible, DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constan
 import { getMaxCardSlots } from "@/lib/card-slots-constants";
 import { ItemPicker, type ItemResult } from "./ItemPicker";
 import { ScreenshotDropzone } from "./ScreenshotDropzone";
+import { UserPicker, type UserResult } from "@/components/UserPicker";
 
-export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boolean }) {
+export type PublicationType = "SALE" | "BUY" | "TRADE" | "GIFT";
+
+const TYPE_OPTIONS: { value: PublicationType; label: string }[] = [
+  { value: "SALE", label: "Venta" },
+  { value: "BUY", label: "Compra" },
+  { value: "TRADE", label: "Intercambio" },
+  { value: "GIFT", label: "Regalo" },
+];
+
+const SUBMIT_LABEL: Record<PublicationType, string> = {
+  SALE: "Publicar venta",
+  BUY: "Publicar petición",
+  TRADE: "Publicar intercambio",
+  GIFT: "Regalar",
+};
+
+// Options (random stats) solo tiene sentido en una instancia real ya
+// publicada para vender o intercambiar — no en una petición de compra
+// (no describe un ejemplar concreto) ni en un regalo (mismo criterio que
+// TradeOffer: no disparar el alcance de un formulario secundario).
+function optionsApplicable(type: PublicationType) {
+  return type === "SALE" || type === "TRADE";
+}
+
+export function NewPublicationForm({
+  recognitionEnabled,
+  initialType,
+}: {
+  recognitionEnabled: boolean;
+  initialType: PublicationType;
+}) {
   const router = useRouter();
-  const [listingType, setListingType] = useState<"SALE" | "TRADE">("SALE");
+  const [type, setType] = useState<PublicationType>(initialType);
   const [selectedItem, setSelectedItem] = useState<ItemResult | null>(null);
+  const [selectedRecipient, setSelectedRecipient] = useState<UserResult | null>(null);
   const [optionDefs, setOptionDefs] = useState<ItemOptionDef[]>([]);
   const [optionSelections, setOptionSelections] = useState<OptionSelection[]>(
     emptyOptionSelections(),
@@ -31,6 +64,7 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
   const [error, setError] = useState<string | null>(null);
   const [maxRefineLevel, setMaxRefineLevel] = useState(DEFAULT_MAX_REFINE_LEVEL);
   const [isRecognizing, startRecognizeTransition] = useTransition();
+  const [isSubmitting, startSubmitTransition] = useTransition();
   const [recognitionNote, setRecognitionNote] = useState<string | null>(null);
 
   useEffect(() => {
@@ -41,21 +75,24 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
   const refineEligible = selectedItem !== null && isRefineEligible(selectedItem);
   const maxCardSlots = selectedItem !== null ? getMaxCardSlots(selectedItem) : 0;
   // Un trade tampoco admite cantidad > 1 (ver nota en listings.ts) — misma
-  // regla que un item con random options, así que reutiliza el mismo campo
-  // bloqueado en vez de duplicar el bloque de UI.
-  const quantityLocked = optionGroup !== null || listingType === "TRADE";
+  // regla que un item con random options en venta, así que reutiliza el
+  // mismo campo bloqueado en vez de duplicar el bloque de UI.
+  const quantityLocked = type === "TRADE" || (type === "SALE" && optionGroup !== null);
 
   // El reset de optionSelections se dispara desde el evento de selección de
   // item (handleItemSelect más abajo), no aquí: sincronizar dos piezas de
   // estado dentro de un efecto dispara un render en cascada innecesario.
   useEffect(() => {
-    // Si el item no es elegible no hace falta limpiar optionDefs: el check
-    // de optionGroup en hasOptionCatalog ya oculta la sección igualmente.
-    if (!optionGroup) return;
+    if (!optionsApplicable(type) || !optionGroup) return;
     getOptionChoices(optionGroup).then(setOptionDefs);
-  }, [optionGroup]);
+  }, [optionGroup, type]);
 
-  const hasOptionCatalog = optionGroup !== null && optionDefs.length > 0;
+  const hasOptionCatalog = optionsApplicable(type) && optionGroup !== null && optionDefs.length > 0;
+
+  function handleTypeChange(next: PublicationType) {
+    setType(next);
+    setOptionSelections(emptyOptionSelections());
+  }
 
   function handleItemSelect(item: ItemResult) {
     setSelectedItem(item);
@@ -119,40 +156,53 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
     });
   }
 
+  const canSubmit = selectedItem !== null && (type !== "GIFT" || selectedRecipient !== null);
+  // useTransition por sí solo no basta: disabled={isPending} solo se
+  // refleja en el DOM tras el siguiente render, y varios clics muy
+  // seguidos (mash-click) pueden dispararse antes de ese commit — se
+  // comprobó de verdad publicando 5 veces el mismo item con clics
+  // sintéticos sin espera entre ellos. Este ref se lee/escribe de forma
+  // síncrona en el propio evento, sin depender de ningún render.
+  const submittingRef = useRef(false);
+
   return (
     <form
-      action={async (formData) => {
+      action={(formData) => {
+        if (submittingRef.current) return;
+        submittingRef.current = true;
         setError(null);
-        try {
-          const { id } = await createListing(formData);
-          router.push(`/market/${id}`);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Error inesperado");
-        }
+        startSubmitTransition(async () => {
+          try {
+            if (type === "GIFT") {
+              await sendGift(formData);
+              router.push("/market/gifts");
+            } else {
+              const { id } = await createListing(formData);
+              router.push(`/market/${id}`);
+            }
+          } catch (err) {
+            submittingRef.current = false;
+            setError(err instanceof Error ? err.message : "Error inesperado");
+          }
+        });
       }}
       className="flex flex-col gap-4"
     >
-      <input type="hidden" name="type" value={listingType} />
+      <input type="hidden" name="type" value={type} />
 
       <div>
         <label className={labelClass}>Tipo de publicación</label>
-        <div className="flex gap-4 text-sm text-ro-text">
-          <label className="flex items-center gap-1.5">
-            <input
-              type="radio"
-              checked={listingType === "SALE"}
-              onChange={() => setListingType("SALE")}
-            />
-            Venta
-          </label>
-          <label className="flex items-center gap-1.5">
-            <input
-              type="radio"
-              checked={listingType === "TRADE"}
-              onChange={() => setListingType("TRADE")}
-            />
-            Intercambio
-          </label>
+        <div className="flex flex-wrap gap-4 text-sm text-ro-text">
+          {TYPE_OPTIONS.map((opt) => (
+            <label key={opt.value} className="flex items-center gap-1.5">
+              <input
+                type="radio"
+                checked={type === opt.value}
+                onChange={() => handleTypeChange(opt.value)}
+              />
+              {opt.label}
+            </label>
+          ))}
         </div>
       </div>
 
@@ -223,10 +273,18 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
         </div>
       )}
 
-      {listingType === "SALE" && (
+      {(type === "SALE" || type === "BUY") && (
         <div>
-          <label className={labelClass}>Precio (z)</label>
+          <label className={labelClass}>{type === "BUY" ? "Pago hasta (z)" : "Precio (z)"}</label>
           <PriceInput name="price" placeholder="0" />
+        </div>
+      )}
+
+      {type === "GIFT" && (
+        <div>
+          <label className={labelClass}>Destinatario</label>
+          <UserPicker key={selectedRecipient?.id ?? "empty"} onSelect={setSelectedRecipient} />
+          <input type="hidden" name="recipientId" value={selectedRecipient?.id ?? ""} />
         </div>
       )}
 
@@ -296,10 +354,10 @@ export function NewListingForm({ recognitionEnabled }: { recognitionEnabled: boo
 
       <button
         type="submit"
-        disabled={!selectedItem}
+        disabled={!canSubmit || isSubmitting}
         className={buttonClass("primary")}
       >
-        {listingType === "SALE" ? "Publicar venta" : "Publicar intercambio"}
+        {isSubmitting ? "Publicando..." : SUBMIT_LABEL[type]}
       </button>
     </form>
   );
