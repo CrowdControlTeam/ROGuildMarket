@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { loadMarketConfig } from "@/lib/market-config";
 import { HamburgerMenu } from "./HamburgerMenu";
 import { UserMenu } from "./UserMenu";
+import { CreatePublicationButton } from "./CreatePublicationButton";
 
 type SessionUser = {
   discordId: string;
@@ -11,9 +13,11 @@ type SessionUser = {
 };
 
 export async function SiteHeader({ user }: { user: SessionUser | null }) {
-  const fullUser = user
-    ? await prisma.user.findUnique({ where: { id: user.discordId } })
-    : null;
+  const [fullUser, { maintenanceModeEnabled }] = await Promise.all([
+    user ? prisma.user.findUnique({ where: { id: user.discordId } }) : null,
+    loadMarketConfig(),
+  ]);
+  const canCreate = !!user && (!maintenanceModeEnabled || user.isAdmin);
 
   return (
     <header className="border-b-4 border-ro-panel-border bg-ro-bg-alt">
@@ -28,18 +32,21 @@ export async function SiteHeader({ user }: { user: SessionUser | null }) {
           </Link>
         </div>
 
-        {fullUser && user && (
-          <UserMenu
-            user={{
-              discordId: fullUser.id,
-              username: fullUser.username,
-              avatarUrl: fullUser.avatarUrl,
-              guildRoles: fullUser.guildRoles,
-              createdAt: fullUser.createdAt,
-              isAdmin: user.isAdmin,
-            }}
-          />
-        )}
+        <div className="flex items-center gap-3">
+          {canCreate && <CreatePublicationButton />}
+          {fullUser && user && (
+            <UserMenu
+              user={{
+                discordId: fullUser.id,
+                username: fullUser.username,
+                avatarUrl: fullUser.avatarUrl,
+                guildRoles: fullUser.guildRoles,
+                createdAt: fullUser.createdAt,
+                isAdmin: user.isAdmin,
+              }}
+            />
+          )}
+        </div>
       </div>
     </header>
   );

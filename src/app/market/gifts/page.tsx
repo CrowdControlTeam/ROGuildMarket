@@ -1,9 +1,8 @@
-import Link from "next/link";
 import Image from "next/image";
+import { ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { requireSession } from "@/lib/guard";
 import { getMyGifts } from "@/lib/gifts";
 import { formatItemDisplayName } from "@/lib/card-slots-constants";
-import { buttonClass } from "@/lib/ui";
 import { UserMention } from "@/components/UserMention";
 
 export default async function GiftsPage() {
@@ -12,12 +11,7 @@ export default async function GiftsPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="font-heading text-lg text-ro-gold">Regalos</h1>
-        <Link href="/market/new?type=GIFT" className={buttonClass("primary")}>
-          Regalar item
-        </Link>
-      </div>
+      <h1 className="mb-6 font-heading text-lg text-ro-gold">Regalos</h1>
 
       {gifts.length === 0 ? (
         <p className="text-ro-text-light/70">Todavía no has enviado ni recibido ningún regalo.</p>
@@ -30,6 +24,11 @@ export default async function GiftsPage() {
                 key={gift.id}
                 className="flex items-center gap-4 rounded-lg border-2 border-ro-panel-border bg-ro-panel p-4 text-ro-text"
               >
+                {isSender ? (
+                  <ArrowUpRight className="shrink-0 text-ro-text-muted" size={20} aria-label="Enviado" />
+                ) : (
+                  <ArrowDownLeft className="shrink-0 text-green-700" size={20} aria-label="Recibido" />
+                )}
                 <Image src={gift.item.iconUrl} alt={gift.item.name} width={40} height={40} />
                 <div className="flex-1">
                   <p className="font-semibold">

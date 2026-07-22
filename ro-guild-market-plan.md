@@ -430,12 +430,38 @@ Organizado en 6 PRs independientes:
     comparten la misma vulnerabilidad). Reverificado con el mismo test:
     1 sola fila creada tras 5 clics.
 
-Organizado en 6 PRs — próximo: PR 3 (menú, páginas por tipo, botón de
-cabecera, iconos de regalos), PR 4 (título de sitio), PR 5 (mensajes
-directos).
+- **PR 3 — menú, páginas por tipo, botón de cabecera, iconos de regalos —
+  hecho**: menú pasa a Mercado (`/market`) / Vender (`/market?type=SALE`)
+  / Comprar (`/market?type=BUY`) / Comerciar (`/market?type=TRADE`) /
+  Regalar (directo a `/market/new?type=GIFT`, ya no al historial). El
+  selector "Tipo" de `MarketFilters` se oculta en cuanto hay un `type` en
+  la URL (venga del menú o de haberlo filtrado a mano desde Mercado) —
+  "Reset" o volver a Mercado lo despeja y reaparece; sin ruta nueva
+  aparte, tal como se acordó ("mínimo código nuevo").
+  - Botón "Nueva publicación" ahora vive en la cabecera (`SiteHeader`,
+    visible en toda la app, gated por sesión + modo mantenimiento), no
+    solo en `/market`. Sabe adaptar el `?type=` según la pantalla activa
+    (Comprar/Comerciar/Regalos preseleccionan su tipo, el resto cae a
+    Venta) — los botones de creación redundantes que había en
+    `/market` y `/market/gifts` se retiran, un único punto de entrada.
+  - `/market/gifts`: iconos de dirección (`ArrowUpRight` enviado,
+    `ArrowDownLeft` recibido, `lucide-react`) junto al texto existente.
+  - Se elimina `/market/buy-requests` entero (lista + búsqueda) — ya
+    redundante frente a `/market?type=BUY`, que reutiliza los mismos
+    filtros ricos (categoría, refine, slots, precio) que la lista vieja
+    no tenía. `src/lib/buy-requests.ts` también se elimina: tras los PRs
+    1 y 2 sus funciones ya no las llamaba nadie salvo esa página.
+  - Barrido de "Petición de compra": los sitios visibles ya decían
+    "Comprar"/"Compra" desde los PRs 1 y 2; lo que queda son comentarios
+    de código y mensajes de error completos (p.ej. "Una petición de
+    compra no admite random options"), que se dejan tal cual por ser
+    prosa descriptiva, no una etiqueta de categoría.
 
-**Próximo paso natural**: PR 3 del refactor (menú y páginas por tipo) — a
-confirmar con el usuario al retomar.
+Organizado en 6 PRs — próximo: PR 4 (título de sitio configurable), PR 5
+(mensajes directos desde nombres clicables).
+
+**Próximo paso natural**: PR 4 del refactor (título del sitio
+configurable) — a confirmar con el usuario al retomar.
 
 ---
 

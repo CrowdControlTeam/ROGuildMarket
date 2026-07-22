@@ -5,10 +5,11 @@ import Link from "next/link";
 import { Sidebar } from "./Sidebar";
 
 const LINKS: { href: string; label: string; enabled: boolean }[] = [
-  { href: "/market", label: "Comprar", enabled: true },
-  { href: "/market/new", label: "Vender", enabled: true },
-  { href: "/market/buy-requests", label: "Petición de compra", enabled: true },
-  { href: "/market/gifts", label: "Regalar", enabled: true },
+  { href: "/market", label: "Mercado", enabled: true },
+  { href: "/market?type=SALE", label: "Vender", enabled: true },
+  { href: "/market?type=BUY", label: "Comprar", enabled: true },
+  { href: "/market?type=TRADE", label: "Comerciar", enabled: true },
+  { href: "/market/new?type=GIFT", label: "Regalar", enabled: true },
 ];
 
 export function HamburgerMenu() {
