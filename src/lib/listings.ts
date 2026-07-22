@@ -72,11 +72,27 @@ export async function getMaxRefineLevel() {
 }
 
 // Devuelve el catálogo de options posibles de un grupo, ya ordenado por
-// slot posicional — el formulario filtra por slotIndex en cliente.
+// slot posicional — el formulario de publicar lo usa así, atado al grupo
+// real del item elegido (ahí sí importa: el roll es de una instancia
+// concreta de ese grupo).
 export async function getOptionChoices(group: ItemOptionGroup) {
   await requireSession();
   return prisma.itemOptionDef.findMany({
     where: { group },
+    orderBy: [{ slotIndex: "asc" }, { label: "asc" }],
+  });
+}
+
+// El filtro de mercado, a diferencia del formulario, no fija categoría/
+// slot/tipo de arma de antemano — busca por stat en una posición
+// concreta (p.ej. "Option 2 = MaxHP") sin importar de qué grupo salga, así
+// que trae el catálogo entero (194 filas, nada pesado) y el cliente
+// dedupea por (slotIndex, statCode) para poblar cada uno de los 3
+// desplegables. Ver optionSlotWhere en market.ts, que filtra por
+// statCode en vez de por defId por el mismo motivo.
+export async function getAllOptionChoices() {
+  await requireSession();
+  return prisma.itemOptionDef.findMany({
     orderBy: [{ slotIndex: "asc" }, { label: "asc" }],
   });
 }

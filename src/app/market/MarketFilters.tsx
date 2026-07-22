@@ -2,31 +2,45 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import {
-  ItemCategory,
-  EquipSlot,
-  WeaponType,
-  ListingType,
-  type ItemOptionGroup,
-  type ItemOptionDef,
-} from "@prisma/client";
+import { ItemCategory, EquipSlot, WeaponType, ListingType, type ItemOptionDef } from "@prisma/client";
 import { CATEGORY_LABELS, SLOT_LABELS, WEAPON_TYPE_LABELS, LISTING_TYPE_LABELS } from "@/lib/market-labels";
-import { getItemOptionGroup, MAX_OPTION_SLOTS } from "@/lib/item-options-constants";
+import { MAX_OPTION_SLOTS } from "@/lib/item-options-constants";
 import { isRefineEligible, DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constants";
 import { getMaxCardSlots, MAX_WEAPON_CARD_SLOTS } from "@/lib/card-slots-constants";
 import {
-  getMagicalWeaponTypes,
-  getOptionChoices,
+  getAllOptionChoices,
   getMaxRefineLevel,
   getOptionsFeatureAvailable,
 } from "@/lib/listings";
 import { buttonClass, inputClass, inputBaseClass, selectClass, labelClass } from "@/lib/ui";
 import { MaskedPriceInput } from "@/components/MaskedPriceInput";
 
-type OptionFilterSelection = { defId: string; min: number | ""; max: number | "" };
+type OptionFilterSelection = { statCode: string; min: number | ""; max: number | "" };
 
 function emptyOptionFilterSelections(): OptionFilterSelection[] {
-  return Array.from({ length: MAX_OPTION_SLOTS }, () => ({ defId: "", min: "", max: "" }));
+  return Array.from({ length: MAX_OPTION_SLOTS }, () => ({ statCode: "", min: "", max: "" }));
+}
+
+// Un mismo stat (p.ej. "MaxHP %") existe como filas de ItemOptionDef
+// distintas en cada grupo (armadura/prenda/calzado/arma física/arma
+// mágica) — el filtro busca por posición sin importar el grupo, así que
+// aquí se dedupea por statCode, fusionando el rango [min,max] de todas las
+// filas que comparten stat+posición (solo afecta al placeholder, la query
+// real no depende de este rango).
+type StatOption = { statCode: string; label: string; minValue: number; maxValue: number };
+
+function dedupeByStat(defs: ItemOptionDef[]): StatOption[] {
+  const byCode = new Map<string, StatOption>();
+  for (const d of defs) {
+    const existing = byCode.get(d.statCode);
+    if (existing) {
+      existing.minValue = Math.min(existing.minValue, d.minValue);
+      existing.maxValue = Math.max(existing.maxValue, d.maxValue);
+    } else {
+      byCode.set(d.statCode, { statCode: d.statCode, label: d.label, minValue: d.minValue, maxValue: d.maxValue });
+    }
+  }
+  return Array.from(byCode.values()).sort((a, b) => a.label.localeCompare(b.label));
 }
 
 export function MarketFilters() {
@@ -70,28 +84,36 @@ export function MarketFilters() {
     Array.from({ length: MAX_OPTION_SLOTS }, (_, i) => {
       const n = i + 1;
       return {
-        defId: searchParams.get(`option${n}DefId`) ?? "",
+        statCode: searchParams.get(`option${n}Stat`) ?? "",
         min: toNumberOrEmpty(searchParams.get(`option${n}Min`)),
         max: toNumberOrEmpty(searchParams.get(`option${n}Max`)),
       };
     }),
   );
-  const [optionDefs, setOptionDefs] = useState<ItemOptionDef[]>([]);
-
-  // null = magia/física de armas sin cargar todavía (evita resolver mal el
-  // grupo de un arma mientras no sabemos qué tipos cuentan como mágicos).
-  const [magicalTypes, setMagicalTypes] = useState<Set<WeaponType> | null>(null);
-  useEffect(() => {
-    getMagicalWeaponTypes().then((types) => setMagicalTypes(new Set(types)));
-  }, []);
+  // Catálogo entero (194 filas), cargado una sola vez — a diferencia del
+  // formulario de publicar, el filtro no necesita saber la categoría/slot/
+  // tipo de arma de antemano: busca por stat en una posición concreta sin
+  // importar de qué grupo salga (ver dedupeByStat), así que puede estar
+  // siempre visible en vez de aparecer solo tras elegir categoría.
+  const [allOptionDefs, setAllOptionDefs] = useState<ItemOptionDef[]>([]);
 
   // Toggle + catálogo desde /admin (ver src/lib/item-options.ts) — si está
-  // apagado, la sección de options ni se carga ni se muestra, sin importar
-  // qué combinación de categoría/slot/tipo de arma esté elegida.
+  // apagado, la sección de options ni se carga ni se muestra.
   const [optionsFeatureAvailable, setOptionsFeatureAvailable] = useState(true);
   useEffect(() => {
-    getOptionsFeatureAvailable().then(setOptionsFeatureAvailable);
+    getOptionsFeatureAvailable().then((available) => {
+      setOptionsFeatureAvailable(available);
+      if (available) getAllOptionChoices().then(setAllOptionDefs);
+    });
   }, []);
+
+  const statsBySlot = useMemo(() => {
+    const bySlot: StatOption[][] = [];
+    for (let slotIndex = 1; slotIndex <= MAX_OPTION_SLOTS; slotIndex++) {
+      bySlot.push(dedupeByStat(allOptionDefs.filter((d) => d.slotIndex === slotIndex)));
+    }
+    return bySlot;
+  }, [allOptionDefs]);
 
   // En BUY, `value` de cada option es el mínimo que pide el comprador, no
   // el roll real de un item (ver comentario de ListingOption en
@@ -127,48 +149,10 @@ export function MarketFilters() {
       ? getMaxCardSlots({ category: ItemCategory.ARMOR, slot: slot as EquipSlot })
       : MAX_WEAPON_CARD_SLOTS;
 
-  // undefined: todavía no se puede saber (falta magicalTypes). null: esta
-  // combinación de filtros no tiene options. Un ItemOptionGroup: resuelto.
-  const optionGroup = useMemo((): ItemOptionGroup | null | undefined => {
-    if (category === ItemCategory.ARMOR && slot) {
-      return getItemOptionGroup(
-        { category: ItemCategory.ARMOR, slot: slot as EquipSlot, weaponType: null },
-        new Set(),
-      );
-    }
-    if (category === ItemCategory.WEAPON && weaponType) {
-      if (magicalTypes === null) return undefined;
-      return getItemOptionGroup(
-        { category: ItemCategory.WEAPON, slot: null, weaponType: weaponType as WeaponType },
-        magicalTypes,
-      );
-    }
-    return null;
-  }, [category, slot, weaponType, magicalTypes]);
-
-  // Solo se toca optionDefs/optionSelections cuando el grupo resuelve a algo
-  // concreto: si pasa a null (sin options) o undefined (aún resolviendo), no
-  // se cambia nada — los filtros de option se quedan como estén, solo se
-  // deshabilitan en el render (ver `groupHasOptions`). Tampoco se pide nada
-  // si la función está apagada desde /admin.
-  useEffect(() => {
-    if (!optionsFeatureAvailable || optionGroup === null || optionGroup === undefined) return;
-    getOptionChoices(optionGroup).then((defs) => {
-      setOptionDefs(defs);
-      setOptionSelections((prev) =>
-        prev.map((sel) =>
-          !sel.defId || defs.some((d) => d.id === sel.defId) ? sel : { defId: "", min: "", max: "" },
-        ),
-      );
-    });
-  }, [optionGroup, optionsFeatureAvailable]);
-
-  const groupHasOptions = optionGroup !== null && optionGroup !== undefined;
-
-  function handleOptionSelectChange(index: number, defId: string) {
+  function handleOptionSelectChange(index: number, statCode: string) {
     setOptionSelections((prev) => {
       const next = [...prev];
-      next[index] = { defId, min: "", max: "" };
+      next[index] = { statCode, min: "", max: "" };
       return next;
     });
   }
@@ -200,15 +184,13 @@ export function MarketFilters() {
     setOrDelete(params, "slot", slot);
     setOrDelete(params, "weaponType", weaponType);
 
-    // Los filtros de option deshabilitados (categoría sin options) no se
-    // aplican, aunque el usuario los tenga rellenados en pantalla. En BUY,
-    // "mín." no se manda nunca — ese input ni se renderiza (ver isBuyFilter).
+    // En BUY, "mín." no se manda nunca — ese input ni se renderiza (ver
+    // isBuyFilter).
     optionSelections.forEach((sel, i) => {
       const n = i + 1;
-      const defId = optionsFeatureAvailable && groupHasOptions ? sel.defId : "";
-      setOrDelete(params, `option${n}DefId`, defId);
-      setOrDelete(params, `option${n}Min`, !isBuyFilter && defId && sel.min !== "" ? String(sel.min) : "");
-      setOrDelete(params, `option${n}Max`, defId && sel.max !== "" ? String(sel.max) : "");
+      setOrDelete(params, `option${n}Stat`, sel.statCode);
+      setOrDelete(params, `option${n}Min`, !isBuyFilter && sel.statCode && sel.min !== "" ? String(sel.min) : "");
+      setOrDelete(params, `option${n}Max`, sel.statCode && sel.max !== "" ? String(sel.max) : "");
     });
 
     setOrDelete(
@@ -250,7 +232,6 @@ export function MarketFilters() {
     setSlot("");
     setWeaponType("");
     setOptionSelections(emptyOptionFilterSelections());
-    setOptionDefs([]);
     setRefineMin("");
     setRefineMax("");
     setCardSlotsMin("");
@@ -271,7 +252,7 @@ export function MarketFilters() {
       "maxPrice",
     ];
     for (let n = 1; n <= MAX_OPTION_SLOTS; n++) {
-      keys.push(`option${n}DefId`, `option${n}Min`, `option${n}Max`);
+      keys.push(`option${n}Stat`, `option${n}Min`, `option${n}Max`);
     }
     keys.forEach((key) => params.delete(key));
     router.push(`/market?${params.toString()}`);
@@ -455,7 +436,7 @@ export function MarketFilters() {
         </button>
       </div>
 
-      {optionsFeatureAvailable && optionDefs.length > 0 && (
+      {optionsFeatureAvailable && allOptionDefs.length > 0 && (
         <div className="flex w-full flex-col gap-2">
           <label className={labelClass}>
             {isBuyFilter ? "Options — compras que tu item cumpliría" : "Options"}
@@ -463,30 +444,29 @@ export function MarketFilters() {
           {Array.from({ length: MAX_OPTION_SLOTS }, (_, i) => i + 1).map((slotIndex) => {
             const index = slotIndex - 1;
             const sel = optionSelections[index];
-            const defsForSlot = optionDefs.filter((d) => d.slotIndex === slotIndex);
-            const selectedDef = defsForSlot.find((d) => d.id === sel.defId);
+            const statsForSlot = statsBySlot[index];
+            const selectedStat = statsForSlot.find((s) => s.statCode === sel.statCode);
 
             return (
               <div key={slotIndex} className="flex items-center gap-2">
                 <select
-                  value={sel.defId}
-                  disabled={!groupHasOptions}
+                  value={sel.statCode}
                   onChange={(e) => handleOptionSelectChange(index, e.target.value)}
                   className={`min-w-0 flex-1 ${selectClass}`}
                 >
                   <option value="">{`-- Option ${slotIndex} --`}</option>
-                  {defsForSlot.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.label}
+                  {statsForSlot.map((s) => (
+                    <option key={s.statCode} value={s.statCode}>
+                      {s.label}
                     </option>
                   ))}
                 </select>
                 {!isBuyFilter && (
                   <input
                     type="number"
-                    placeholder={selectedDef ? String(selectedDef.minValue) : "Mín"}
+                    placeholder={selectedStat ? String(selectedStat.minValue) : "Mín"}
                     value={sel.min}
-                    disabled={!sel.defId}
+                    disabled={!sel.statCode}
                     onChange={(e) =>
                       handleOptionMinChange(index, e.target.value === "" ? "" : Number(e.target.value))
                     }
@@ -496,10 +476,10 @@ export function MarketFilters() {
                 <input
                   type="number"
                   placeholder={
-                    isBuyFilter ? "Tu valor" : selectedDef ? String(selectedDef.maxValue) : "Máx"
+                    isBuyFilter ? "Tu valor" : selectedStat ? String(selectedStat.maxValue) : "Máx"
                   }
                   value={sel.max}
-                  disabled={!sel.defId}
+                  disabled={!sel.statCode}
                   onChange={(e) =>
                     handleOptionMaxChange(index, e.target.value === "" ? "" : Number(e.target.value))
                   }
