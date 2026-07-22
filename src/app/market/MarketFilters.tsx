@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { ItemCategory, EquipSlot, WeaponType, ListingType, type ItemOptionDef } from "@prisma/client";
 import { CATEGORY_LABELS, SLOT_LABELS, WEAPON_TYPE_LABELS, LISTING_TYPE_LABELS } from "@/lib/market-labels";
@@ -47,6 +48,7 @@ function dedupeByStat(defs: ItemOptionDef[]): StatOption[] {
 export function MarketFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations("market");
 
   const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [type, setType] = useState(searchParams.get("type") ?? "");
@@ -457,9 +459,7 @@ export function MarketFilters() {
             {optionsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
           {optionsExpanded && isBuyFilter && (
-            <p className="-mt-1 text-xs italic text-ro-text-muted">
-              Busca compras que un item tuyo con estos valores cumpliría.
-            </p>
+            <p className="-mt-1 text-xs italic text-ro-text-muted">{t("filters.buyOptionsHint")}</p>
           )}
           {optionsExpanded &&
           Array.from({ length: MAX_OPTION_SLOTS }, (_, i) => i + 1).map((slotIndex) => {
