@@ -108,6 +108,16 @@ export const LISTING_TYPE_BADGE: Record<"TRADE" | "BUY", { label: string; classN
   },
 };
 
+// SALE/TRADE/GIFT muestran el roll exacto de una instancia real ("+20");
+// BUY muestra el mínimo que pide el comprador ("20+", sin usar el símbolo
+// ≥ para no depender de que todo el mundo lo entienda) — ver comentario de
+// ListingOption en schema.prisma sobre el doble sentido de `value` según
+// el tipo. Solo el número: cada sitio decide cómo pegarlo al label (badge
+// de mercado, campo del webhook, etc.).
+export function formatOptionAmount(value: number, isMinimum: boolean): string {
+  return isMinimum ? `${value}+` : `+${value}`;
+}
+
 export const OFFER_STATUS_LABEL: Record<TradeOfferStatus, string> = {
   PENDING: "Pendiente",
   ACCEPTED: "Aceptada",

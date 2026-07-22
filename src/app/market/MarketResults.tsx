@@ -8,7 +8,7 @@ import type { MarketFilters } from "@/lib/market";
 import { buttonClass } from "@/lib/ui";
 import { formatPrice, priceColorClass } from "@/lib/price";
 import { formatItemDisplayName } from "@/lib/card-slots-constants";
-import { LISTING_TYPE_BADGE } from "@/lib/market-labels";
+import { LISTING_TYPE_BADGE, formatOptionAmount } from "@/lib/market-labels";
 import { UserMention } from "@/components/UserMention";
 
 type Item = { id: string; name: string; iconUrl: string };
@@ -105,7 +105,7 @@ export function MarketResults({
                         key={o.slotIndex}
                         className="rounded border border-ro-gold-dark/50 bg-ro-gold/10 px-1.5 py-0.5 text-xs text-ro-text-muted"
                       >
-                        {o.def.label} +{o.value}
+                        {o.def.label} {formatOptionAmount(o.value, listing.type === "BUY")}
                       </span>
                     ))}
                   </p>

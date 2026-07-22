@@ -93,6 +93,14 @@ export function MarketFilters() {
     getOptionsFeatureAvailable().then(setOptionsFeatureAvailable);
   }, []);
 
+  // En BUY, `value` de cada option es el mínimo que pide el comprador, no
+  // el roll real de un item (ver comentario de ListingOption en
+  // schema.prisma) — no tiene sentido acotar por abajo lo que otro pide
+  // como mínimo, así que el filtro "mín." se oculta y el que queda se
+  // relee como "mi item tiene este valor, ¿qué compras cumpliría?"
+  // (mismo `lte` que ya usa el filtro normal, solo cambia qué representa).
+  const isBuyFilter = type === "BUY";
+
   const showSlot = category === ItemCategory.ARMOR || category === ItemCategory.CARD || category === "";
   const showWeaponType = category === ItemCategory.WEAPON || category === "";
 
@@ -193,12 +201,13 @@ export function MarketFilters() {
     setOrDelete(params, "weaponType", weaponType);
 
     // Los filtros de option deshabilitados (categoría sin options) no se
-    // aplican, aunque el usuario los tenga rellenados en pantalla.
+    // aplican, aunque el usuario los tenga rellenados en pantalla. En BUY,
+    // "mín." no se manda nunca — ese input ni se renderiza (ver isBuyFilter).
     optionSelections.forEach((sel, i) => {
       const n = i + 1;
       const defId = optionsFeatureAvailable && groupHasOptions ? sel.defId : "";
       setOrDelete(params, `option${n}DefId`, defId);
-      setOrDelete(params, `option${n}Min`, defId && sel.min !== "" ? String(sel.min) : "");
+      setOrDelete(params, `option${n}Min`, !isBuyFilter && defId && sel.min !== "" ? String(sel.min) : "");
       setOrDelete(params, `option${n}Max`, defId && sel.max !== "" ? String(sel.max) : "");
     });
 
@@ -445,7 +454,9 @@ export function MarketFilters() {
 
       {optionsFeatureAvailable && optionDefs.length > 0 && (
         <div className="flex w-full flex-col gap-2">
-          <label className={labelClass}>Options</label>
+          <label className={labelClass}>
+            {isBuyFilter ? "Options — compras que tu item cumpliría" : "Options"}
+          </label>
           {Array.from({ length: MAX_OPTION_SLOTS }, (_, i) => i + 1).map((slotIndex) => {
             const index = slotIndex - 1;
             const sel = optionSelections[index];
@@ -467,19 +478,23 @@ export function MarketFilters() {
                     </option>
                   ))}
                 </select>
+                {!isBuyFilter && (
+                  <input
+                    type="number"
+                    placeholder={selectedDef ? String(selectedDef.minValue) : "Mín"}
+                    value={sel.min}
+                    disabled={!sel.defId}
+                    onChange={(e) =>
+                      handleOptionMinChange(index, e.target.value === "" ? "" : Number(e.target.value))
+                    }
+                    className={`w-20 ${inputBaseClass}`}
+                  />
+                )}
                 <input
                   type="number"
-                  placeholder={selectedDef ? String(selectedDef.minValue) : "Mín"}
-                  value={sel.min}
-                  disabled={!sel.defId}
-                  onChange={(e) =>
-                    handleOptionMinChange(index, e.target.value === "" ? "" : Number(e.target.value))
+                  placeholder={
+                    isBuyFilter ? "Tu valor" : selectedDef ? String(selectedDef.maxValue) : "Máx"
                   }
-                  className={`w-20 ${inputBaseClass}`}
-                />
-                <input
-                  type="number"
-                  placeholder={selectedDef ? String(selectedDef.maxValue) : "Máx"}
                   value={sel.max}
                   disabled={!sel.defId}
                   onChange={(e) =>

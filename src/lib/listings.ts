@@ -10,10 +10,11 @@ import { sendDirectMessage } from "@/lib/discord-bot";
 import { DISCORD_EMBED_COLOR } from "@/lib/discord-colors";
 import { formatPrice } from "@/lib/price";
 import {
-  MAX_OPTION_SLOTS,
   getItemOptionGroup,
   loadMagicalWeaponTypes,
   isOptionsFeatureAvailable,
+  parseOptionsFromFormData,
+  validateOptions,
 } from "@/lib/item-options";
 import { isRefineEligible, loadMaxRefineLevel } from "@/lib/refine";
 import { getMaxCardSlots, formatItemDisplayName } from "@/lib/card-slots-constants";
@@ -86,28 +87,6 @@ const createListingSchema = z.object({
   quantity: z.coerce.number().int().positive("La cantidad debe ser mayor que 0"),
 });
 
-// Las options van en campos planos option1DefId/option1Value, etc. (mismo
-// estilo que el resto del form, sin arrays anidados en FormData). Parar en
-// el primer slot vacío garantiza que siempre ocupen las posiciones desde 1
-// en adelante sin huecos, sin necesidad de validarlo aparte.
-function parseOptionsFromFormData(formData: FormData) {
-  const options: { slotIndex: number; defId: string; value: number }[] = [];
-  for (let slotIndex = 1; slotIndex <= MAX_OPTION_SLOTS; slotIndex++) {
-    const defId = formData.get(`option${slotIndex}DefId`);
-    if (!defId) break;
-    const rawValue = formData.get(`option${slotIndex}Value`);
-    if (typeof defId !== "string" || typeof rawValue !== "string") {
-      throw new Error("Datos de option inválidos");
-    }
-    const value = Number(rawValue);
-    if (!Number.isInteger(value)) {
-      throw new Error("El valor de la option debe ser un número entero");
-    }
-    options.push({ slotIndex, defId, value });
-  }
-  return options;
-}
-
 export async function createListing(formData: FormData) {
   const session = await requireSession();
 
@@ -155,37 +134,11 @@ export async function createListing(formData: FormData) {
   const optionGroup = optionsAvailable ? getItemOptionGroup(item, magicalTypes) : null;
 
   const rawOptions = parseOptionsFromFormData(formData);
-  if (rawOptions.length > 0 && !optionGroup) {
-    throw new Error("Este item no admite random options");
-  }
-  // Una petición de compra describe lo que se quiere comprar, no una
-  // instancia física concreta — no tiene sentido pedir un roll exacto de
-  // options ahí (a diferencia de SALE/TRADE, que sí representan un
-  // ejemplar real).
-  if (rawOptions.length > 0 && parsed.data.type === "BUY") {
-    throw new Error("Una petición de compra no admite random options");
-  }
-
-  // defsById también se reutiliza para el webhook más abajo, sin otra query.
-  const defsById = new Map<string, { id: string; label: string; group: ItemOptionGroup; slotIndex: number; minValue: number; maxValue: number }>();
-  if (optionGroup && rawOptions.length > 0) {
-    const defs = await prisma.itemOptionDef.findMany({
-      where: { id: { in: rawOptions.map((o) => o.defId) } },
-    });
-    for (const def of defs) defsById.set(def.id, def);
-
-    for (const raw of rawOptions) {
-      const def = defsById.get(raw.defId);
-      if (!def || def.group !== optionGroup || def.slotIndex !== raw.slotIndex) {
-        throw new Error("Option inválida para este item");
-      }
-      if (raw.value < def.minValue || raw.value > def.maxValue) {
-        throw new Error(
-          `El valor de "${def.label}" debe estar entre ${def.minValue} y ${def.maxValue}`,
-        );
-      }
-    }
-  }
+  // En SALE/TRADE es el roll exacto de una instancia real; en BUY es el
+  // mínimo que el comprador pide (ver comentario de ListingOption en
+  // schema.prisma) — el rango válido [minValue, maxValue] es el mismo en
+  // los dos casos. defsById también se reutiliza para el webhook más abajo.
+  const defsById = await validateOptions(rawOptions, optionGroup);
 
   // Un item con random options es una instancia única (el roll de options
   // no es igual entre copias) — no tiene sentido apilar cantidad > 1. Solo
