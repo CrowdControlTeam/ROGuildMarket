@@ -104,10 +104,16 @@ export function listingStatusLabel(status: string, type: ListingType): string {
   return labels[status] ?? status;
 }
 
-// Badge visible en las cards/detalle para lo que no sea una venta directa
-// (SALE no lleva badge, es el caso "normal"). Mismos colores que
-// DISCORD_EMBED_COLOR (ver discord-colors.ts) traducidos a Tailwind.
-export const LISTING_TYPE_BADGE: Record<"TRADE" | "BUY", { label: string; className: string }> = {
+// Badge de tipo en las cards/detalle. Mismos colores que
+// DISCORD_EMBED_COLOR (ver discord-colors.ts) traducidos a Tailwind. Solo
+// tiene sentido en la vista general "Mercado" (mezcla los 3 tipos) — en
+// una vista ya filtrada por tipo (Ventas/Compras/Intercambios) el badge es
+// redundante, así que el caller lo omite ahí (ver MarketResults.tsx).
+export const LISTING_TYPE_BADGE: Record<ListingType, { label: string; className: string }> = {
+  SALE: {
+    label: "Venta",
+    className: "border-ro-gold-dark/50 bg-ro-gold/10 text-ro-gold-dark",
+  },
   TRADE: {
     label: "Intercambio",
     className: "border-blue-500/50 bg-blue-500/10 text-blue-600",

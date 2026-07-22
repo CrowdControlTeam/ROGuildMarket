@@ -239,9 +239,13 @@ export function MarketFilters() {
     router.push(`/market?${params.toString()}`);
   }
 
+  // "type" no se toca aquí a propósito: dentro de una vista ya filtrada por
+  // tipo (Ventas/Compras/Intercambios, con el selector "Tipo" oculto),
+  // Reset limpia el resto de filtros pero se queda en esa misma vista — para
+  // volver al Mercado general está el propio enlace "Mercado" del menú, no
+  // hace falta que Reset también sirva de vía de escape.
   function resetFilters() {
     setQ("");
-    setType("");
     setCategory("");
     setSlot("");
     setWeaponType("");
@@ -256,7 +260,6 @@ export function MarketFilters() {
     const params = new URLSearchParams(searchParams.toString());
     const keys = [
       "q",
-      "type",
       "category",
       "slot",
       "weaponType",
