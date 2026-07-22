@@ -16,6 +16,7 @@ import {
 } from "@/lib/item-options-constants";
 import { isRefineEligible, DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constants";
 import { getMaxCardSlots } from "@/lib/card-slots-constants";
+import { getErrorMessage, rethrowFrameworkErrors } from "@/lib/errors";
 import { ItemPicker, type ItemResult } from "./ItemPicker";
 import { ScreenshotDropzone } from "./ScreenshotDropzone";
 import { UserPicker, type UserResult } from "@/components/UserPicker";
@@ -107,28 +108,39 @@ export function NewPublicationForm({
   function handleScreenshotScan(file: File) {
     setRecognitionNote(null);
     startRecognizeTransition(async () => {
-      const formData = new FormData();
-      formData.set("screenshot", file);
-      const result = await recognizeItemFromScreenshot(formData);
+      try {
+        const formData = new FormData();
+        formData.set("screenshot", file);
+        const result = await recognizeItemFromScreenshot(formData);
 
-      if (result.status === "error") {
-        setRecognitionNote(result.message);
-        return;
-      }
-      if (result.status === "no_match") {
-        setRecognitionNote(
-          result.detectedName
-            ? `No se ha encontrado en el catálogo ningún item parecido a "${result.detectedName}". Selecciónalo manualmente.`
-            : "No se ha podido leer el item en la captura. Selecciónalo manualmente.",
-        );
-        return;
-      }
+        if (result.status === "error") {
+          setRecognitionNote(result.message);
+          return;
+        }
+        if (result.status === "no_match") {
+          setRecognitionNote(
+            result.detectedName
+              ? `No se ha encontrado en el catálogo ningún item parecido a "${result.detectedName}". Selecciónalo manualmente.`
+              : "No se ha podido leer el item en la captura. Selecciónalo manualmente.",
+          );
+          return;
+        }
 
-      setSelectedItem(result.item);
-      setRefineLevel(result.refineLevel);
-      setCardSlots(result.cardSlots);
-      setOptionSelections(buildOptionSelectionsFromDetected(result.options));
-      setRecognitionNote(`Detectado: ${result.item.name}. Revisa los datos antes de publicar.`);
+        setSelectedItem(result.item);
+        setRefineLevel(result.refineLevel);
+        setCardSlots(result.cardSlots);
+        setOptionSelections(buildOptionSelectionsFromDetected(result.options));
+        setRecognitionNote(`Detectado: ${result.item.name}. Revisa los datos antes de publicar.`);
+      } catch (err) {
+        // recognizeItemFromScreenshot ya captura sus propios fallos (Gemini,
+        // catálogo...) y los devuelve como status "error" — este catch es
+        // solo para el caso de que el propio server action se caiga antes
+        // de devolver un RecognitionResult, que si no quedaba sin ningún
+        // feedback visible para el usuario.
+        rethrowFrameworkErrors(err);
+        console.error(err);
+        setRecognitionNote("Ha fallado la detección automática. Selecciona el item manualmente.");
+      }
     });
   }
 
@@ -184,7 +196,7 @@ export function NewPublicationForm({
             }
           } catch (err) {
             submittingRef.current = false;
-            setError(err instanceof Error ? err.message : "Error inesperado");
+            setError(getErrorMessage(err));
           }
         });
       }}

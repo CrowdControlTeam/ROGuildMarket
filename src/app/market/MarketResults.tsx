@@ -10,6 +10,7 @@ import { buttonClass } from "@/lib/ui";
 import { formatPrice, priceColorClass } from "@/lib/price";
 import { formatItemDisplayName } from "@/lib/card-slots-constants";
 import { listingTypeLabel, LISTING_TYPE_BADGE_CLASS, formatOptionAmount } from "@/lib/market-labels";
+import { getErrorMessage } from "@/lib/errors";
 import { UserMention } from "@/components/UserMention";
 
 type Item = { id: string; name: string; iconUrl: string };
@@ -43,15 +44,21 @@ export function MarketResults({
 }) {
   const [listings, setListings] = useState(initialListings);
   const [cursor, setCursor] = useState(initialCursor);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const t = useTranslations("market");
 
   function loadMore() {
+    setLoadMoreError(null);
     startTransition(async () => {
       if (!cursor) return;
-      const result = await loadMoreListings({ ...filters, cursor });
-      setListings((prev) => [...prev, ...result.listings]);
-      setCursor(result.nextCursor);
+      try {
+        const result = await loadMoreListings({ ...filters, cursor });
+        setListings((prev) => [...prev, ...result.listings]);
+        setCursor(result.nextCursor);
+      } catch (err) {
+        setLoadMoreError(getErrorMessage(err, "No se ha podido cargar más. Inténtalo de nuevo."));
+      }
     });
   }
 
@@ -124,6 +131,7 @@ export function MarketResults({
         ))}
       </ul>
 
+      {loadMoreError && <p className="mt-4 text-sm text-red-700">{loadMoreError}</p>}
       {cursor && (
         <button
           type="button"

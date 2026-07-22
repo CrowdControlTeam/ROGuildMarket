@@ -7,6 +7,7 @@ import { X } from "lucide-react";
 import { searchItems } from "@/lib/listings";
 import { inputClass } from "@/lib/ui";
 import { categoryLabel, weaponTypeLabel } from "@/lib/market-labels";
+import { getErrorMessage } from "@/lib/errors";
 
 export type ItemResult = Awaited<ReturnType<typeof searchItems>>[number];
 
@@ -37,14 +38,20 @@ export function ItemPicker({
 }) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<ItemResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const t = useTranslations("market");
 
   function handleChange(value: string) {
     setQuery(value);
+    setError(null);
     startTransition(async () => {
-      const found = await searchItems(value);
-      setResults(found);
+      try {
+        const found = await searchItems(value);
+        setResults(found);
+      } catch (err) {
+        setError(getErrorMessage(err, "No se ha podido buscar. Inténtalo de nuevo."));
+      }
     });
   }
 
@@ -79,6 +86,7 @@ export function ItemPicker({
       {!selected && isPending && (
         <p className="mt-1 text-sm text-ro-text-muted">Buscando...</p>
       )}
+      {!selected && error && <p className="mt-1 text-sm text-red-700">{error}</p>}
       {!selected && results.length > 0 && (
         <ul className="mt-2 flex max-h-64 flex-col gap-1 overflow-y-auto rounded-md border-2 border-ro-panel-border bg-ro-panel-alt p-1">
           {results.map((item) => (

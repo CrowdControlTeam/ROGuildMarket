@@ -180,90 +180,94 @@ export async function recognizeItemFromScreenshot(formData: FormData): Promise<R
     return { status: "error", message: "No se ha recibido ninguna imagen" };
   }
 
-  let extraction: GeminiExtraction;
+  // Todo lo de aquí en adelante puede fallar por motivos que no controlamos
+  // (Gemini caído, un fallo de Prisma, un bug) — se envuelve entero (antes
+  // solo cubría la llamada a Gemini) para que CUALQUIER fallo termine en un
+  // status "error" con mensaje genérico, nunca en una excepción sin
+  // controlar. El mensaje real solo se registra en el log del servidor —
+  // mostrar el error técnico tal cual (p.ej. un fallo de parseo JSON) no
+  // ayuda al usuario y puede filtrar detalles internos.
   try {
     const buffer = Buffer.from(await file.arrayBuffer());
-    extraction = await callGemini(buffer.toString("base64"), file.type || "image/png", config.geminiModel);
-  } catch (err) {
-    return {
-      status: "error",
-      message: err instanceof Error ? err.message : "Error inesperado al reconocer la imagen",
-    };
-  }
+    const extraction = await callGemini(buffer.toString("base64"), file.type || "image/png", config.geminiModel);
 
-  if (!extraction.itemName) {
-    return { status: "no_match", detectedName: null };
-  }
+    if (!extraction.itemName) {
+      return { status: "no_match", detectedName: null };
+    }
 
-  const candidates = await prisma.item.findMany({
-    select: { id: true, name: true, iconUrl: true, category: true, slot: true, weaponType: true },
-  });
+    const candidates = await prisma.item.findMany({
+      select: { id: true, name: true, iconUrl: true, category: true, slot: true, weaponType: true },
+    });
 
-  // El catálogo tiene bastantes nombres duplicados (p.ej. dos "Arc Wand":
-  // un báculo real y un costume cosmético) — el nombre solo no basta para
-  // desambiguar, así que primero se prueba el match solo entre los
-  // candidatos cuya categoría/tipo de arma coincide con lo que el tooltip
-  // ya indica, y solo si eso no encuentra nada se cae al catálogo completo
-  // (evita que un fallo de la IA leyendo la categoría deje un item sin
-  // reconocer del todo).
-  let narrowedCandidates = candidates;
-  if (extraction.itemCategory) {
-    const sameCategory = candidates.filter((c) => c.category === extraction.itemCategory);
-    if (sameCategory.length > 0) {
-      narrowedCandidates = sameCategory;
-      if (extraction.itemCategory === "WEAPON" && extraction.weaponType) {
-        const sameWeaponType = sameCategory.filter((c) => c.weaponType === extraction.weaponType);
-        if (sameWeaponType.length > 0) narrowedCandidates = sameWeaponType;
+    // El catálogo tiene bastantes nombres duplicados (p.ej. dos "Arc Wand":
+    // un báculo real y un costume cosmético) — el nombre solo no basta para
+    // desambiguar, así que primero se prueba el match solo entre los
+    // candidatos cuya categoría/tipo de arma coincide con lo que el tooltip
+    // ya indica, y solo si eso no encuentra nada se cae al catálogo completo
+    // (evita que un fallo de la IA leyendo la categoría deje un item sin
+    // reconocer del todo).
+    let narrowedCandidates = candidates;
+    if (extraction.itemCategory) {
+      const sameCategory = candidates.filter((c) => c.category === extraction.itemCategory);
+      if (sameCategory.length > 0) {
+        narrowedCandidates = sameCategory;
+        if (extraction.itemCategory === "WEAPON" && extraction.weaponType) {
+          const sameWeaponType = sameCategory.filter((c) => c.weaponType === extraction.weaponType);
+          if (sameWeaponType.length > 0) narrowedCandidates = sameWeaponType;
+        }
       }
     }
-  }
 
-  const matchedItem =
-    findBestMatch(extraction.itemName, narrowedCandidates, (c) => c.name, NAME_MATCH_THRESHOLD) ??
-    (narrowedCandidates !== candidates
-      ? findBestMatch(extraction.itemName, candidates, (c) => c.name, NAME_MATCH_THRESHOLD)
-      : null);
-  if (!matchedItem) {
-    return { status: "no_match", detectedName: extraction.itemName };
-  }
-
-  const [magicalTypes, optionsAvailable] = await Promise.all([
-    loadMagicalWeaponTypes(),
-    isOptionsFeatureAvailable(),
-  ]);
-  const optionGroup = optionsAvailable ? getItemOptionGroup(matchedItem, magicalTypes) : null;
-
-  let refineLevel = 0;
-  if (isRefineEligible(matchedItem)) {
-    const maxRefineLevel = await loadMaxRefineLevel();
-    refineLevel = Math.min(Math.max(extraction.refineLevel, 0), maxRefineLevel);
-  }
-
-  const maxCardSlots = getMaxCardSlots(matchedItem);
-  const cardSlots = maxCardSlots > 0 ? Math.min(Math.max(extraction.cardSlots, 0), maxCardSlots) : 0;
-
-  const options: { slotIndex: number; defId: string; value: number }[] = [];
-  if (optionGroup) {
-    const defs = await prisma.itemOptionDef.findMany({ where: { group: optionGroup } });
-    for (let i = 0; i < extraction.options.length && i < MAX_OPTION_SLOTS; i++) {
-      const slotIndex = i + 1;
-      const defsForSlot = defs.filter((d) => d.slotIndex === slotIndex);
-      const detected = extraction.options[i];
-      const matchedDef = findBestMatch(detected.label, defsForSlot, (d) => d.label, OPTION_LABEL_MATCH_THRESHOLD);
-      // Las options ocupan las posiciones desde el slot 1 sin huecos (mismo
-      // invariante que el formulario manual) — si un slot no matchea bien,
-      // se corta aquí en vez de dejar un hueco a mitad.
-      if (!matchedDef) break;
-      const value = Math.min(Math.max(detected.value, matchedDef.minValue), matchedDef.maxValue);
-      options.push({ slotIndex, defId: matchedDef.id, value });
+    const matchedItem =
+      findBestMatch(extraction.itemName, narrowedCandidates, (c) => c.name, NAME_MATCH_THRESHOLD) ??
+      (narrowedCandidates !== candidates
+        ? findBestMatch(extraction.itemName, candidates, (c) => c.name, NAME_MATCH_THRESHOLD)
+        : null);
+    if (!matchedItem) {
+      return { status: "no_match", detectedName: extraction.itemName };
     }
-  }
 
-  return {
-    status: "matched",
-    item: { ...matchedItem, optionGroup },
-    refineLevel,
-    cardSlots,
-    options,
-  };
+    const [magicalTypes, optionsAvailable] = await Promise.all([
+      loadMagicalWeaponTypes(),
+      isOptionsFeatureAvailable(),
+    ]);
+    const optionGroup = optionsAvailable ? getItemOptionGroup(matchedItem, magicalTypes) : null;
+
+    let refineLevel = 0;
+    if (isRefineEligible(matchedItem)) {
+      const maxRefineLevel = await loadMaxRefineLevel();
+      refineLevel = Math.min(Math.max(extraction.refineLevel, 0), maxRefineLevel);
+    }
+
+    const maxCardSlots = getMaxCardSlots(matchedItem);
+    const cardSlots = maxCardSlots > 0 ? Math.min(Math.max(extraction.cardSlots, 0), maxCardSlots) : 0;
+
+    const options: { slotIndex: number; defId: string; value: number }[] = [];
+    if (optionGroup) {
+      const defs = await prisma.itemOptionDef.findMany({ where: { group: optionGroup } });
+      for (let i = 0; i < extraction.options.length && i < MAX_OPTION_SLOTS; i++) {
+        const slotIndex = i + 1;
+        const defsForSlot = defs.filter((d) => d.slotIndex === slotIndex);
+        const detected = extraction.options[i];
+        const matchedDef = findBestMatch(detected.label, defsForSlot, (d) => d.label, OPTION_LABEL_MATCH_THRESHOLD);
+        // Las options ocupan las posiciones desde el slot 1 sin huecos (mismo
+        // invariante que el formulario manual) — si un slot no matchea bien,
+        // se corta aquí en vez de dejar un hueco a mitad.
+        if (!matchedDef) break;
+        const value = Math.min(Math.max(detected.value, matchedDef.minValue), matchedDef.maxValue);
+        options.push({ slotIndex, defId: matchedDef.id, value });
+      }
+    }
+
+    return {
+      status: "matched",
+      item: { ...matchedItem, optionGroup },
+      refineLevel,
+      cardSlots,
+      options,
+    };
+  } catch (err) {
+    console.error("recognizeItemFromScreenshot falló:", err);
+    return { status: "error", message: "Ha fallado la detección automática. Prueba de nuevo o rellena el item a mano." };
+  }
 }

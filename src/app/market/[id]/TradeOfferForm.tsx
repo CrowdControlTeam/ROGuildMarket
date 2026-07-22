@@ -7,6 +7,7 @@ import { getMaxRefineLevel } from "@/lib/listings";
 import { buttonClass, inputClass, labelClass } from "@/lib/ui";
 import { isRefineEligible, DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constants";
 import { getMaxCardSlots } from "@/lib/card-slots-constants";
+import { getErrorMessage } from "@/lib/errors";
 import { ItemPicker, type ItemResult } from "../new/ItemPicker";
 
 export function TradeOfferForm({ listingId }: { listingId: string }) {
@@ -52,7 +53,7 @@ export function TradeOfferForm({ listingId }: { listingId: string }) {
             await createTradeOffer(listingId, formData);
             router.refresh();
           } catch (err) {
-            setError(err instanceof Error ? err.message : "Error inesperado");
+            setError(getErrorMessage(err));
           } finally {
             submittingRef.current = false;
           }

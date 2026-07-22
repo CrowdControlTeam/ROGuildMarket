@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { purchaseListing } from "@/lib/listings";
 import { buttonClass, inputClass, labelClass } from "@/lib/ui";
 import { formatPrice, priceColorClass } from "@/lib/price";
+import { getErrorMessage } from "@/lib/errors";
 
 export function BuyForm({
   listingId,
@@ -35,7 +36,7 @@ export function BuyForm({
             await purchaseListing(listingId, formData);
             router.refresh();
           } catch (err) {
-            setError(err instanceof Error ? err.message : "Error inesperado");
+            setError(getErrorMessage(err));
           } finally {
             submittingRef.current = false;
           }

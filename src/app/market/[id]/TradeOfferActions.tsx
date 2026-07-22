@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { acceptTradeOffer, rejectTradeOffer, cancelTradeOffer } from "@/lib/trade-offers";
 import { buttonClass } from "@/lib/ui";
+import { getErrorMessage } from "@/lib/errors";
 
 export function TradeOfferActions({
   offerId,
@@ -23,7 +24,7 @@ export function TradeOfferActions({
         await action(offerId);
         router.refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error inesperado");
+        setError(getErrorMessage(err));
       }
     });
   }

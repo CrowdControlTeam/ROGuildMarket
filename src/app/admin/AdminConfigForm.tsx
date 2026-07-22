@@ -4,6 +4,7 @@ import { useState } from "react";
 import { updateMarketConfig, type getMarketConfig } from "@/lib/admin-config";
 import { buttonClass, inputClass, labelClass, selectClass } from "@/lib/ui";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
+import { getErrorMessage } from "@/lib/errors";
 
 type Config = Awaited<ReturnType<typeof getMarketConfig>>;
 
@@ -20,7 +21,7 @@ export function AdminConfigForm({ config }: { config: Config }) {
           await updateMarketConfig(formData);
           setSaved(true);
         } catch (err) {
-          setError(err instanceof Error ? err.message : "Error inesperado");
+          setError(getErrorMessage(err));
         }
       }}
       className="flex flex-col gap-6"
