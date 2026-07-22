@@ -405,14 +405,37 @@ Organizado en 6 PRs independientes:
     para no repetir el patrón: confirmar explícitamente antes de cualquier
     migración que borre tablas/columnas, la ausencia de bloqueo del
     clasificador no exime de pedirlo.
-- PR 2 — formulario común de creación + bloqueo de doble envío — pendiente.
-- PR 3 — menú, páginas por tipo, botón de cabecera, iconos de regalos —
-  pendiente.
-- PR 4 — título del sitio configurable — pendiente.
-- PR 5 — mensajes directos desde nombres clicables — pendiente.
+- **PR 2 — formulario común de creación + bloqueo de doble envío — hecho**:
+  `NewListingForm`/`NewBuyRequestForm`/`NewGiftForm` se fusionan en
+  `NewPublicationForm` (mismo archivo/ruta `/market/new`), con selector de
+  4 tipos (Venta/Compra/Intercambio/Regalo, por defecto Venta) y `?type=`
+  para preseleccionar. Options solo se muestran/envían para Venta e
+  Intercambio (igual que antes); precio con label dinámico ("Precio"/"Pago
+  hasta"); destinatario solo en Regalo. Al enviar, el tipo decide si se
+  llama a `createListing` (Venta/Compra/Intercambio) o `sendGift`
+  (Regalo) — son acciones de servidor distintas por debajo, el formulario
+  es lo único unificado. Se eliminan las rutas `/market/buy-requests/new`
+  y `/market/gifts/new`; los botones "Nueva petición"/"Regalar item" de
+  sus páginas ahora enlazan a `/market/new?type=BUY`/`?type=GIFT`.
+  - **Bloqueo de doble envío**: se descubrió en la propia verificación que
+    `useTransition` + `disabled={isPending}` **no basta** — el atributo
+    `disabled` solo se refleja en el DOM tras el siguiente render, así que
+    varios clics muy seguidos (mash-click) pueden dispararse antes de ese
+    commit. Comprobado publicando de verdad el mismo item 5 veces con
+    clics sintéticos sin espera entre ellos: se crearon 5 filas duplicadas
+    en base de datos pese al `disabled`. Solución: un `useRef<boolean>`
+    que se lee/escribe de forma síncrona al principio del propio manejador
+    del evento, sin depender de ningún ciclo de render — aplicado a
+    `NewPublicationForm`, `BuyForm` y `TradeOfferForm` (las tres
+    comparten la misma vulnerabilidad). Reverificado con el mismo test:
+    1 sola fila creada tras 5 clics.
 
-**Próximo paso natural**: PR 2 del refactor (formulario común de creación)
-— a confirmar con el usuario al retomar.
+Organizado en 6 PRs — próximo: PR 3 (menú, páginas por tipo, botón de
+cabecera, iconos de regalos), PR 4 (título de sitio), PR 5 (mensajes
+directos).
+
+**Próximo paso natural**: PR 3 del refactor (menú y páginas por tipo) — a
+confirmar con el usuario al retomar.
 
 ---
 

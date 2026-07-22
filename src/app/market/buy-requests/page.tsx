@@ -22,7 +22,7 @@ export default async function BuyRequestsPage({
     <main className="mx-auto max-w-3xl px-6 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="font-heading text-lg text-ro-gold">Peticiones de compra</h1>
-        <Link href="/market/buy-requests/new" className={buttonClass("primary")}>
+        <Link href="/market/new?type=BUY" className={buttonClass("primary")}>
           Nueva petición
         </Link>
       </div>

@@ -14,7 +14,7 @@ export default async function GiftsPage() {
     <main className="mx-auto max-w-3xl px-6 py-8">
       <div className="mb-6 flex items-center justify-between">
         <h1 className="font-heading text-lg text-ro-gold">Regalos</h1>
-        <Link href="/market/gifts/new" className={buttonClass("primary")}>
+        <Link href="/market/new?type=GIFT" className={buttonClass("primary")}>
           Regalar item
         </Link>
       </div>

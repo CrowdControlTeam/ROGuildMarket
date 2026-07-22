@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { createTradeOffer } from "@/lib/trade-offers";
 import { getMaxRefineLevel } from "@/lib/listings";
@@ -16,6 +16,11 @@ export function TradeOfferForm({ listingId }: { listingId: string }) {
   const [cardSlots, setCardSlots] = useState(0);
   const [maxRefineLevel, setMaxRefineLevel] = useState(DEFAULT_MAX_REFINE_LEVEL);
   const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  // useTransition por sí solo no basta: disabled={isPending} solo se
+  // refleja en el DOM tras el siguiente render, y clics muy seguidos
+  // pueden dispararse antes de ese commit — ver NewPublicationForm.tsx.
+  const submittingRef = useRef(false);
 
   useEffect(() => {
     getMaxRefineLevel().then(setMaxRefineLevel);
@@ -32,14 +37,20 @@ export function TradeOfferForm({ listingId }: { listingId: string }) {
 
   return (
     <form
-      action={async (formData) => {
+      action={(formData) => {
+        if (submittingRef.current) return;
+        submittingRef.current = true;
         setError(null);
-        try {
-          await createTradeOffer(listingId, formData);
-          router.refresh();
-        } catch (err) {
-          setError(err instanceof Error ? err.message : "Error inesperado");
-        }
+        startTransition(async () => {
+          try {
+            await createTradeOffer(listingId, formData);
+            router.refresh();
+          } catch (err) {
+            setError(err instanceof Error ? err.message : "Error inesperado");
+          } finally {
+            submittingRef.current = false;
+          }
+        });
       }}
       className="flex flex-col gap-3"
     >
@@ -91,8 +102,8 @@ export function TradeOfferForm({ listingId }: { listingId: string }) {
 
       {error && <p className="text-sm text-red-700">{error}</p>}
 
-      <button type="submit" disabled={!selectedItem} className={buttonClass("primary")}>
-        Enviar oferta
+      <button type="submit" disabled={!selectedItem || isPending} className={buttonClass("primary")}>
+        {isPending ? "Enviando..." : "Enviar oferta"}
       </button>
     </form>
   );
