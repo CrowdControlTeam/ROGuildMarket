@@ -3,13 +3,14 @@
 import { useState } from "react";
 import Link from "next/link";
 import { Sidebar } from "./Sidebar";
+import { MARKET_VIEW_TITLE } from "@/lib/market-labels";
 
 const LINKS: { href: string; label: string; enabled: boolean }[] = [
   { href: "/market", label: "Mercado", enabled: true },
-  { href: "/market?type=SALE", label: "Vender", enabled: true },
-  { href: "/market?type=BUY", label: "Comprar", enabled: true },
-  { href: "/market?type=TRADE", label: "Comerciar", enabled: true },
-  { href: "/market/gifts", label: "Regalar", enabled: true },
+  { href: "/market?type=SALE", label: MARKET_VIEW_TITLE.SALE, enabled: true },
+  { href: "/market?type=BUY", label: MARKET_VIEW_TITLE.BUY, enabled: true },
+  { href: "/market?type=TRADE", label: MARKET_VIEW_TITLE.TRADE, enabled: true },
+  { href: "/market/gifts", label: "Regalos", enabled: true },
 ];
 
 export function HamburgerMenu() {

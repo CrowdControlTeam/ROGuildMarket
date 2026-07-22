@@ -69,6 +69,16 @@ export const LISTING_TYPE_LABELS: Record<ListingType, string> = {
   BUY: "Compra",
 };
 
+// Título de la vista filtrada por tipo — tanto la entrada del menú como el
+// <h1> de /market cuando llega `?type=` usan este mismo texto (plural, a
+// diferencia de LISTING_TYPE_LABELS que es singular para badges/desplegables),
+// para que no puedan divergir entre los dos sitios sin querer.
+export const MARKET_VIEW_TITLE: Record<ListingType, string> = {
+  SALE: "Ventas",
+  BUY: "Compras",
+  TRADE: "Intercambios",
+};
+
 // Quien publica se llama distinto según el tipo — en BUY esa persona
 // compra, no vende (ver comentario de Listing.posterId en schema.prisma).
 export const POSTER_LABEL: Record<ListingType, string> = {

@@ -4,6 +4,7 @@ import { getListings, isMarketSort, type MarketFilters as MarketFiltersType } fr
 import { requireSession } from "@/lib/guard";
 import { loadMarketConfig } from "@/lib/market-config";
 import { isDmFeatureAvailable } from "@/lib/discord-bot";
+import { MARKET_VIEW_TITLE } from "@/lib/market-labels";
 import { Panel } from "@/components/Panel";
 import { MarketFilters } from "./MarketFilters";
 import { MarketResults } from "./MarketResults";
@@ -74,6 +75,7 @@ export default async function MarketPage({
   const { listings, nextCursor } = await getListings(filters);
   const { maintenanceModeEnabled } = await loadMarketConfig();
   const dmAvailable = await isDmFeatureAvailable();
+  const pageTitle = filters.type ? MARKET_VIEW_TITLE[filters.type] : "Mercado";
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
@@ -85,7 +87,7 @@ export default async function MarketPage({
             : ": no se puede crear ventas ni comprar por ahora."}
         </p>
       )}
-      <h1 className="mb-6 font-heading text-lg text-ro-gold">Mercado</h1>
+      <h1 className="mb-6 font-heading text-lg text-ro-gold">{pageTitle}</h1>
 
       <Panel className="mb-6">
         <MarketFilters />
