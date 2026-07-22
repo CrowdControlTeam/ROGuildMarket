@@ -35,6 +35,12 @@ export function TradeOfferForm({ listingId }: { listingId: string }) {
     setCardSlots(0);
   }
 
+  function handleItemClear() {
+    setSelectedItem(null);
+    setRefineLevel(0);
+    setCardSlots(0);
+  }
+
   return (
     <form
       action={(formData) => {
@@ -56,7 +62,7 @@ export function TradeOfferForm({ listingId }: { listingId: string }) {
     >
       <div>
         <label className={labelClass}>Ofrecer item</label>
-        <ItemPicker key={selectedItem?.id ?? "empty"} onSelect={handleItemSelect} />
+        <ItemPicker selected={selectedItem} onSelect={handleItemSelect} onClear={handleItemClear} />
         <input type="hidden" name="itemId" value={selectedItem?.id ?? ""} />
       </div>
 

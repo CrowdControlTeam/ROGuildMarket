@@ -102,6 +102,14 @@ export function NewPublicationForm({
     setRecognitionNote(null);
   }
 
+  function handleItemClear() {
+    setSelectedItem(null);
+    setOptionSelections(emptyOptionSelections());
+    setRefineLevel(0);
+    setCardSlots(0);
+    setRecognitionNote(null);
+  }
+
   function handleScreenshotScan(file: File) {
     setRecognitionNote(null);
     startRecognizeTransition(async () => {
@@ -214,11 +222,7 @@ export function NewPublicationForm({
 
       <div>
         <label className={labelClass}>Item</label>
-        <ItemPicker
-          key={selectedItem?.id ?? "empty"}
-          onSelect={handleItemSelect}
-          initialQuery={selectedItem?.name}
-        />
+        <ItemPicker selected={selectedItem} onSelect={handleItemSelect} onClear={handleItemClear} />
         <input type="hidden" name="itemId" value={selectedItem?.id ?? ""} />
       </div>
 
