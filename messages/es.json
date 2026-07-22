@@ -1,8 +1,96 @@
 {
   "market": {
+    "title": "Mercado",
     "footerDisclaimer": "Proyecto de fans, sin afiliación con Gravity Co., Ltd.",
     "filters": {
       "buyOptionsHint": "Busca compras que cumplan estos valores."
+    },
+    "catalog": {
+      "category": {
+        "WEAPON": "Arma",
+        "ARMOR": "Armadura",
+        "CARD": "Carta",
+        "CONSUMABLE": "Consumible",
+        "COSTUME": "Costume",
+        "PET": "Mascota",
+        "ENCHANT": "Encantamiento",
+        "ETC": "Miscelánea"
+      },
+      "slot": {
+        "UPPER_HEADGEAR": "Casco superior",
+        "MID_HEADGEAR": "Casco medio",
+        "LOWER_HEADGEAR": "Casco inferior",
+        "ARMOR": "Cuerpo",
+        "SHIELD": "Escudo",
+        "GARMENT": "Prenda",
+        "FOOTGEAR": "Calzado",
+        "ACCESSORY": "Accesorio",
+        "WEAPON": "Arma"
+      },
+      "weaponType": {
+        "DAGGER": "Daga",
+        "ONE_HAND_SWORD": "Espada 1H",
+        "TWO_HAND_SWORD": "Espada 2H",
+        "ONE_HAND_SPEAR": "Lanza 1H",
+        "TWO_HAND_SPEAR": "Lanza 2H",
+        "ONE_HAND_AXE": "Hacha 1H",
+        "TWO_HAND_AXE": "Hacha 2H",
+        "MACE": "Maza",
+        "ROD": "Báculo",
+        "TWO_HAND_ROD": "Báculo 2H",
+        "BOW": "Arco",
+        "KNUCKLE": "Knuckle",
+        "INSTRUMENT": "Instrumento",
+        "WHIP": "Látigo",
+        "BOOK": "Libro",
+        "KATAR": "Katar",
+        "REVOLVER": "Revólver",
+        "RIFLE": "Rifle",
+        "GATLING_GUN": "Gatling",
+        "SHOTGUN": "Escopeta",
+        "GRENADE_LAUNCHER": "Lanzagranadas",
+        "FUUMA_SHURIKEN": "Fuuma Shuriken"
+      },
+      "optionGroup": {
+        "ARMOR": "Armadura",
+        "GARMENT": "Prenda",
+        "FOOTGEAR": "Calzado",
+        "WEAPON_PHYSICAL": "Arma física",
+        "WEAPON_MAGICAL": "Arma mágica"
+      }
+    },
+    "listing": {
+      "type": {
+        "SALE": "Venta",
+        "TRADE": "Intercambio",
+        "BUY": "Compra"
+      },
+      "viewTitle": {
+        "SALE": "Ventas",
+        "BUY": "Compras",
+        "TRADE": "Intercambios"
+      },
+      "poster": {
+        "SALE": "Vendedor",
+        "TRADE": "Vendedor",
+        "BUY": "Comprador"
+      },
+      "status": {
+        "ACTIVE": "Activa",
+        "CANCELLED": "Cancelada",
+        "EXPIRED": "Expirada"
+      },
+      "soldStatus": {
+        "SALE": "Vendida",
+        "TRADE": "Intercambiada",
+        "BUY": "Cumplida"
+      },
+      "offerStatus": {
+        "PENDING": "Pendiente",
+        "ACCEPTED": "Aceptada",
+        "REJECTED": "Rechazada",
+        "CANCELLED": "Cancelada"
+      }
     }
   }
 }

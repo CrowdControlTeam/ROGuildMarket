@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { ItemCategory, EquipSlot, WeaponType, ListingType, type ItemOptionDef } from "@prisma/client";
-import { CATEGORY_LABELS, SLOT_LABELS, WEAPON_TYPE_LABELS, LISTING_TYPE_LABELS } from "@/lib/market-labels";
+import { categoryLabel, slotLabel, weaponTypeLabel, listingTypeLabel } from "@/lib/market-labels";
 import { MAX_OPTION_SLOTS } from "@/lib/item-options-constants";
 import { isRefineEligible, DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constants";
 import { getMaxCardSlots, MAX_WEAPON_CARD_SLOTS } from "@/lib/card-slots-constants";
@@ -287,9 +287,9 @@ export function MarketFilters() {
           <label className={labelClass}>Tipo</label>
           <select value={type} onChange={(e) => setType(e.target.value)} className={selectClass}>
             <option value="">Todas</option>
-            {Object.values(ListingType).map((t) => (
-              <option key={t} value={t}>
-                {LISTING_TYPE_LABELS[t]}
+            {Object.values(ListingType).map((type) => (
+              <option key={type} value={type}>
+                {listingTypeLabel(t, type)}
               </option>
             ))}
           </select>
@@ -314,7 +314,7 @@ export function MarketFilters() {
           <option value="">Todas</option>
           {Object.values(ItemCategory).map((c) => (
             <option key={c} value={c}>
-              {CATEGORY_LABELS[c]}
+              {categoryLabel(t, c)}
             </option>
           ))}
         </select>
@@ -331,7 +331,7 @@ export function MarketFilters() {
           <option value="">Cualquiera</option>
           {Object.values(EquipSlot).map((s) => (
             <option key={s} value={s}>
-              {SLOT_LABELS[s]}
+              {slotLabel(t, s)}
             </option>
           ))}
         </select>
@@ -348,7 +348,7 @@ export function MarketFilters() {
           <option value="">Cualquiera</option>
           {Object.values(WeaponType).map((w) => (
             <option key={w} value={w}>
-              {WEAPON_TYPE_LABELS[w]}
+              {weaponTypeLabel(t, w)}
             </option>
           ))}
         </select>
