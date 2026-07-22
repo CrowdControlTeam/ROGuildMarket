@@ -9,6 +9,7 @@ import { formatItemDisplayName } from "@/lib/card-slots-constants";
 import { OFFER_STATUS_LABEL, LISTING_TYPE_BADGE, POSTER_LABEL, listingStatusLabel } from "@/lib/market-labels";
 import { labelClass } from "@/lib/ui";
 import { UserMention } from "@/components/UserMention";
+import { isDmFeatureAvailable } from "@/lib/discord-bot";
 import { CancelListingButton } from "./CancelListingButton";
 import { BuyForm } from "./BuyForm";
 import { TradeOfferForm } from "./TradeOfferForm";
@@ -21,6 +22,8 @@ export default async function ListingDetailPage({
 }) {
   const session = await requireSession();
   const { id } = await params;
+
+  const dmAvailable = await isDmFeatureAvailable();
 
   const listing = await prisma.listing.findUnique({
     where: { id },
@@ -92,6 +95,8 @@ export default async function ListingDetailPage({
                 username={listing.poster.username}
                 viewerId={session.user.discordId}
                 capitalize
+                item={listing.item}
+                dmAvailable={dmAvailable}
               />
             </dd>
           </div>
@@ -157,6 +162,8 @@ export default async function ListingDetailPage({
                     userId={accepted.offererId}
                     username={accepted.offerer.username}
                     viewerId={session.user.discordId}
+                    item={listing.item}
+                    dmAvailable={dmAvailable}
                   />{" "}
                   por {formatItemDisplayName(accepted.item.name, accepted.refineLevel, accepted.cardSlots)}
                   {accepted.quantity > 1 && ` x${accepted.quantity}`}
@@ -191,6 +198,8 @@ export default async function ListingDetailPage({
                         userId={offer.offererId}
                         username={offer.offerer.username}
                         viewerId={session.user.discordId}
+                        item={offer.item}
+                        dmAvailable={dmAvailable}
                       />
                     </p>
                   )}

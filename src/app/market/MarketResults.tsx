@@ -32,11 +32,13 @@ export function MarketResults({
   initialCursor,
   filters,
   currentUserId,
+  dmAvailable = false,
 }: {
   initialListings: Listing[];
   initialCursor: string | null;
   filters: Omit<MarketFilters, "cursor">;
   currentUserId: string;
+  dmAvailable?: boolean;
 }) {
   const [listings, setListings] = useState(initialListings);
   const [cursor, setCursor] = useState(initialCursor);
@@ -92,6 +94,8 @@ export function MarketResults({
                     userId={listing.poster.id}
                     username={listing.poster.username}
                     viewerId={currentUserId}
+                    item={listing.item}
+                    dmAvailable={dmAvailable}
                   />
                 </p>
                 {listing.options.length > 0 && (

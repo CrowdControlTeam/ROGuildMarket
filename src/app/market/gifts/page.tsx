@@ -4,10 +4,12 @@ import { requireSession } from "@/lib/guard";
 import { getMyGifts } from "@/lib/gifts";
 import { formatItemDisplayName } from "@/lib/card-slots-constants";
 import { UserMention } from "@/components/UserMention";
+import { isDmFeatureAvailable } from "@/lib/discord-bot";
 
 export default async function GiftsPage() {
   const session = await requireSession();
   const gifts = await getMyGifts();
+  const dmAvailable = await isDmFeatureAvailable();
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
@@ -43,6 +45,8 @@ export default async function GiftsPage() {
                           userId={gift.recipientId}
                           username={gift.recipient.username}
                           viewerId={session.user.discordId}
+                          item={gift.item}
+                          dmAvailable={dmAvailable}
                         />
                       </>
                     ) : (
@@ -52,6 +56,8 @@ export default async function GiftsPage() {
                           userId={gift.senderId}
                           username={gift.sender.username}
                           viewerId={session.user.discordId}
+                          item={gift.item}
+                          dmAvailable={dmAvailable}
                         />
                       </>
                     )}
