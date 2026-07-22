@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Press_Start_2P } from "next/font/google";
 import { NextIntlClientProvider } from "next-intl";
 import { getLocale } from "next-intl/server";
 import { auth } from "@/auth";
+import { loadMarketConfig } from "@/lib/market-config";
 import { SiteHeader } from "@/components/SiteHeader";
 import { SiteFooter } from "@/components/SiteFooter";
 import "./globals.css";
@@ -23,10 +24,13 @@ const pressStart2P = Press_Start_2P({
   subsets: ["latin"],
 });
 
-export const metadata: Metadata = {
-  title: "RO Guild Market",
-  description: "Mercado privado de la guild",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { siteName } = await loadMarketConfig();
+  return {
+    title: siteName,
+    description: "Mercado privado de la guild",
+  };
+}
 
 export default async function RootLayout({
   children,

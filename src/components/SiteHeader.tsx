@@ -13,7 +13,7 @@ type SessionUser = {
 };
 
 export async function SiteHeader({ user }: { user: SessionUser | null }) {
-  const [fullUser, { maintenanceModeEnabled }] = await Promise.all([
+  const [fullUser, { maintenanceModeEnabled, siteName }] = await Promise.all([
     user ? prisma.user.findUnique({ where: { id: user.discordId } }) : null,
     loadMarketConfig(),
   ]);
@@ -25,10 +25,10 @@ export async function SiteHeader({ user }: { user: SessionUser | null }) {
         <div className="flex items-center gap-3">
           <HamburgerMenu />
           <Link
-            href="/"
+            href="/market"
             className="font-heading text-[0.65rem] leading-none tracking-wide text-ro-gold sm:text-xs"
           >
-            RO Guild Market
+            {siteName}
           </Link>
         </div>
 

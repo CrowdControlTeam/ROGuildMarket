@@ -457,11 +457,33 @@ Organizado en 6 PRs independientes:
     compra no admite random options"), que se dejan tal cual por ser
     prosa descriptiva, no una etiqueta de categoría.
 
-Organizado en 6 PRs — próximo: PR 4 (título de sitio configurable), PR 5
-(mensajes directos desde nombres clicables).
+- **PR 4 — título del sitio configurable — hecho**: `MarketConfig.siteName`
+  (nullable — null hasta configurarse, el placeholder/fallback "RO Guild
+  Market" vive en código como `DEFAULT_SITE_NAME` en
+  `src/lib/market-config.ts`, no en el default de la columna, para
+  distinguir "sin configurar" de "configurado literalmente a ese valor").
+  Campo de texto libre en `/admin` (sección "General"): el formulario
+  recibe el valor SIN resolver (puede llegar vacío) para que el input
+  arranque en blanco con el placeholder, a diferencia de todo lo demás en
+  la app que consume el valor ya resuelto con el fallback aplicado.
+  - Cabecera (`SiteHeader`): el nombre configurado sustituye al texto fijo
+    "RO Guild Market" y el enlace pasa de `/` a `/market`. `layout.tsx`
+    pasa de `export const metadata` estático a `generateMetadata()`
+    asíncrona, así que la pestaña del navegador (`<title>`) también
+    refleja el nombre configurado, no solo la cabecera.
+  - Verificado en vivo: guardar un nombre nuevo lo refleja al instante en
+    la cabecera y en el `<title>` de la pestaña; vaciar el campo vuelve a
+    mostrar el placeholder/fallback en ambos sitios.
+  - Migración aplicada en local y en producción — confirmada
+    explícitamente antes de aplicarla (aditiva, columna nueva, pero se
+    pidió confirmación de todos modos siguiendo la norma que se anotó
+    tras el PR 1).
 
-**Próximo paso natural**: PR 4 del refactor (título del sitio
-configurable) — a confirmar con el usuario al retomar.
+Organizado en 6 PRs — próximo y último: PR 5 (mensajes directos desde
+nombres clicables).
+
+**Próximo paso natural**: PR 5 del refactor (mensajes directos desde
+nombres clicables) — a confirmar con el usuario al retomar.
 
 ---
 
