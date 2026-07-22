@@ -45,6 +45,17 @@ export async function fetchGuildRoles(): Promise<GuildRolesResult> {
   };
 }
 
+// Para que la UI (nombres clicables, ver UserMention.tsx) sepa si tiene
+// sentido ofrecer la opción en absoluto — mismo criterio que usa
+// sendDirectMessage por debajo (toggle Y token), pero sin intentar mandar
+// nada. Se resuelve una vez por página (server component) y se pasa hacia
+// abajo, no una llamada por cada mención.
+export async function isDmFeatureAvailable(): Promise<boolean> {
+  if (!process.env.DISCORD_BOT_TOKEN) return false;
+  const { dmNotificationsEnabled } = await loadMarketConfig();
+  return dmNotificationsEnabled;
+}
+
 export type DirectMessagePayload = {
   title: string;
   color: number;

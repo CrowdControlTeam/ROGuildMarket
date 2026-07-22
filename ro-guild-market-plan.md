@@ -479,11 +479,56 @@ Organizado en 6 PRs independientes:
     pidió confirmación de todos modos siguiendo la norma que se anotó
     tras el PR 1).
 
-Organizado en 6 PRs — próximo y último: PR 5 (mensajes directos desde
-nombres clicables).
+- **PR 5 (último) — mensajes directos desde nombres clicables — hecho**:
+  `UserMention` acepta `item`/`dmAvailable`; se vuelve clicable solo cuando
+  `dmAvailable` (nuevo `isDmFeatureAvailable()` en `discord-bot.ts`, mismo
+  gating que `sendDirectMessage` — toggle `dmNotificationsEnabled` Y
+  `DISCORD_BOT_TOKEN` — pero sin intentar enviar nada, solo para que la UI
+  sepa si ofrecer la opción) y no es una automención. Al hacer clic abre un
+  panel (reutiliza `Sidebar.tsx`) con el item de contexto y un textarea
+  libre; nueva server action `sendContactMessage` en
+  `src/lib/contact-messages.ts` re-resuelve nombre/icono del item por
+  `itemId` desde la base de datos (nunca confía en lo que mande el cliente
+  para el contenido real del DM) y llama a `sendDirectMessage` con un color
+  de embed propio (`DISCORD_EMBED_COLOR.MESSAGE`, blurple, distinto de los
+  cuatro colores de tipo de transacción). Cableado en los 3 sitios donde
+  aparece un `UserMention` de otra persona: `/market/[id]` (vendedor/
+  comprador, oferente de trade aceptado, oferentes de trade pendientes),
+  `MarketResults.tsx` (card del listado, con `dmAvailable` pasado desde
+  `/market`), `/market/gifts` (remitente/destinatario). Reutiliza el mismo
+  guard `useRef<boolean>` de doble envío que `NewPublicationForm`/`BuyForm`/
+  `TradeOfferForm`.
+  - **Dos bugs reales encontrados en la propia verificación** (no
+    hipotéticos, reproducidos con clics sintéticos):
+    1. El botón/modal de `UserMention` vive dentro de texto en línea
+       (`<p>`, `<dd>`) y, en `MarketResults.tsx`, dentro del `<Link>` que
+       envuelve toda la card. El modal de `Sidebar` (con su `<form>`/`<h2>`/
+       `<div>`) no puede vivir ahí sin romper el HTML (un `<p>` no puede
+       contener un `<div>`), lo que además causaba errores de hidratación y
+       comportamiento de clic errático. Solución: portal a `document.body`
+       vía `createPortal` (con guarda `typeof window === "undefined"` en
+       vez de un patrón `useEffect`+`setState` de montaje, que el linter de
+       hooks rechaza).
+    2. Con el portal puesto, el clic en el botón/formulario del modal
+       **seguía navegando** a la ficha del listing en `MarketResults.tsx`.
+       Motivo: los portales de React siguen burbujeando eventos por el
+       **árbol de React** (no el del DOM) — aunque el modal ya no sea
+       descendiente del `<a>` en el DOM, seguía siéndolo en el árbol de
+       React, así que el clic llegaba igualmente al `<Link>` y navegaba.
+       Solución: `stopPropagation()` en el botón que abre el modal y en un
+       wrapper alrededor de todo el contenido portado.
+  - Verificado en navegador: clic en mención ajena abre el panel con el
+    item correcto en los 3 sitios; automención sigue como texto plano no
+    clicable; 5 clics sintéticos seguidos en "Enviar" no navegan ni
+    duplican el envío (una sola confirmación "Mensaje enviado."); sin
+    errores de hidratación en consola tras el fix del portal.
+  - Sin migración de esquema en este PR.
 
-**Próximo paso natural**: PR 5 del refactor (mensajes directos desde
-nombres clicables) — a confirmar con el usuario al retomar.
+Refactor de 6 PRs (0 al 5) **completo**.
+
+**Próximo paso natural**: sin tarea explícita pendiente — a definir con el
+usuario (por ejemplo, retomar la Fase 4 "pulido y extras" del roadmap
+original).
 
 ---
 
