@@ -3,12 +3,13 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { loadMoreListings } from "@/lib/market-actions";
 import type { MarketFilters } from "@/lib/market";
 import { buttonClass } from "@/lib/ui";
 import { formatPrice, priceColorClass } from "@/lib/price";
 import { formatItemDisplayName } from "@/lib/card-slots-constants";
-import { LISTING_TYPE_BADGE, formatOptionAmount } from "@/lib/market-labels";
+import { listingTypeLabel, LISTING_TYPE_BADGE_CLASS, formatOptionAmount } from "@/lib/market-labels";
 import { UserMention } from "@/components/UserMention";
 
 type Item = { id: string; name: string; iconUrl: string };
@@ -43,6 +44,7 @@ export function MarketResults({
   const [listings, setListings] = useState(initialListings);
   const [cursor, setCursor] = useState(initialCursor);
   const [isPending, startTransition] = useTransition();
+  const t = useTranslations("market");
 
   function loadMore() {
     startTransition(async () => {
@@ -81,9 +83,9 @@ export function MarketResults({
                   {formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}
                   {!filters.type && (
                     <span
-                      className={`rounded border px-1.5 py-0.5 text-xs font-normal ${LISTING_TYPE_BADGE[listing.type].className}`}
+                      className={`rounded border px-1.5 py-0.5 text-xs font-normal ${LISTING_TYPE_BADGE_CLASS[listing.type]}`}
                     >
-                      {LISTING_TYPE_BADGE[listing.type].label}
+                      {listingTypeLabel(t, listing.type)}
                     </span>
                   )}
                 </p>

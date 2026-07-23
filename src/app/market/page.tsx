@@ -1,10 +1,11 @@
 import { z } from "zod";
+import { getTranslations } from "next-intl/server";
 import { ItemCategory, EquipSlot, WeaponType, ListingType } from "@prisma/client";
 import { getListings, isMarketSort, type MarketFilters as MarketFiltersType } from "@/lib/market";
 import { requireSession } from "@/lib/guard";
 import { loadMarketConfig } from "@/lib/market-config";
 import { isDmFeatureAvailable } from "@/lib/discord-bot";
-import { MARKET_VIEW_TITLE } from "@/lib/market-labels";
+import { marketViewTitle } from "@/lib/market-labels";
 import { Panel } from "@/components/Panel";
 import { MarketFilters } from "./MarketFilters";
 import { MarketResults } from "./MarketResults";
@@ -75,7 +76,8 @@ export default async function MarketPage({
   const { listings, nextCursor } = await getListings(filters);
   const { maintenanceModeEnabled } = await loadMarketConfig();
   const dmAvailable = await isDmFeatureAvailable();
-  const pageTitle = filters.type ? MARKET_VIEW_TITLE[filters.type] : "Mercado";
+  const t = await getTranslations("market");
+  const pageTitle = filters.type ? marketViewTitle(t, filters.type) : t("title");
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">

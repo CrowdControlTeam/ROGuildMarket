@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/guard";
 import { Panel } from "@/components/Panel";
@@ -7,9 +8,10 @@ import { BackLink } from "@/components/BackLink";
 import { formatPrice, priceColorClass } from "@/lib/price";
 import { formatItemDisplayName } from "@/lib/card-slots-constants";
 import {
-  OFFER_STATUS_LABEL,
-  LISTING_TYPE_BADGE,
-  POSTER_LABEL,
+  offerStatusLabel,
+  listingTypeLabel,
+  LISTING_TYPE_BADGE_CLASS,
+  posterLabel,
   listingStatusLabel,
   formatOptionAmount,
 } from "@/lib/market-labels";
@@ -28,6 +30,7 @@ export default async function ListingDetailPage({
 }) {
   const session = await requireSession();
   const { id } = await params;
+  const t = await getTranslations("market");
 
   const dmAvailable = await isDmFeatureAvailable();
 
@@ -68,14 +71,14 @@ export default async function ListingDetailPage({
               {formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}
               {listing.type !== "SALE" && (
                 <span
-                  className={`rounded border px-1.5 py-0.5 text-xs font-normal ${LISTING_TYPE_BADGE[listing.type].className}`}
+                  className={`rounded border px-1.5 py-0.5 text-xs font-normal ${LISTING_TYPE_BADGE_CLASS[listing.type]}`}
                 >
-                  {LISTING_TYPE_BADGE[listing.type].label}
+                  {listingTypeLabel(t, listing.type)}
                 </span>
               )}
             </h1>
             <p className="mt-1 text-sm text-ro-text-muted">
-              {listingStatusLabel(listing.status, listing.type)}
+              {listingStatusLabel(t, listing.status, listing.type)}
             </p>
           </div>
         </div>
@@ -94,7 +97,7 @@ export default async function ListingDetailPage({
             </div>
           )}
           <div className="flex justify-between border-b border-ro-panel-border/30 pb-2">
-            <dt className="text-ro-text-muted">{POSTER_LABEL[listing.type]}</dt>
+            <dt className="text-ro-text-muted">{posterLabel(t, listing.type)}</dt>
             <dd>
               <UserMention
                 userId={listing.posterId}
@@ -193,7 +196,7 @@ export default async function ListingDetailPage({
                     </span>
                     {!isPoster && (
                       <span className="text-xs text-ro-text-muted">
-                        {OFFER_STATUS_LABEL[offer.status]}
+                        {offerStatusLabel(t, offer.status)}
                       </span>
                     )}
                   </div>
