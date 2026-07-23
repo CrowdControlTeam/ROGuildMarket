@@ -46,10 +46,12 @@ cambio de flujo, el primer tag no saldrá hasta la primera PR
 **Primer corte de release (2026-07-23):** rama `release/0.1.0` desde
 `develop` → PR a `main`, forzando bump `#minor` (no hay tags previos, así
 que `anothrNick/github-tag-action` parte de `0.0.0` → primer tag
-`v0.1.0`). Al mergear queda pendiente aplicar a mano en Supabase de
-producción la migración `20260722163923_add_gift_options` (tabla
-`GiftOption`, aditiva, todavía sin código que la use) — arrastrada desde
-`develop`, no forma parte de este PR de release en sí.
+`v0.1.0`). La migración `20260722163923_add_gift_options` (tabla
+`GiftOption`, aditiva, todavía sin código que la use) que arrastraba
+`develop` **ya estaba aplicada en Supabase de producción** desde antes
+(`prisma migrate status` contra prod confirma las 22 migraciones al día)
+— se debió aplicar en una sesión anterior junto con el resto de regalos,
+antes de que ese código llegara a `main`. No hizo falta ninguna acción.
 
 **Desviaciones/decisiones respecto al documento original:**
 - Next.js 16 (no 14) + Tailwind v4 (no v3) — el plan se escribió antes de esas versiones; NextAuth v5 (beta, pero es el estándar de facto para App Router).
