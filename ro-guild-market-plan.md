@@ -645,11 +645,63 @@ todo lo que venga después. Rama de este primer lote de arreglos:
 
 **Estado: PR #19 mergeada en `develop`, migración `add_gift_options`
 aplicada en producción (2026-07-23).** Rama `fix/publication-form-config`
-borrada (local y ya fusionada). Sin tareas explícitas pendientes; queda
-abierto (deferido por el usuario, no resuelto) el reporte original de que
-el filtro de options a veces no aparecía para ciertas combinaciones de
-categoría/slot — pendiente de que el usuario lo vuelva a probar tras este
-rediseño antes de decidir si sigue siendo un problema.
+borrada (local y ya fusionada). Queda abierto (deferido por el usuario, no
+resuelto) el reporte original de que el filtro de options a veces no
+aparecía para ciertas combinaciones de categoría/slot — pendiente de que
+el usuario lo vuelva a probar tras este rediseño antes de decidir si sigue
+siendo un problema.
+
+**PR #20 — fix de hidratación (2026-07-23):** `UserMention`/`ContactModal`
+decidía crear el portal (`createPortal`) mirando `typeof window ===
+"undefined"` directamente en el render — la primera pasada de hidratación
+en cliente ya ve `window` definido, así que montaba el portal de golpe
+mientras el servidor había devuelto `null` (el "server/client branch" que
+el propio error de Next advierte). Se pospuso a un `useEffect` (`mounted`
+state) para que servidor y cliente coincidan en la hidratación. Mergeada.
+
+**Arranca el trabajo de fondo de i18n y manejo de errores (2026-07-23),
+en 2 PRs paralelas:**
+
+- **PR #21 — i18n de `market-labels.ts`:** primer bloque de la migración
+  completa a i18n (12 tareas identificadas, ver más abajo). Los
+  `Record<Enum, string>` de `market-labels.ts` (categoría, slot, tipo de
+  arma, tipo de listing, estado, poster, badge, oferta) pasan de
+  constantes fijas en español a funciones `xxxLabel(t, valor)` que
+  resuelven la clave contra `messages/es.json`, bajo los namespaces nuevos
+  `market.catalog.*`/`market.listing.*`. Actualizados los 6
+  componentes/páginas que las usaban. `formatOptionAmount` y los textos
+  que van a Discord (`discord-webhook.ts`, `gifts.ts`) quedan sin tocar a
+  propósito — no son texto en idioma natural el primero, y la política de
+  idioma de Discord es una decisión aparte todavía sin tomar. Mergeada.
+- **PR #22 — error boundaries + saneamiento de excepciones:** no existía
+  ningún boundary de Next.js en la app — un fallo no controlado en un
+  Server Component (ej. la DB no responde) mostraba la pantalla genérica
+  de Next sin mensaje útil. Añadidos `src/app/error.tsx` (boundary raíz),
+  `global-error.tsx` (cubre el propio layout raíz, reimporta
+  `globals.css` porque sustituye TODO el árbol mientras está activo) y
+  `not-found.tsx`. Nuevo `src/lib/errors.ts`
+  (`getErrorMessage`/`rethrowFrameworkErrors`, usa el `unstable_rethrow`
+  de Next 16.2) para que `redirect()`/`notFound()` no queden atrapados por
+  los `catch` genéricos de los formularios y se muestren como "error
+  inesperado" en vez de dejar navegar — aplicado en los 8 sitios que ya
+  capturaban errores de server actions. `item-recognition.ts`: el
+  `try/catch` solo cubría la llamada a Gemini, ahora envuelve toda la
+  función, y el mensaje devuelto al cliente pasa a ser siempre uno
+  amigable fijo (antes reenviaba `err.message` tal cual) — el error real
+  se registra con `console.error` en servidor. `MarketResults.tsx`
+  (cargar más), `ItemPicker.tsx` y `UserPicker.tsx` (buscadores) hacían
+  fetch dentro de `startTransition` sin `try/catch`, fallando en silencio
+  — añadido manejo con mensaje inline. Revisado `discord-webhook.ts`/
+  `discord-bot.ts`: ya aislaban sus propios fallos de la acción principal
+  desde antes, sin cambios necesarios ahí. Mergeada.
+
+**Trabajo de i18n pendiente** (desglosado en tareas, resto de PRs futuras):
+migrar los 59 `throw new Error(...)` de `src/lib/*.ts`, cabecera/nav,
+resto de páginas de mercado, formulario de publicación, regalos, panel de
+administración, metadata/páginas de auth-error; decidir la política de
+idioma de Discord; crear un segundo `messages/<locale>.json` real (ej.
+`en.json`) para probar que el switch de idioma en `/admin` funciona de
+verdad, no solo que la infraestructura existe.
 
 ---
 
