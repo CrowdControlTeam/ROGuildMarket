@@ -1,5 +1,6 @@
 import Image from "next/image";
 import { ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { getTranslations } from "next-intl/server";
 import { requireSession } from "@/lib/guard";
 import { getMyGifts } from "@/lib/gifts";
 import { formatItemDisplayName } from "@/lib/card-slots-constants";
@@ -11,13 +12,14 @@ export default async function GiftsPage() {
   const session = await requireSession();
   const gifts = await getMyGifts();
   const dmAvailable = await isDmFeatureAvailable();
+  const t = await getTranslations("market.gifts");
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-8">
-      <h1 className="mb-6 font-heading text-lg text-ro-gold">Regalos</h1>
+      <h1 className="mb-6 font-heading text-lg text-ro-gold">{t("title")}</h1>
 
       {gifts.length === 0 ? (
-        <p className="text-ro-text-light/70">Todavía no has enviado ni recibido ningún regalo.</p>
+        <p className="text-ro-text-light/70">{t("empty")}</p>
       ) : (
         <ul className="flex flex-col gap-3">
           {gifts.map((gift) => {
@@ -31,19 +33,19 @@ export default async function GiftsPage() {
                   <ArrowUpRight
                     className="shrink-0 text-ro-text-muted"
                     size={20}
-                    aria-label="Enviado"
+                    aria-label={t("sentLabel")}
                     role="img"
                   >
-                    <title>Enviado</title>
+                    <title>{t("sentLabel")}</title>
                   </ArrowUpRight>
                 ) : (
                   <ArrowDownLeft
                     className="shrink-0 text-green-700"
                     size={20}
-                    aria-label="Recibido"
+                    aria-label={t("receivedLabel")}
                     role="img"
                   >
-                    <title>Recibido</title>
+                    <title>{t("receivedLabel")}</title>
                   </ArrowDownLeft>
                 )}
                 <Image src={gift.item.iconUrl} alt={gift.item.name} width={40} height={40} />
@@ -67,7 +69,7 @@ export default async function GiftsPage() {
                   <p className="text-sm text-ro-text-muted">
                     {isSender ? (
                       <>
-                        Enviado a{" "}
+                        {t("sentTo")}{" "}
                         <UserMention
                           userId={gift.recipientId}
                           username={gift.recipient.username}
@@ -78,7 +80,7 @@ export default async function GiftsPage() {
                       </>
                     ) : (
                       <>
-                        Recibido de{" "}
+                        {t("receivedFrom")}{" "}
                         <UserMention
                           userId={gift.senderId}
                           username={gift.sender.username}

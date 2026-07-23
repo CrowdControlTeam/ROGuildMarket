@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 import { requireSession } from "@/lib/guard";
 import { isImageRecognitionAvailable } from "@/lib/item-recognition";
 import { loadMarketConfig } from "@/lib/market-config";
@@ -26,11 +27,12 @@ export default async function NewListingPage({
   const raw = await searchParams;
   const rawType = Array.isArray(raw.type) ? raw.type[0] : raw.type;
   const initialType: PublicationType = isPublicationType(rawType) ? rawType : "SALE";
+  const t = await getTranslations();
 
   return (
     <main className="mx-auto max-w-lg px-6 py-8">
-      <BackLink href="/market" label="Volver al mercado" />
-      <Panel title="Nueva publicación">
+      <BackLink href="/market" label={t("market.detail.back")} />
+      <Panel title={t("nav.newPublication")}>
         <NewPublicationForm recognitionEnabled={recognitionEnabled} initialType={initialType} />
       </Panel>
     </main>

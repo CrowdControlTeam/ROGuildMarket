@@ -83,10 +83,7 @@ export default async function MarketPage({
     <main className="mx-auto max-w-3xl px-6 py-8">
       {maintenanceModeEnabled && (
         <p className="mb-4 rounded-md border-2 border-ro-gold-dark bg-ro-gold/10 px-4 py-2 text-sm text-ro-text">
-          El mercado está en modo mantenimiento
-          {session.user.isAdmin
-            ? " (como administrador, sí puedes publicar y comprar)."
-            : ": no se puede crear ventas ni comprar por ahora."}
+          {session.user.isAdmin ? t("maintenance.admin") : t("maintenance.user")}
         </p>
       )}
       <h1 className="mb-6 font-heading text-lg text-ro-gold">{pageTitle}</h1>

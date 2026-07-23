@@ -1,6 +1,7 @@
 "use server";
 
 import { ItemCategory, EquipSlot, WeaponType, ItemOptionGroup } from "@prisma/client";
+import { getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/guard";
 import {
@@ -166,18 +167,19 @@ export type RecognitionResult =
 // formulario — que además deja todo editable antes de publicar.
 export async function recognizeItemFromScreenshot(formData: FormData): Promise<RecognitionResult> {
   await requireSession();
+  const t = await getTranslations("errors");
 
   // No confiar solo en que el cliente no muestre el bloque: si lo
   // desactivan desde /admin mientras alguien tiene el formulario abierto,
   // la llamada también debe rechazarse aquí.
   const config = await loadMarketConfig();
   if (!config.imageRecognitionEnabled || !process.env.GEMINI_API_KEY) {
-    return { status: "error", message: "El reconocimiento por captura no está activo" };
+    return { status: "error", message: t("recognitionNotActive") };
   }
 
   const file = formData.get("screenshot");
   if (!(file instanceof File) || file.size === 0) {
-    return { status: "error", message: "No se ha recibido ninguna imagen" };
+    return { status: "error", message: t("noImageReceived") };
   }
 
   // Todo lo de aquí en adelante puede fallar por motivos que no controlamos
@@ -268,6 +270,6 @@ export async function recognizeItemFromScreenshot(formData: FormData): Promise<R
     };
   } catch (err) {
     console.error("recognizeItemFromScreenshot falló:", err);
-    return { status: "error", message: "Ha fallado la detección automática. Prueba de nuevo o rellena el item a mano." };
+    return { status: "error", message: t("recognitionFailed") };
   }
 }

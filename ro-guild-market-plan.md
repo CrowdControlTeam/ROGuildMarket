@@ -1,6 +1,6 @@
 # Plan de desarrollo — Mercado de guild (Ragnarok Online)
 
-## 0. Estado actual (actualizado 2026-07-21)
+## 0. Estado actual (actualizado 2026-07-23)
 
 Léase esto primero al retomar el proyecto, antes que el resto del documento —
 resume la realidad actual del desarrollo; el resto del archivo es la
@@ -695,13 +695,38 @@ en 2 PRs paralelas:**
   `discord-bot.ts`: ya aislaban sus propios fallos de la acción principal
   desde antes, sin cambios necesarios ahí. Mergeada.
 
-**Trabajo de i18n pendiente** (desglosado en tareas, resto de PRs futuras):
-migrar los 59 `throw new Error(...)` de `src/lib/*.ts`, cabecera/nav,
-resto de páginas de mercado, formulario de publicación, regalos, panel de
-administración, metadata/páginas de auth-error; decidir la política de
-idioma de Discord; crear un segundo `messages/<locale>.json` real (ej.
-`en.json`) para probar que el switch de idioma en `/admin` funciona de
-verdad, no solo que la infraestructura existe.
+**PR #24 — migración i18n completa (2026-07-23), rama
+`feat/i18n-full-migration`:** resto de la migración a i18n de una sola vez
+(41 archivos), a petición explícita del usuario de agrupar todo en una
+única PR: los ~59 `throw new Error(...)` de `src/lib/*.ts` (server
+actions), cabecera/nav, resto de páginas de mercado, formulario de
+publicación, regalos, panel de administración, metadata/páginas de
+auth-error. `messages/es.json` pasó de 318 a 322 claves. **Política de
+idioma de Discord decidida:** webhook y DMs usan el mismo locale global de
+`MarketConfig` que el resto de la app (no hay locale por usuario); los
+nombres de item/stat del catálogo NO se traducen (quedan en su idioma de
+origen). Se creó `messages/en.json` como segundo locale real (no solo
+infraestructura) para probar el switch de idioma en `/admin` de verdad.
+Verificación estática: `tsc` limpio, paridad de claves es/en (script
+puntual), y un script de auditoría ad-hoc que resuelve cada `t("clave")`/
+`t.rich("clave")` contra `es.json` por archivo. **Verificación en vivo**
+(sesión autenticada real del usuario, no solo estática): español en todas
+las páginas, switch a inglés en toda la app (mercado, detalle con trade
+offers, admin), vuelta a español — sin errores de consola. Mergeada.
+
+**Fix post-verificación (mismo día, mismo PR #24 antes de mergear):**
+durante la verificación en vivo se detectó que los labels/descripciones de
+los modelos de Gemini en el desplegable de `/admin`
+(`gemini-model-constants.ts`, `GEMINI_MODEL_OPTIONS`) se habían quedado
+hardcodeados en español, fuera del alcance de la migración — el array
+pasaba directo del servidor al cliente sin pasar por `next-intl`. Fix:
+`gemini-model-constants.ts` se reduce a solo los `value` reales (IDs de la
+API, no traducibles); el `label`/`description` vive ahora en
+`messages/*.json` bajo `admin.recognition.models.<value>`, y
+`getMarketConfig()` (`admin-config.ts`) construye `geminiModelOptions` en
+servidor con `getTranslations("admin.recognition.models")`. Verificado en
+vivo (switch a inglés → "Flash (recommended)" / descripciones en inglés,
+vuelta a español OK, sin errores de consola).
 
 ---
 

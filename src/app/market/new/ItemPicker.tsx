@@ -41,6 +41,7 @@ export function ItemPicker({
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const t = useTranslations("market");
+  const tCommon = useTranslations("common");
 
   function handleChange(value: string) {
     setQuery(value);
@@ -50,7 +51,7 @@ export function ItemPicker({
         const found = await searchItems(value);
         setResults(found);
       } catch (err) {
-        setError(getErrorMessage(err, "No se ha podido buscar. Inténtalo de nuevo."));
+        setError(getErrorMessage(err, tCommon("searchError")));
       }
     });
   }
@@ -69,14 +70,14 @@ export function ItemPicker({
           value={selected ? selected.name : query}
           onChange={(e) => handleChange(e.target.value)}
           readOnly={!!selected}
-          placeholder="Busca un item por nombre..."
+          placeholder={t("itemPicker.placeholder")}
           className={`${inputClass} ${selected ? "cursor-default pr-8" : ""}`}
         />
         {selected && (
           <button
             type="button"
             onClick={handleClear}
-            aria-label="Quitar item seleccionado"
+            aria-label={t("itemPicker.removeSelected")}
             className="absolute right-2 top-1/2 -translate-y-1/2 text-ro-text-muted hover:text-ro-gold"
           >
             <X size={16} />
@@ -84,7 +85,7 @@ export function ItemPicker({
         )}
       </div>
       {!selected && isPending && (
-        <p className="mt-1 text-sm text-ro-text-muted">Buscando...</p>
+        <p className="mt-1 text-sm text-ro-text-muted">{tCommon("searching")}</p>
       )}
       {!selected && error && <p className="mt-1 text-sm text-red-700">{error}</p>}
       {!selected && results.length > 0 && (

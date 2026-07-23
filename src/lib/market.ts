@@ -1,21 +1,22 @@
 import { Prisma, ItemCategory, EquipSlot, WeaponType, ListingType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
-export const SORT_OPTIONS = [
-  { value: "newest", label: "Más recientes" },
-  { value: "oldest", label: "Más antiguas" },
-  { value: "price_asc", label: "Precio: menor a mayor" },
-  { value: "price_desc", label: "Precio: mayor a menor" },
-  { value: "name_asc", label: "Nombre: A-Z" },
-  { value: "name_desc", label: "Nombre: Z-A" },
+// Labels vía sortLabel(t, sort) en market-labels.ts (messages/es.json,
+// namespace market.sort.*) — este array solo fija el orden y los valores
+// válidos, no el texto mostrado.
+export const SORT_VALUES = [
+  "newest",
+  "oldest",
+  "price_asc",
+  "price_desc",
+  "name_asc",
+  "name_desc",
 ] as const;
 
-export type MarketSort = (typeof SORT_OPTIONS)[number]["value"];
-
-const SORT_VALUES = SORT_OPTIONS.map((o) => o.value);
+export type MarketSort = (typeof SORT_VALUES)[number];
 
 export function isMarketSort(value: string): value is MarketSort {
-  return (SORT_VALUES as string[]).includes(value);
+  return (SORT_VALUES as readonly string[]).includes(value);
 }
 
 export type MarketFilters = {

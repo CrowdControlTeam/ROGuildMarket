@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 
 export function Sidebar({
   side,
@@ -15,6 +16,7 @@ export function Sidebar({
   title: string;
   children: React.ReactNode;
 }) {
+  const t = useTranslations("common");
   useEffect(() => {
     if (!open) return;
     function onKeyDown(e: KeyboardEvent) {
@@ -47,7 +49,7 @@ export function Sidebar({
           <button
             type="button"
             onClick={onClose}
-            aria-label="Cerrar"
+            aria-label={t("close")}
             className="text-lg leading-none text-ro-gold hover:text-ro-text-light"
           >
             ✕

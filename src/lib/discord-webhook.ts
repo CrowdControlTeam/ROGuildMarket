@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import { DISCORD_EMBED_COLOR } from "@/lib/discord-colors";
 import { formatPrice } from "@/lib/price";
 import { loadMarketConfig } from "@/lib/market-config";
@@ -15,12 +16,6 @@ type ListingWebhookPayload = {
   options?: { label: string; value: number }[];
 };
 
-const LISTING_TITLE_PREFIX: Record<ListingWebhookPayload["type"], string> = {
-  SALE: "Nueva venta",
-  TRADE: "Nuevo intercambio",
-  BUY: "Nueva compra",
-};
-
 export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) {
   const config = await loadMarketConfig();
   // Configurable desde /admin en vez de una variable de entorno — hace
@@ -29,10 +24,12 @@ export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) 
   if (!config.webhookEnabled || !config.webhookUrl) return;
   const webhookUrl = config.webhookUrl;
 
+  const t = await getTranslations("discord");
+
   const body = {
     embeds: [
       {
-        title: `${LISTING_TITLE_PREFIX[payload.type]}: ${payload.itemName}`,
+        title: `${t(`listingTitle.${payload.type}`)}: ${payload.itemName}`,
         url: payload.listingUrl,
         color: DISCORD_EMBED_COLOR[payload.type],
         thumbnail: { url: payload.itemIconUrl },
@@ -45,16 +42,16 @@ export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) 
             ? []
             : [
                 {
-                  name: payload.type === "BUY" ? "Pago hasta" : "Precio",
+                  name: payload.type === "BUY" ? t("fields.payUpTo") : t("fields.price"),
                   value: formatPrice(payload.price!),
                   inline: true,
                 },
               ]),
-          { name: "Cantidad", value: String(payload.quantity), inline: true },
+          { name: t("fields.quantity"), value: String(payload.quantity), inline: true },
           ...(payload.options && payload.options.length > 0
             ? [
                 {
-                  name: "Options",
+                  name: t("fields.options"),
                   value: payload.options
                     .map((o) => `${o.label}: ${formatOptionAmount(o.value, payload.type === "BUY")}`)
                     .join("\n"),
