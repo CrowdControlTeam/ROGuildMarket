@@ -43,6 +43,14 @@ release. Como `main` sigue varios commits por detrás de `develop` desde el
 cambio de flujo, el primer tag no saldrá hasta la primera PR
 `develop → main`. Aún no hay tags creados en el repo.
 
+**Primer corte de release (2026-07-23):** rama `release/0.1.0` desde
+`develop` → PR a `main`, forzando bump `#minor` (no hay tags previos, así
+que `anothrNick/github-tag-action` parte de `0.0.0` → primer tag
+`v0.1.0`). Al mergear queda pendiente aplicar a mano en Supabase de
+producción la migración `20260722163923_add_gift_options` (tabla
+`GiftOption`, aditiva, todavía sin código que la use) — arrastrada desde
+`develop`, no forma parte de este PR de release en sí.
+
 **Desviaciones/decisiones respecto al documento original:**
 - Next.js 16 (no 14) + Tailwind v4 (no v3) — el plan se escribió antes de esas versiones; NextAuth v5 (beta, pero es el estándar de facto para App Router).
 - Base de datos: Supabase en vez de Neon, conectada a Vercel vía su integración oficial (variables `POSTGRES_PRISMA_URL`/`POSTGRES_URL_NON_POOLING`, autosincronizadas — no se pegan credenciales a mano). En local, Postgres por Docker (`docker-compose.yml`, puerto 5433).
