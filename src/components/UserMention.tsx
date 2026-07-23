@@ -6,6 +6,7 @@ import Image from "next/image";
 import { sendContactMessage } from "@/lib/contact-messages";
 import { Sidebar } from "./Sidebar";
 import { buttonClass, inputBaseClass, labelClass } from "@/lib/ui";
+import { getErrorMessage } from "@/lib/errors";
 
 type MentionItem = { id: string; name: string; iconUrl: string };
 
@@ -132,7 +133,7 @@ function ContactModal({
                   setSent(true);
                 } catch (err) {
                   submittingRef.current = false;
-                  setError(err instanceof Error ? err.message : "Error inesperado");
+                  setError(getErrorMessage(err));
                 }
               });
             }}

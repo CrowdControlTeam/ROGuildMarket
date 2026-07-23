@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import Image from "next/image";
 import { searchUsers } from "@/lib/gifts";
 import { inputClass } from "@/lib/ui";
+import { getErrorMessage } from "@/lib/errors";
 
 export type UserResult = Awaited<ReturnType<typeof searchUsers>>[number];
 
@@ -16,13 +17,19 @@ export function UserPicker({
 }) {
   const [query, setQuery] = useState(initialQuery ?? "");
   const [results, setResults] = useState<UserResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   function handleChange(value: string) {
     setQuery(value);
+    setError(null);
     startTransition(async () => {
-      const found = await searchUsers(value);
-      setResults(found);
+      try {
+        const found = await searchUsers(value);
+        setResults(found);
+      } catch (err) {
+        setError(getErrorMessage(err, "No se ha podido buscar. Inténtalo de nuevo."));
+      }
     });
   }
 
@@ -38,6 +45,7 @@ export function UserPicker({
       {isPending && (
         <p className="mt-1 text-sm text-ro-text-muted">Buscando...</p>
       )}
+      {error && <p className="mt-1 text-sm text-red-700">{error}</p>}
       {results.length > 0 && (
         <ul className="mt-2 flex max-h-64 flex-col gap-1 overflow-y-auto rounded-md border-2 border-ro-panel-border bg-ro-panel-alt p-1">
           {results.map((user) => (

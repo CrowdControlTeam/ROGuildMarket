@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { cancelListing, fulfillListing } from "@/lib/listings";
 import { buttonClass } from "@/lib/ui";
+import { getErrorMessage } from "@/lib/errors";
 
 // showFulfill: solo type=BUY (norma 2.4 del plan) — la resolución de una
 // petición de compra pasa fuera de la app, quien la publicó la marca
@@ -26,7 +27,7 @@ export function CancelListingButton({
         await action(listingId);
         router.refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error inesperado");
+        setError(getErrorMessage(err));
       }
     });
   }
