@@ -1,6 +1,6 @@
 # Plan de desarrollo — Mercado de guild (Ragnarok Online)
 
-## 0. Estado actual (actualizado 2026-07-21)
+## 0. Estado actual (actualizado 2026-07-23)
 
 Léase esto primero al retomar el proyecto, antes que el resto del documento —
 resume la realidad actual del desarrollo; el resto del archivo es la
@@ -23,6 +23,33 @@ mención de trabajar directo en local): `main` protegida, todo por rama
 `<tipo>/<descripcion_tarea>` (`feature`/`bugfix`/`hotfix`/`release`) +
 PR revisado y mergeado por el humano, nunca por el asistente. Commits
 `<tipo>: <mensaje>` con el tipo determinado por el tipo de rama.
+**Actualización (2026-07-22): git flow completo** — `develop` (creada
+desde `main`) pasa a ser la rama base para todo trabajo nuevo; `main`
+queda reservada a lo ya desplegado. Las ramas de tarea salen de `develop`
+y se mergean ahí, no directo a `main`.
+
+**Actualización (2026-07-23): versionado automático con tags** —
+adaptados de `CrowdControlWeb` (mismo modelo de ramas) los workflows
+`.github/workflows/release.yml` (push a `main` → tag SemVer con
+`anothrNick/github-tag-action`, bump por token `#major`/`#minor`/`#patch`
+en el mensaje del commit de merge, `patch` por defecto, prefijo `v` →
+publica GitHub Release con `--generate-notes`) y `prerelease.yml` (manual,
+tag `-rc` desde `develop`, copiado tal cual sin cambios). **Sin paso de
+build/deploy en ninguno de los dos** — a diferencia de CrowdControlWeb
+(Cloudflare vía `wrangler`), aquí Vercel ya despliega solo con su
+integración de Git (preview en cada PR, producción en cada push a `main`),
+así que el Action no toca el despliegue, solo etiqueta y publica el
+release. Como `main` sigue varios commits por detrás de `develop` desde el
+cambio de flujo, el primer tag no saldrá hasta la primera PR
+`develop → main`. Aún no hay tags creados en el repo.
+
+**Primer corte de release (2026-07-23):** rama `release/0.1.0` desde
+`develop` → PR a `main`, forzando bump `#minor` (no hay tags previos, así
+que `anothrNick/github-tag-action` parte de `0.0.0` → primer tag
+`v0.1.0`). Al mergear queda pendiente aplicar a mano en Supabase de
+producción la migración `20260722163923_add_gift_options` (tabla
+`GiftOption`, aditiva, todavía sin código que la use) — arrastrada desde
+`develop`, no forma parte de este PR de release en sí.
 
 **Desviaciones/decisiones respecto al documento original:**
 - Next.js 16 (no 14) + Tailwind v4 (no v3) — el plan se escribió antes de esas versiones; NextAuth v5 (beta, pero es el estándar de facto para App Router).
@@ -526,9 +553,203 @@ Organizado en 6 PRs independientes:
 
 Refactor de 6 PRs (0 al 5) **completo**.
 
-**Próximo paso natural**: sin tarea explícita pendiente — a definir con el
-usuario (por ejemplo, retomar la Fase 4 "pulido y extras" del roadmap
-original).
+**Git flow adoptado (2026-07-22):** a partir de aquí, `develop` (creada
+desde `main`) es la rama base de trabajo, con `main` reservada a lo ya
+desplegado — cambia el flujo descrito al principio de este documento en
+todo lo que venga después. Rama de este primer lote de arreglos:
+`fix/publication-form-config`, contra `develop`.
+
+**Arreglos post-refactor tras revisión en producción (2026-07-22),
+`fix/publication-form-config`:**
+- **Selector de tipo como desplegable**: los 4 radio buttons de
+  "Tipo de publicación" en `NewPublicationForm` pasan a un `<select>`
+  (mismo `selectClass` que el resto de desplegables del form).
+- **Categoría/tipo de arma visible en el buscador de items**: el catálogo
+  tiene 53 nombres duplicados (p.ej. dos "Arc Wand": un báculo real y un
+  costume cosmético con el mismo nombre) — sin ninguna pista, elegir el
+  resultado equivocado en `ItemPicker` era indistinguible hasta publicar,
+  y es justo la categoría/tipo de arma lo que decide si aparecen
+  refine/slots/options. Cada resultado de búsqueda ahora muestra una
+  segunda línea con la categoría (y el tipo de arma, si aplica).
+- **Reconocimiento por captura desambiguado**: por el mismo problema de
+  nombres duplicados, el matching por nombre solo podía empatar entre las
+  dos "Arc Wand" y quedarse con la que devolviera Prisma primero, sin
+  relación con la imagen real. Gemini ahora también extrae la categoría
+  (y el tipo de arma, si aplica) que ya muestra el propio tooltip
+  (`RESPONSE_SCHEMA` con `enum` sobre los valores reales de
+  `ItemCategory`/`WeaponType`, no texto libre) — el match prueba primero
+  solo contra los candidatos de esa categoría/tipo antes de caer al
+  catálogo completo si no encuentra nada.
+- **Selección de item bloqueada + botón X**: `ItemPicker` dejaba editar el
+  texto del input libremente tras seleccionar un item sin que eso
+  limpiara la selección del padre, dejando visibles secciones
+  (refine/slots/options) de un item que ya no coincidía con el texto
+  mostrado. Pasa a ser un componente controlado (`selected`/`onSelect`/
+  `onClear` en vez de `initialQuery` + remount por `key`): con un item
+  elegido, el input queda de solo lectura y aparece una X para quitarlo
+  explícitamente, limpiando también las secciones dependientes — mismo
+  cambio en `NewPublicationForm` y `TradeOfferForm`.
+- **Options en Compra ("mínimo deseado") y Regalo ("roll exacto")**: hasta
+  ahora `BUY`/`GIFT` rechazaban random options sin más. Se reconsideró el
+  sentido: en `BUY` una option no describe una instancia real (todavía no
+  se tiene el item), así que pasa a significar "el mínimo de esa stat que
+  el comprador pide" — mismo patrón de doble sentido que ya tiene
+  `Listing.price` según `type`, sin columnas nuevas. En `GIFT` sí hay una
+  instancia real de por medio (igual que `SALE`/`TRADE`), así que es el
+  roll exacto — pero `Gift` no es un `Listing`, así que hizo falta un
+  modelo nuevo, `GiftOption` (mismo shape que `ListingOption`), con su
+  propia migración; fuerza cantidad a 1 cuando el item es
+  option-eligible, mismo criterio que una venta.
+  - Parseo/validación de options centralizado en `src/lib/item-options.ts`
+    (`parseOptionsFromFormData`/`validateOptions`, antes duplicado
+    inline en `listings.ts`), reutilizado ahora también por `gifts.ts`.
+  - Nuevo `formatOptionAmount` en `market-labels.ts`: dos formatos según
+    el sentido del valor — `"+20"` (roll real) o `"20+"` (mínimo
+    deseado), usado en las cards del mercado, la ficha del listing, el
+    embed del webhook y el DM de regalo.
+  - Filtro de mercado por option: con el tipo filtrado en `BUY`, el input
+    "mín." se oculta (no tiene sentido acotar por abajo el mínimo que pide
+    otro comprador) y el que queda ("máx.") se relee como "mi item tiene
+    este valor, ¿qué compras cumpliría?" — mismo `lte` que ya usaba el
+    filtro normal en `optionSlotWhere` (`market.ts`), sin cambios de query.
+  - Verificado en navegador: petición de compra con "MATK 15+" correcta en
+    card y ficha; el filtro con máx=20 la encuentra, con máx=10 no; regalo
+    con "MATK +30" correcto en el historial, cantidad forzada a 1.
+- Migración aplicada en local (`add_gift_options`).
+- **Etiquetas de menú/página por tipo**: "Vender/Comprar/Comerciar/Regalar"
+  pasan a "Ventas/Compras/Intercambios/Regalos" (menú y `<h1>` de
+  `/market?type=...`), vía `MARKET_VIEW_TITLE` en `market-labels.ts`
+  (mismo texto en los dos sitios a propósito, para que no diverjan). El
+  enlace de "Regalar" en el menú vuelve a apuntar a `/market/gifts`
+  (estaba temporalmente en `/market/new?type=GIFT`).
+- **Badge de tipo también en Venta**: antes solo Compra/Intercambio tenían
+  badge en las cards de la vista general "Mercado"; se añadió el de Venta
+  (`LISTING_TYPE_BADGE.SALE`). Condición de visibilidad corregida de
+  `listing.type !== "SALE"` a `!filters.type`: el badge es redundante (y
+  se sigue ocultando) en una vista ya filtrada por tipo, sea cual sea.
+- **Filtro de options del mercado, rediseño por stat**: el filtro estaba
+  atado a `ItemOptionDef.id` (un grupo/categoría concreto), así que solo
+  aparecía si ya se había elegido categoría/slot/tipo de arma elegible.
+  Pasa a filtrar por `statCode`, cruzando grupos — cada uno de los 3 slots
+  posicionales (Option 1/2/3) busca en el pool combinado de todos los
+  grupos que tengan esa posición, independiente entre sí (se puede pedir
+  "Option 1 = HP, Option 2 = lo que sea, Option 3 = HP" sin elegir antes
+  ítem/categoría). Params URL renombrados `option{N}DefId` →
+  `option{N}Stat`. Nueva `getAllOptionChoices()` trae el catálogo completo
+  una vez; `dedupeByStat()` en cliente fusiona filas del mismo stat entre
+  grupos (solo para el rango del placeholder, la query real no depende de
+  eso).
+  - Bloque colapsable ("Options"), colapsado por defecto salvo que la URL
+    ya traiga un filtro de option aplicado.
+  - Validación de borde rojo fuera de rango, portada del form de creación
+    (antes solo estaba ahí) — mismo patrón de `style` inline en vez de
+    className condicional (el orden de clases generadas de Tailwind puede
+    hacer que gane el borde dorado del focus por encima del rojo).
+  - En modo Compra: el input "mín." se oculta, el placeholder del "máx."
+    muestra el rango real del stat elegido (`min-max`) en vez de un
+    "Tu valor" genérico, con un hint aparte (i18n,
+    `market.filters.buyOptionsHint`) explicando el sentido "mínimo
+    deseado".
+- **Reset conserva `?type=`**: `resetFilters` deja `type` intacto a
+  propósito (limpia el resto de filtros pero se queda en la vista
+  Ventas/Compras/Intercambios actual en vez de volver a Mercado).
+- **`MarketFilters` no se resincronizaba con la URL en navegación cliente**:
+  causa raíz de dos síntomas reportados por separado (Reset "perdía" el
+  tipo, y el bloque de options se quedaba con los valores de la vista
+  anterior al cambiar de Ventas a Compras por el menú) — los
+  `useState(() => searchParams.get(...))` solo leen la URL una vez al
+  montar, y sin `key` no había remount en navegación `Link`/`router.push`.
+  Corregido con `key={filters.type ?? "none"}` en `<MarketFilters>` (NO
+  `key={JSON.stringify(filters)}` como en `MarketResults` — esa versión más
+  amplia se probó primero pero reseteaba el formulario en cada cambio de
+  sort o de option, perdiendo texto sin aplicar todavía; el fix correcto
+  remonta solo cuando cambia el tipo, que es lo único que redefine "en qué
+  vista estamos").
+
+**Estado: PR #19 mergeada en `develop`, migración `add_gift_options`
+aplicada en producción (2026-07-23).** Rama `fix/publication-form-config`
+borrada (local y ya fusionada). Queda abierto (deferido por el usuario, no
+resuelto) el reporte original de que el filtro de options a veces no
+aparecía para ciertas combinaciones de categoría/slot — pendiente de que
+el usuario lo vuelva a probar tras este rediseño antes de decidir si sigue
+siendo un problema.
+
+**PR #20 — fix de hidratación (2026-07-23):** `UserMention`/`ContactModal`
+decidía crear el portal (`createPortal`) mirando `typeof window ===
+"undefined"` directamente en el render — la primera pasada de hidratación
+en cliente ya ve `window` definido, así que montaba el portal de golpe
+mientras el servidor había devuelto `null` (el "server/client branch" que
+el propio error de Next advierte). Se pospuso a un `useEffect` (`mounted`
+state) para que servidor y cliente coincidan en la hidratación. Mergeada.
+
+**Arranca el trabajo de fondo de i18n y manejo de errores (2026-07-23),
+en 2 PRs paralelas:**
+
+- **PR #21 — i18n de `market-labels.ts`:** primer bloque de la migración
+  completa a i18n (12 tareas identificadas, ver más abajo). Los
+  `Record<Enum, string>` de `market-labels.ts` (categoría, slot, tipo de
+  arma, tipo de listing, estado, poster, badge, oferta) pasan de
+  constantes fijas en español a funciones `xxxLabel(t, valor)` que
+  resuelven la clave contra `messages/es.json`, bajo los namespaces nuevos
+  `market.catalog.*`/`market.listing.*`. Actualizados los 6
+  componentes/páginas que las usaban. `formatOptionAmount` y los textos
+  que van a Discord (`discord-webhook.ts`, `gifts.ts`) quedan sin tocar a
+  propósito — no son texto en idioma natural el primero, y la política de
+  idioma de Discord es una decisión aparte todavía sin tomar. Mergeada.
+- **PR #22 — error boundaries + saneamiento de excepciones:** no existía
+  ningún boundary de Next.js en la app — un fallo no controlado en un
+  Server Component (ej. la DB no responde) mostraba la pantalla genérica
+  de Next sin mensaje útil. Añadidos `src/app/error.tsx` (boundary raíz),
+  `global-error.tsx` (cubre el propio layout raíz, reimporta
+  `globals.css` porque sustituye TODO el árbol mientras está activo) y
+  `not-found.tsx`. Nuevo `src/lib/errors.ts`
+  (`getErrorMessage`/`rethrowFrameworkErrors`, usa el `unstable_rethrow`
+  de Next 16.2) para que `redirect()`/`notFound()` no queden atrapados por
+  los `catch` genéricos de los formularios y se muestren como "error
+  inesperado" en vez de dejar navegar — aplicado en los 8 sitios que ya
+  capturaban errores de server actions. `item-recognition.ts`: el
+  `try/catch` solo cubría la llamada a Gemini, ahora envuelve toda la
+  función, y el mensaje devuelto al cliente pasa a ser siempre uno
+  amigable fijo (antes reenviaba `err.message` tal cual) — el error real
+  se registra con `console.error` en servidor. `MarketResults.tsx`
+  (cargar más), `ItemPicker.tsx` y `UserPicker.tsx` (buscadores) hacían
+  fetch dentro de `startTransition` sin `try/catch`, fallando en silencio
+  — añadido manejo con mensaje inline. Revisado `discord-webhook.ts`/
+  `discord-bot.ts`: ya aislaban sus propios fallos de la acción principal
+  desde antes, sin cambios necesarios ahí. Mergeada.
+
+**PR #24 — migración i18n completa (2026-07-23), rama
+`feat/i18n-full-migration`:** resto de la migración a i18n de una sola vez
+(41 archivos), a petición explícita del usuario de agrupar todo en una
+única PR: los ~59 `throw new Error(...)` de `src/lib/*.ts` (server
+actions), cabecera/nav, resto de páginas de mercado, formulario de
+publicación, regalos, panel de administración, metadata/páginas de
+auth-error. `messages/es.json` pasó de 318 a 322 claves. **Política de
+idioma de Discord decidida:** webhook y DMs usan el mismo locale global de
+`MarketConfig` que el resto de la app (no hay locale por usuario); los
+nombres de item/stat del catálogo NO se traducen (quedan en su idioma de
+origen). Se creó `messages/en.json` como segundo locale real (no solo
+infraestructura) para probar el switch de idioma en `/admin` de verdad.
+Verificación estática: `tsc` limpio, paridad de claves es/en (script
+puntual), y un script de auditoría ad-hoc que resuelve cada `t("clave")`/
+`t.rich("clave")` contra `es.json` por archivo. **Verificación en vivo**
+(sesión autenticada real del usuario, no solo estática): español en todas
+las páginas, switch a inglés en toda la app (mercado, detalle con trade
+offers, admin), vuelta a español — sin errores de consola. Mergeada.
+
+**Fix post-verificación (mismo día, mismo PR #24 antes de mergear):**
+durante la verificación en vivo se detectó que los labels/descripciones de
+los modelos de Gemini en el desplegable de `/admin`
+(`gemini-model-constants.ts`, `GEMINI_MODEL_OPTIONS`) se habían quedado
+hardcodeados en español, fuera del alcance de la migración — el array
+pasaba directo del servidor al cliente sin pasar por `next-intl`. Fix:
+`gemini-model-constants.ts` se reduce a solo los `value` reales (IDs de la
+API, no traducibles); el `label`/`description` vive ahora en
+`messages/*.json` bajo `admin.recognition.models.<value>`, y
+`getMarketConfig()` (`admin-config.ts`) construye `geminiModelOptions` en
+servidor con `getTranslations("admin.recognition.models")`. Verificado en
+vivo (switch a inglés → "Flash (recommended)" / descripciones en inglés,
+vuelta a español OK, sin errores de consola).
 
 ---
 

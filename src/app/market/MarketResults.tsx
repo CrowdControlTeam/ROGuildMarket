@@ -3,12 +3,14 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { loadMoreListings } from "@/lib/market-actions";
 import type { MarketFilters } from "@/lib/market";
 import { buttonClass } from "@/lib/ui";
 import { formatPrice, priceColorClass } from "@/lib/price";
 import { formatItemDisplayName } from "@/lib/card-slots-constants";
-import { LISTING_TYPE_BADGE } from "@/lib/market-labels";
+import { listingTypeLabel, LISTING_TYPE_BADGE_CLASS, formatOptionAmount } from "@/lib/market-labels";
+import { getErrorMessage } from "@/lib/errors";
 import { UserMention } from "@/components/UserMention";
 
 type Item = { id: string; name: string; iconUrl: string };
@@ -42,21 +44,29 @@ export function MarketResults({
 }) {
   const [listings, setListings] = useState(initialListings);
   const [cursor, setCursor] = useState(initialCursor);
+  const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const t = useTranslations("market");
+  const tCommon = useTranslations("common");
 
   function loadMore() {
+    setLoadMoreError(null);
     startTransition(async () => {
       if (!cursor) return;
-      const result = await loadMoreListings({ ...filters, cursor });
-      setListings((prev) => [...prev, ...result.listings]);
-      setCursor(result.nextCursor);
+      try {
+        const result = await loadMoreListings({ ...filters, cursor });
+        setListings((prev) => [...prev, ...result.listings]);
+        setCursor(result.nextCursor);
+      } catch (err) {
+        setLoadMoreError(getErrorMessage(err, t("results.loadMoreError")));
+      }
     });
   }
 
   if (listings.length === 0) {
     return (
       <p className="text-ro-text-light/70">
-        No hay publicaciones que coincidan con la búsqueda.
+        {t("results.empty")}
       </p>
     );
   }
@@ -79,17 +89,18 @@ export function MarketResults({
               <div className="flex-1">
                 <p className="flex items-center gap-2 font-semibold">
                   {formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}
-                  {listing.type !== "SALE" && (
+                  {!filters.type && (
                     <span
-                      className={`rounded border px-1.5 py-0.5 text-xs font-normal ${LISTING_TYPE_BADGE[listing.type].className}`}
+                      className={`rounded border px-1.5 py-0.5 text-xs font-normal ${LISTING_TYPE_BADGE_CLASS[listing.type]}`}
                     >
-                      {LISTING_TYPE_BADGE[listing.type].label}
+                      {listingTypeLabel(t, listing.type)}
                     </span>
                   )}
                 </p>
                 <p className="text-sm text-ro-text-muted">
-                  {listing.type !== "BUY" && `x${listing.quantity - listing.quantitySold} disponibles · `}
-                  {listing.type === "BUY" ? "buscado por" : "vendido por"}{" "}
+                  {listing.type !== "BUY" &&
+                    `${t("results.available", { count: listing.quantity - listing.quantitySold })} · `}
+                  {listing.type === "BUY" ? t("results.wantedBy") : t("results.soldBy")}{" "}
                   <UserMention
                     userId={listing.poster.id}
                     username={listing.poster.username}
@@ -105,7 +116,7 @@ export function MarketResults({
                         key={o.slotIndex}
                         className="rounded border border-ro-gold-dark/50 bg-ro-gold/10 px-1.5 py-0.5 text-xs text-ro-text-muted"
                       >
-                        {o.def.label} +{o.value}
+                        {o.def.label} {formatOptionAmount(o.value, listing.type === "BUY")}
                       </span>
                     ))}
                   </p>
@@ -113,7 +124,7 @@ export function MarketResults({
               </div>
               {listing.type !== "TRADE" && listing.price !== null && (
                 <p className={`font-bold ${priceColorClass(listing.price)}`}>
-                  {listing.type === "BUY" ? "hasta " : ""}
+                  {listing.type === "BUY" ? t("results.upTo") : ""}
                   {formatPrice(listing.price)}
                 </p>
               )}
@@ -122,6 +133,7 @@ export function MarketResults({
         ))}
       </ul>
 
+      {loadMoreError && <p className="mt-4 text-sm text-red-700">{loadMoreError}</p>}
       {cursor && (
         <button
           type="button"
@@ -129,7 +141,7 @@ export function MarketResults({
           disabled={isPending}
           className={`mt-4 w-full ${buttonClass("secondary")}`}
         >
-          {isPending ? "Cargando..." : "Cargar más"}
+          {isPending ? tCommon("loading") : t("results.loadMore")}
         </button>
       )}
     </div>

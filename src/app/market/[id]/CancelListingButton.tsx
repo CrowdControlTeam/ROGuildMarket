@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { cancelListing, fulfillListing } from "@/lib/listings";
 import { buttonClass } from "@/lib/ui";
+import { getErrorMessage } from "@/lib/errors";
 
 // showFulfill: solo type=BUY (norma 2.4 del plan) — la resolución de una
 // petición de compra pasa fuera de la app, quien la publicó la marca
@@ -18,6 +20,7 @@ export function CancelListingButton({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const t = useTranslations("market.detail");
 
   function run(action: (id: string) => Promise<void>) {
     setError(null);
@@ -26,7 +29,7 @@ export function CancelListingButton({
         await action(listingId);
         router.refresh();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error inesperado");
+        setError(getErrorMessage(err));
       }
     });
   }
@@ -41,7 +44,7 @@ export function CancelListingButton({
             onClick={() => run(fulfillListing)}
             className={buttonClass("primary")}
           >
-            Marcar como cumplida
+            {t("markFulfilled")}
           </button>
         )}
         <button
@@ -50,7 +53,7 @@ export function CancelListingButton({
           onClick={() => run(cancelListing)}
           className={buttonClass("outline")}
         >
-          Cancelar publicación
+          {t("cancelListing")}
         </button>
       </div>
       {error && <p className="mt-2 text-sm text-red-700">{error}</p>}

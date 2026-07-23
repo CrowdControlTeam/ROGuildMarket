@@ -1,12 +1,15 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { SORT_OPTIONS } from "@/lib/market";
+import { useTranslations } from "next-intl";
+import { SORT_VALUES } from "@/lib/market";
+import { sortLabel } from "@/lib/market-labels";
 import { selectClass } from "@/lib/ui";
 
 export function SortSelect() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const t = useTranslations("market");
 
   function handleChange(value: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -21,15 +24,15 @@ export function SortSelect() {
 
   return (
     <div className="mb-3 flex items-center justify-end gap-2">
-      <label className="text-xs font-medium text-ro-text-light/80">Orden</label>
+      <label className="text-xs font-medium text-ro-text-light/80">{t("sort.label")}</label>
       <select
         value={searchParams.get("sort") ?? "newest"}
         onChange={(e) => handleChange(e.target.value)}
         className={selectClass}
       >
-        {SORT_OPTIONS.map((o) => (
-          <option key={o.value} value={o.value}>
-            {o.label}
+        {SORT_VALUES.map((value) => (
+          <option key={value} value={value}>
+            {sortLabel(t, value)}
           </option>
         ))}
       </select>

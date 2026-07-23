@@ -1,13 +1,14 @@
 "use server";
 
 import { z } from "zod";
+import { getTranslations } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-guard";
 import { loadMarketConfig } from "@/lib/market-config";
 import { getOptionsCatalogCount } from "@/lib/item-options";
 import { fetchGuildRoles } from "@/lib/discord-bot";
-import { GEMINI_MODEL_OPTIONS, isGeminiModel } from "@/lib/gemini-model-constants";
+import { GEMINI_MODEL_VALUES, isGeminiModel } from "@/lib/gemini-model-constants";
 import { LOCALE_OPTIONS, isAppLocale } from "@/lib/locale-constants";
 
 // El valor real de un secreto nunca sale del servidor una vez guardado —
@@ -19,12 +20,19 @@ function maskSecret(value: string): string {
 export async function getMarketConfig() {
   await requireAdmin();
 
-  const [config, optionsCatalogCount, guildRolesResult, rawConfig] = await Promise.all([
+  const [config, optionsCatalogCount, guildRolesResult, rawConfig, t] = await Promise.all([
     loadMarketConfig(),
     getOptionsCatalogCount(),
     fetchGuildRoles(),
     prisma.marketConfig.findUnique({ where: { id: 1 }, select: { siteName: true } }),
+    getTranslations("admin.recognition.models"),
   ]);
+
+  const geminiModelOptions = GEMINI_MODEL_VALUES.map((value) => ({
+    value,
+    label: t(`${value}.label`),
+    description: t(`${value}.description`),
+  }));
 
   return {
     // Valor sin resolver (puede ser null) para que el campo del formulario
@@ -38,7 +46,7 @@ export async function getMarketConfig() {
     imageRecognitionEnabled: config.imageRecognitionEnabled,
     hasGeminiApiKey: !!process.env.GEMINI_API_KEY,
     geminiModel: config.geminiModel,
-    geminiModelOptions: GEMINI_MODEL_OPTIONS,
+    geminiModelOptions,
     dmNotificationsEnabled: config.dmNotificationsEnabled,
     hasDiscordBotToken: !!process.env.DISCORD_BOT_TOKEN,
     maintenanceModeEnabled: config.maintenanceModeEnabled,
@@ -50,23 +58,6 @@ export async function getMarketConfig() {
     localeOptions: LOCALE_OPTIONS,
   };
 }
-
-const updateConfigSchema = z.object({
-  maxRefineLevel: z.coerce.number().int().nonnegative(),
-  webhookEnabled: z.boolean(),
-  imageRecognitionEnabled: z.boolean(),
-  geminiModel: z.string().refine(isGeminiModel, "Modelo de Gemini no soportado"),
-  locale: z.string().refine(isAppLocale, "Idioma no soportado"),
-  dmNotificationsEnabled: z.boolean(),
-  maintenanceModeEnabled: z.boolean(),
-  optionsEnabled: z.boolean(),
-  // Vacío = no tocar el valor ya guardado (patrón "enmascarado + reemplazar":
-  // el formulario nunca recibe el valor real, así que no puede reenviarlo).
-  webhookUrl: z.string().trim().optional(),
-  // A diferencia de webhookUrl, este campo no está enmascarado — vacío
-  // aquí sí significa "volver a sin configurar" (cae al placeholder).
-  siteName: z.string().trim().optional(),
-});
 
 // IDs de rol de Discord (snowflakes): solo dígitos. Se filtra en vez de
 // rechazar todo el formulario por una línea mal pegada — es una lista de
@@ -89,6 +80,24 @@ function parseAdminRoleIds(formData: FormData): string[] {
 
 export async function updateMarketConfig(formData: FormData) {
   await requireAdmin();
+  const t = await getTranslations("errors");
+
+  const updateConfigSchema = z.object({
+    maxRefineLevel: z.coerce.number().int().nonnegative(),
+    webhookEnabled: z.boolean(),
+    imageRecognitionEnabled: z.boolean(),
+    geminiModel: z.string().refine(isGeminiModel, t("unsupportedGeminiModel")),
+    locale: z.string().refine(isAppLocale, t("unsupportedLocale")),
+    dmNotificationsEnabled: z.boolean(),
+    maintenanceModeEnabled: z.boolean(),
+    optionsEnabled: z.boolean(),
+    // Vacío = no tocar el valor ya guardado (patrón "enmascarado + reemplazar":
+    // el formulario nunca recibe el valor real, así que no puede reenviarlo).
+    webhookUrl: z.string().trim().optional(),
+    // A diferencia de webhookUrl, este campo no está enmascarado — vacío
+    // aquí sí significa "volver a sin configurar" (cae al placeholder).
+    siteName: z.string().trim().optional(),
+  });
 
   const parsed = updateConfigSchema.safeParse({
     maxRefineLevel: formData.get("maxRefineLevel"),
@@ -103,7 +112,7 @@ export async function updateMarketConfig(formData: FormData) {
     siteName: formData.get("siteName") || undefined,
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Datos inválidos");
+    throw new Error(parsed.error.issues[0]?.message ?? t("invalidData"));
   }
   const adminRoleIds = parseAdminRoleIds(formData);
 

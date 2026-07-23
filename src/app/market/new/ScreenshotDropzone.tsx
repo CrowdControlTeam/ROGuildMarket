@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useTranslations } from "next-intl";
 import { buttonClass } from "@/lib/ui";
 
 // Zona de arrastrar/pegar/clic para subir la captura del tooltip, en vez de
@@ -18,6 +19,7 @@ export function ScreenshotDropzone({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const t = useTranslations("market.form.screenshot");
 
   const applyFile = useCallback((next: File) => {
     setFile(next);
@@ -87,10 +89,8 @@ export function ScreenshotDropzone({
             <span aria-hidden className="text-xl">
               ⬆
             </span>
-            <p className="text-sm font-semibold text-ro-text">Subir captura del item</p>
-            <p className="text-xs text-ro-text-muted">
-              Arrastra y suelta, haz clic para buscar o pega desde el portapapeles
-            </p>
+            <p className="text-sm font-semibold text-ro-text">{t("upload")}</p>
+            <p className="text-xs text-ro-text-muted">{t("hint")}</p>
           </>
         )}
       </div>
@@ -99,10 +99,10 @@ export function ScreenshotDropzone({
       {file && (
         <div className="mt-2 flex gap-2">
           <button type="button" onClick={handleClear} disabled={isScanning} className={buttonClass("outline")}>
-            Borrar
+            {t("clear")}
           </button>
           <button type="button" onClick={() => onScan(file)} disabled={isScanning} className={buttonClass("primary")}>
-            {isScanning ? "Escaneando..." : "Escanear"}
+            {isScanning ? t("scanning") : t("scan")}
           </button>
         </div>
       )}

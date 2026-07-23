@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { buttonClass } from "@/lib/ui";
 
 // El tipo preseleccionado depende de la pantalla activa (norma del punto
@@ -11,6 +12,7 @@ import { buttonClass } from "@/lib/ui";
 export function CreatePublicationButton() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
+  const t = useTranslations("nav");
 
   let href = "/market/new";
   if (pathname === "/market/gifts") {
@@ -24,7 +26,7 @@ export function CreatePublicationButton() {
 
   return (
     <Link href={href} className={buttonClass("primary")}>
-      Nueva publicación
+      {t("newPublication")}
     </Link>
   );
 }

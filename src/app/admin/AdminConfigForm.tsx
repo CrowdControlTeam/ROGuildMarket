@@ -1,15 +1,18 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { updateMarketConfig, type getMarketConfig } from "@/lib/admin-config";
 import { buttonClass, inputClass, labelClass, selectClass } from "@/lib/ui";
 import { ToggleSwitch } from "@/components/ToggleSwitch";
+import { getErrorMessage } from "@/lib/errors";
 
 type Config = Awaited<ReturnType<typeof getMarketConfig>>;
 
 export function AdminConfigForm({ config }: { config: Config }) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const t = useTranslations("admin");
 
   return (
     <form
@@ -20,15 +23,15 @@ export function AdminConfigForm({ config }: { config: Config }) {
           await updateMarketConfig(formData);
           setSaved(true);
         } catch (err) {
-          setError(err instanceof Error ? err.message : "Error inesperado");
+          setError(getErrorMessage(err));
         }
       }}
       className="flex flex-col gap-6"
     >
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-semibold text-ro-text">General</legend>
+        <legend className="mb-1 text-sm font-semibold text-ro-text">{t("general.legend")}</legend>
         <div>
-          <label className={labelClass}>Nombre de la aplicación</label>
+          <label className={labelClass}>{t("general.siteNameLabel")}</label>
           <input
             type="text"
             name="siteName"
@@ -37,18 +40,14 @@ export function AdminConfigForm({ config }: { config: Config }) {
             className={inputClass}
           />
           <p className="mt-1 text-xs text-ro-text-muted">
-            Se muestra en la cabecera y en la pestaña del navegador. Vacío = usar
-            &quot;{config.siteNamePlaceholder}&quot; por defecto.
+            {t("general.siteNameHint", { placeholder: config.siteNamePlaceholder })}
           </p>
         </div>
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-semibold text-ro-text">Acceso al panel</legend>
-        <p className="text-xs text-ro-text-muted">
-          Quien tenga el permiso &quot;Administrator&quot; del servidor de Discord ya entra siempre. Estos
-          roles se SUMAN como vía adicional, no lo sustituyen.
-        </p>
+        <legend className="mb-1 text-sm font-semibold text-ro-text">{t("access.legend")}</legend>
+        <p className="text-xs text-ro-text-muted">{t("access.hint")}</p>
         {config.guildRolesResult.status === "ok" ? (
           <div className="flex max-h-40 flex-col gap-1 overflow-y-auto rounded-md border-2 border-ro-panel-border bg-ro-panel-alt p-2">
             {config.guildRolesResult.roles.map((role) => (
@@ -68,29 +67,25 @@ export function AdminConfigForm({ config }: { config: Config }) {
           <div>
             {config.guildRolesResult.status === "error" && (
               <p className="mb-1 text-xs text-red-700">
-                No se pudo listar los roles del servidor con nombre ({config.guildRolesResult.message}).
+                {t("access.rolesFetchError", { message: config.guildRolesResult.message })}
               </p>
             )}
             <textarea
               name="adminRoleIdsText"
               rows={3}
               defaultValue={config.adminRoleIds.join("\n")}
-              placeholder="Un ID de rol por línea (o separados por comas)"
+              placeholder={t("access.roleIdsPlaceholder")}
               className={inputClass}
             />
-            <p className="mt-1 text-xs text-ro-text-muted">
-              Sin bot configurado (DISCORD_BOT_TOKEN) no se pueden mostrar los nombres de los roles —
-              copia el ID de cada rol desde Discord (Ajustes del servidor → Roles → clic derecho → Copiar
-              ID, con el modo desarrollador activado).
-            </p>
+            <p className="mt-1 text-xs text-ro-text-muted">{t("access.roleIdsHint")}</p>
           </div>
         )}
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-semibold text-ro-text">Idioma</legend>
+        <legend className="mb-1 text-sm font-semibold text-ro-text">{t("language.legend")}</legend>
         <div>
-          <label className={labelClass}>Idioma de la aplicación</label>
+          <label className={labelClass}>{t("language.label")}</label>
           <select name="locale" defaultValue={config.locale} className={selectClass}>
             {config.localeOptions.map((l) => (
               <option key={l.value} value={l.value}>
@@ -102,64 +97,62 @@ export function AdminConfigForm({ config }: { config: Config }) {
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-semibold text-ro-text">Notificaciones a Discord</legend>
+        <legend className="mb-1 text-sm font-semibold text-ro-text">{t("webhook.legend")}</legend>
         <ToggleSwitch
           name="webhookEnabled"
           defaultChecked={config.webhookEnabled}
-          label="Enviar notificación de nueva venta al webhook"
+          label={t("webhook.toggleLabel")}
         />
         <div>
-          <label className={labelClass}>URL del webhook</label>
+          <label className={labelClass}>{t("webhook.urlLabel")}</label>
           <input
             type="url"
             name="webhookUrl"
-            placeholder={config.webhookUrlMasked ?? "https://discord.com/api/webhooks/..."}
+            placeholder={config.webhookUrlMasked ?? t("webhook.urlPlaceholder")}
             className={inputClass}
           />
           <p className="mt-1 text-xs text-ro-text-muted">
-            {config.webhookUrlMasked
-              ? "Deja en blanco para no cambiar el valor guardado."
-              : "Todavía no hay ninguna URL guardada."}
+            {config.webhookUrlMasked ? t("webhook.urlHintBlank") : t("webhook.urlHintUnset")}
           </p>
         </div>
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-semibold text-ro-text">Notificaciones privadas (DM)</legend>
+        <legend className="mb-1 text-sm font-semibold text-ro-text">{t("dm.legend")}</legend>
         <ToggleSwitch
           name="dmNotificationsEnabled"
           defaultChecked={config.dmNotificationsEnabled}
-          label="Avisar por DM al destinatario de una transacción (compra, trade, regalo...)"
+          label={t("dm.toggleLabel")}
         />
         <p className="text-xs text-ro-text-muted">
-          Bot de Discord:{" "}
+          {t("dm.botLabel")}{" "}
           {config.hasDiscordBotToken ? (
-            <span className="text-green-700">configurado</span>
+            <span className="text-green-700">{t("dm.botConfigured")}</span>
           ) : (
-            <span className="text-red-700">no configurado (variable de entorno DISCORD_BOT_TOKEN)</span>
+            <span className="text-red-700">{t("dm.botNotConfigured")}</span>
           )}
-          . Hace falta esto Y el toggle activo para que se manden los DMs.
+          . {t("dm.requirement")}
         </p>
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-semibold text-ro-text">Reconocimiento por captura</legend>
+        <legend className="mb-1 text-sm font-semibold text-ro-text">{t("recognition.legend")}</legend>
         <ToggleSwitch
           name="imageRecognitionEnabled"
           defaultChecked={config.imageRecognitionEnabled}
-          label="Permitir reconocer el item desde una captura (Gemini)"
+          label={t("recognition.toggleLabel")}
         />
         <p className="text-xs text-ro-text-muted">
-          API key de Gemini:{" "}
+          {t("recognition.apiKeyLabel")}{" "}
           {config.hasGeminiApiKey ? (
-            <span className="text-green-700">configurada</span>
+            <span className="text-green-700">{t("recognition.apiKeyConfigured")}</span>
           ) : (
-            <span className="text-red-700">no configurada (variable de entorno GEMINI_API_KEY)</span>
+            <span className="text-red-700">{t("recognition.apiKeyNotConfigured")}</span>
           )}
-          . Hace falta esto Y el toggle activo para que la función funcione.
+          . {t("recognition.requirement")}
         </p>
         <div>
-          <label className={labelClass}>Modelo de Gemini</label>
+          <label className={labelClass}>{t("recognition.modelLabel")}</label>
           <select name="geminiModel" defaultValue={config.geminiModel} className={selectClass}>
             {config.geminiModelOptions.map((m) => (
               <option key={m.value} value={m.value}>
@@ -178,32 +171,34 @@ export function AdminConfigForm({ config }: { config: Config }) {
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-semibold text-ro-text">Random options</legend>
+        <legend className="mb-1 text-sm font-semibold text-ro-text">{t("options.legend")}</legend>
         <ToggleSwitch
           name="optionsEnabled"
           defaultChecked={config.optionsEnabled}
-          label="Permitir estadísticas aleatorias (options) en armas/armaduras"
+          label={t("options.toggleLabel")}
         />
         <p className="text-xs text-ro-text-muted">
-          Catálogo de options:{" "}
+          {t("options.catalogLabel")}{" "}
           {config.optionsCatalogCount > 0 ? (
-            <span className="text-green-700">{config.optionsCatalogCount} combinaciones cargadas</span>
+            <span className="text-green-700">
+              {t("options.catalogLoaded", { count: config.optionsCatalogCount })}
+            </span>
           ) : (
-            <span className="text-red-700">sin cargar</span>
+            <span className="text-red-700">{t("options.catalogEmpty")}</span>
           )}
-          . Hace falta esto Y el toggle activo — pensado para versiones de RO sin catálogo de options todavía.
+          . {t("options.requirement")}
         </p>
       </fieldset>
 
       <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-sm font-semibold text-ro-text">Mercado</legend>
+        <legend className="mb-1 text-sm font-semibold text-ro-text">{t("market.legend")}</legend>
         <ToggleSwitch
           name="maintenanceModeEnabled"
           defaultChecked={config.maintenanceModeEnabled}
-          label="Modo mantenimiento (bloquea crear ventas y comprar para todos menos administradores)"
+          label={t("market.maintenanceToggleLabel")}
         />
         <div>
-          <label className={labelClass}>Refine máximo permitido</label>
+          <label className={labelClass}>{t("market.maxRefineLabel")}</label>
           <input
             type="number"
             name="maxRefineLevel"
@@ -215,10 +210,10 @@ export function AdminConfigForm({ config }: { config: Config }) {
       </fieldset>
 
       {error && <p className="text-sm text-red-700">{error}</p>}
-      {saved && !error && <p className="text-sm text-green-700">Guardado.</p>}
+      {saved && !error && <p className="text-sm text-green-700">{t("saved")}</p>}
 
       <button type="submit" className={buttonClass("primary")}>
-        Guardar
+        {t("save")}
       </button>
     </form>
   );

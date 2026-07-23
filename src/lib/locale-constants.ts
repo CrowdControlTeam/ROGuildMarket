@@ -8,6 +8,10 @@ export const LOCALE_OPTIONS = [
     value: "es",
     label: "Español",
   },
+  {
+    value: "en",
+    label: "English",
+  },
 ] as const;
 
 export type AppLocale = (typeof LOCALE_OPTIONS)[number]["value"];

@@ -2,8 +2,10 @@
 
 import { useState, useTransition } from "react";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { searchUsers } from "@/lib/gifts";
 import { inputClass } from "@/lib/ui";
+import { getErrorMessage } from "@/lib/errors";
 
 export type UserResult = Awaited<ReturnType<typeof searchUsers>>[number];
 
@@ -16,13 +18,21 @@ export function UserPicker({
 }) {
   const [query, setQuery] = useState(initialQuery ?? "");
   const [results, setResults] = useState<UserResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const t = useTranslations("market.userPicker");
+  const tCommon = useTranslations("common");
 
   function handleChange(value: string) {
     setQuery(value);
+    setError(null);
     startTransition(async () => {
-      const found = await searchUsers(value);
-      setResults(found);
+      try {
+        const found = await searchUsers(value);
+        setResults(found);
+      } catch (err) {
+        setError(getErrorMessage(err, tCommon("searchError")));
+      }
     });
   }
 
@@ -32,12 +42,13 @@ export function UserPicker({
         type="text"
         value={query}
         onChange={(e) => handleChange(e.target.value)}
-        placeholder="Busca un usuario por nombre..."
+        placeholder={t("placeholder")}
         className={inputClass}
       />
       {isPending && (
-        <p className="mt-1 text-sm text-ro-text-muted">Buscando...</p>
+        <p className="mt-1 text-sm text-ro-text-muted">{tCommon("searching")}</p>
       )}
+      {error && <p className="mt-1 text-sm text-red-700">{error}</p>}
       {results.length > 0 && (
         <ul className="mt-2 flex max-h-64 flex-col gap-1 overflow-y-auto rounded-md border-2 border-ro-panel-border bg-ro-panel-alt p-1">
           {results.map((user) => (

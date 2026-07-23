@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { ItemOptionDef } from "@prisma/client";
 import { createListing, getOptionChoices, getMaxRefineLevel } from "@/lib/listings";
 import { sendGift } from "@/lib/gifts";
@@ -16,33 +17,14 @@ import {
 } from "@/lib/item-options-constants";
 import { isRefineEligible, DEFAULT_MAX_REFINE_LEVEL } from "@/lib/refine-constants";
 import { getMaxCardSlots } from "@/lib/card-slots-constants";
+import { getErrorMessage, rethrowFrameworkErrors } from "@/lib/errors";
 import { ItemPicker, type ItemResult } from "./ItemPicker";
 import { ScreenshotDropzone } from "./ScreenshotDropzone";
 import { UserPicker, type UserResult } from "@/components/UserPicker";
 
 export type PublicationType = "SALE" | "BUY" | "TRADE" | "GIFT";
 
-const TYPE_OPTIONS: { value: PublicationType; label: string }[] = [
-  { value: "SALE", label: "Venta" },
-  { value: "BUY", label: "Compra" },
-  { value: "TRADE", label: "Intercambio" },
-  { value: "GIFT", label: "Regalo" },
-];
-
-const SUBMIT_LABEL: Record<PublicationType, string> = {
-  SALE: "Publicar venta",
-  BUY: "Publicar petición",
-  TRADE: "Publicar intercambio",
-  GIFT: "Regalar",
-};
-
-// Options (random stats) solo tiene sentido en una instancia real ya
-// publicada para vender o intercambiar — no en una petición de compra
-// (no describe un ejemplar concreto) ni en un regalo (mismo criterio que
-// TradeOffer: no disparar el alcance de un formulario secundario).
-function optionsApplicable(type: PublicationType) {
-  return type === "SALE" || type === "TRADE";
-}
+const TYPE_VALUES: PublicationType[] = ["SALE", "BUY", "TRADE", "GIFT"];
 
 export function NewPublicationForm({
   recognitionEnabled,
@@ -66,6 +48,8 @@ export function NewPublicationForm({
   const [isRecognizing, startRecognizeTransition] = useTransition();
   const [isSubmitting, startSubmitTransition] = useTransition();
   const [recognitionNote, setRecognitionNote] = useState<string | null>(null);
+  const t = useTranslations("market.form");
+  const tFilters = useTranslations("market.filters");
 
   useEffect(() => {
     getMaxRefineLevel().then(setMaxRefineLevel);
@@ -74,20 +58,22 @@ export function NewPublicationForm({
   const optionGroup = selectedItem?.optionGroup ?? null;
   const refineEligible = selectedItem !== null && isRefineEligible(selectedItem);
   const maxCardSlots = selectedItem !== null ? getMaxCardSlots(selectedItem) : 0;
-  // Un trade tampoco admite cantidad > 1 (ver nota en listings.ts) — misma
-  // regla que un item con random options en venta, así que reutiliza el
-  // mismo campo bloqueado en vez de duplicar el bloque de UI.
-  const quantityLocked = type === "TRADE" || (type === "SALE" && optionGroup !== null);
+  // Un trade tampoco admite cantidad > 1 (ver nota en listings.ts). Un
+  // regalo tiene el mismo criterio que una venta: si el item es
+  // option-eligible representa una instancia real única, no varias copias
+  // idénticas. BUY se queda fuera: ahí las options son un mínimo deseado,
+  // no el roll de un ejemplar concreto, así que no ata la cantidad.
+  const quantityLocked = type === "TRADE" || ((type === "SALE" || type === "GIFT") && optionGroup !== null);
 
   // El reset de optionSelections se dispara desde el evento de selección de
   // item (handleItemSelect más abajo), no aquí: sincronizar dos piezas de
   // estado dentro de un efecto dispara un render en cascada innecesario.
   useEffect(() => {
-    if (!optionsApplicable(type) || !optionGroup) return;
+    if (!optionGroup) return;
     getOptionChoices(optionGroup).then(setOptionDefs);
-  }, [optionGroup, type]);
+  }, [optionGroup]);
 
-  const hasOptionCatalog = optionsApplicable(type) && optionGroup !== null && optionDefs.length > 0;
+  const hasOptionCatalog = optionGroup !== null && optionDefs.length > 0;
 
   function handleTypeChange(next: PublicationType) {
     setType(next);
@@ -102,31 +88,50 @@ export function NewPublicationForm({
     setRecognitionNote(null);
   }
 
+  function handleItemClear() {
+    setSelectedItem(null);
+    setOptionSelections(emptyOptionSelections());
+    setRefineLevel(0);
+    setCardSlots(0);
+    setRecognitionNote(null);
+  }
+
   function handleScreenshotScan(file: File) {
     setRecognitionNote(null);
     startRecognizeTransition(async () => {
-      const formData = new FormData();
-      formData.set("screenshot", file);
-      const result = await recognizeItemFromScreenshot(formData);
+      try {
+        const formData = new FormData();
+        formData.set("screenshot", file);
+        const result = await recognizeItemFromScreenshot(formData);
 
-      if (result.status === "error") {
-        setRecognitionNote(result.message);
-        return;
-      }
-      if (result.status === "no_match") {
-        setRecognitionNote(
-          result.detectedName
-            ? `No se ha encontrado en el catálogo ningún item parecido a "${result.detectedName}". Selecciónalo manualmente.`
-            : "No se ha podido leer el item en la captura. Selecciónalo manualmente.",
-        );
-        return;
-      }
+        if (result.status === "error") {
+          setRecognitionNote(result.message);
+          return;
+        }
+        if (result.status === "no_match") {
+          setRecognitionNote(
+            result.detectedName
+              ? t("recognitionNoMatchNamed", { name: result.detectedName })
+              : t("recognitionNoMatch"),
+          );
+          return;
+        }
 
-      setSelectedItem(result.item);
-      setRefineLevel(result.refineLevel);
-      setCardSlots(result.cardSlots);
-      setOptionSelections(buildOptionSelectionsFromDetected(result.options));
-      setRecognitionNote(`Detectado: ${result.item.name}. Revisa los datos antes de publicar.`);
+        setSelectedItem(result.item);
+        setRefineLevel(result.refineLevel);
+        setCardSlots(result.cardSlots);
+        setOptionSelections(buildOptionSelectionsFromDetected(result.options));
+        setRecognitionNote(t("recognitionDetected", { item: result.item.name }));
+      } catch (err) {
+        // recognizeItemFromScreenshot ya captura sus propios fallos (Gemini,
+        // catálogo...) y los devuelve como status "error" — este catch es
+        // solo para el caso de que el propio server action se caiga antes
+        // de devolver un RecognitionResult, que si no quedaba sin ningún
+        // feedback visible para el usuario.
+        rethrowFrameworkErrors(err);
+        console.error(err);
+        setRecognitionNote(t("recognitionCallFailed"));
+      }
     });
   }
 
@@ -182,50 +187,44 @@ export function NewPublicationForm({
             }
           } catch (err) {
             submittingRef.current = false;
-            setError(err instanceof Error ? err.message : "Error inesperado");
+            setError(getErrorMessage(err));
           }
         });
       }}
       className="flex flex-col gap-4"
     >
-      <input type="hidden" name="type" value={type} />
-
       <div>
-        <label className={labelClass}>Tipo de publicación</label>
-        <div className="flex flex-wrap gap-4 text-sm text-ro-text">
-          {TYPE_OPTIONS.map((opt) => (
-            <label key={opt.value} className="flex items-center gap-1.5">
-              <input
-                type="radio"
-                checked={type === opt.value}
-                onChange={() => handleTypeChange(opt.value)}
-              />
-              {opt.label}
-            </label>
+        <label className={labelClass}>{t("typeLabel")}</label>
+        <select
+          name="type"
+          value={type}
+          onChange={(e) => handleTypeChange(e.target.value as PublicationType)}
+          className={selectClass}
+        >
+          {TYPE_VALUES.map((value) => (
+            <option key={value} value={value}>
+              {t(`typeOptions.${value}`)}
+            </option>
           ))}
-        </div>
+        </select>
       </div>
 
       {recognitionEnabled && (
         <div>
-          <label className={labelClass}>Reconocer desde captura (opcional)</label>
+          <label className={labelClass}>{t("recognitionLabel")}</label>
           <ScreenshotDropzone onScan={handleScreenshotScan} isScanning={isRecognizing} />
           {recognitionNote && <p className="mt-1 text-sm text-ro-text-muted">{recognitionNote}</p>}
         </div>
       )}
 
       <div>
-        <label className={labelClass}>Item</label>
-        <ItemPicker
-          key={selectedItem?.id ?? "empty"}
-          onSelect={handleItemSelect}
-          initialQuery={selectedItem?.name}
-        />
+        <label className={labelClass}>{t("itemLabel")}</label>
+        <ItemPicker selected={selectedItem} onSelect={handleItemSelect} onClear={handleItemClear} />
         <input type="hidden" name="itemId" value={selectedItem?.id ?? ""} />
       </div>
 
       <div>
-        <label className={labelClass}>Cantidad</label>
+        <label className={labelClass}>{t("quantityLabel")}</label>
         {quantityLocked ? (
           <>
             <p className="text-sm text-ro-text-muted">1</p>
@@ -245,7 +244,7 @@ export function NewPublicationForm({
 
       {refineEligible && (
         <div>
-          <label className={labelClass}>Refine</label>
+          <label className={labelClass}>{t("refineLabel")}</label>
           <input
             type="number"
             name="refineLevel"
@@ -260,7 +259,7 @@ export function NewPublicationForm({
 
       {maxCardSlots > 0 && (
         <div>
-          <label className={labelClass}>Slots de carta</label>
+          <label className={labelClass}>{t("cardSlotsLabel")}</label>
           <input
             type="number"
             name="cardSlots"
@@ -275,14 +274,14 @@ export function NewPublicationForm({
 
       {(type === "SALE" || type === "BUY") && (
         <div>
-          <label className={labelClass}>{type === "BUY" ? "Pago hasta (z)" : "Precio (z)"}</label>
+          <label className={labelClass}>{type === "BUY" ? t("payUpToLabel") : t("priceLabel")}</label>
           <PriceInput name="price" placeholder="0" />
         </div>
       )}
 
       {type === "GIFT" && (
         <div>
-          <label className={labelClass}>Destinatario</label>
+          <label className={labelClass}>{t("recipientLabel")}</label>
           <UserPicker key={selectedRecipient?.id ?? "empty"} onSelect={setSelectedRecipient} />
           <input type="hidden" name="recipientId" value={selectedRecipient?.id ?? ""} />
         </div>
@@ -290,7 +289,7 @@ export function NewPublicationForm({
 
       {hasOptionCatalog && (
         <div>
-          <label className={labelClass}>Options</label>
+          <label className={labelClass}>{type === "BUY" ? t("minStatsLabel") : t("optionsLabel")}</label>
           <div className="flex flex-col gap-2">
             {Array.from({ length: MAX_OPTION_SLOTS }, (_, i) => i + 1).map((slotIndex) => {
               const index = slotIndex - 1;
@@ -316,7 +315,7 @@ export function NewPublicationForm({
                     onChange={(e) => handleSelectChange(index, e.target.value)}
                     className={`min-w-0 flex-1 ${selectClass}`}
                   >
-                    <option value="">{`-- Option ${slotIndex} --`}</option>
+                    <option value="">{tFilters("optionPlaceholder", { slot: slotIndex })}</option>
                     {defsForSlot.map((d) => (
                       <option key={d.id} value={d.id}>
                         {d.label}
@@ -357,7 +356,7 @@ export function NewPublicationForm({
         disabled={!canSubmit || isSubmitting}
         className={buttonClass("primary")}
       >
-        {isSubmitting ? "Publicando..." : SUBMIT_LABEL[type]}
+        {isSubmitting ? t("publishing") : t(`submitLabels.${type}`)}
       </button>
     </form>
   );
