@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { getTranslations } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/guard";
@@ -37,19 +38,21 @@ export async function searchUsers(query: string) {
   });
 }
 
-const sendGiftSchema = z.object({
-  itemId: z.string().min(1, "Selecciona un item"),
-  recipientId: z.string().min(1, "Selecciona un destinatario"),
-  quantity: z.coerce.number().int().positive("La cantidad debe ser mayor que 0"),
-});
-
 export async function sendGift(formData: FormData) {
   const session = await requireSession();
+  const t = await getTranslations("errors");
+  const tDiscord = await getTranslations("discord");
 
   const { maintenanceModeEnabled } = await loadMarketConfig();
   if (maintenanceModeEnabled && !session.user.isAdmin) {
-    throw new Error("El mercado está en mantenimiento; inténtalo más tarde.");
+    throw new Error(t("maintenanceMode"));
   }
+
+  const sendGiftSchema = z.object({
+    itemId: z.string().min(1, t("selectItem")),
+    recipientId: z.string().min(1, t("selectRecipient")),
+    quantity: z.coerce.number().int().positive(t("positiveQuantity")),
+  });
 
   const parsed = sendGiftSchema.safeParse({
     itemId: formData.get("itemId"),
@@ -57,18 +60,18 @@ export async function sendGift(formData: FormData) {
     quantity: formData.get("quantity"),
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Datos inválidos");
+    throw new Error(parsed.error.issues[0]?.message ?? t("invalidData"));
   }
   if (parsed.data.recipientId === session.user.discordId) {
-    throw new Error("No puedes regalarte un item a ti mismo");
+    throw new Error(t("cannotGiftSelf"));
   }
 
   const [item, recipient] = await Promise.all([
     prisma.item.findUnique({ where: { id: parsed.data.itemId } }),
     prisma.user.findUnique({ where: { id: parsed.data.recipientId } }),
   ]);
-  if (!item) throw new Error("El item seleccionado no existe");
-  if (!recipient) throw new Error("El destinatario seleccionado no existe");
+  if (!item) throw new Error(t("itemNotFound"));
+  if (!recipient) throw new Error(t("recipientNotFound"));
 
   const [magicalTypes, optionsAvailable] = await Promise.all([
     loadMagicalWeaponTypes(),
@@ -76,7 +79,7 @@ export async function sendGift(formData: FormData) {
   ]);
   const optionGroup = optionsAvailable ? getItemOptionGroup(item, magicalTypes) : null;
 
-  const rawOptions = parseOptionsFromFormData(formData);
+  const rawOptions = await parseOptionsFromFormData(formData);
   // Roll exacto de una instancia real (mismo sentido que en SALE/TRADE, a
   // diferencia del "mínimo deseado" de BUY — ver comentario de
   // ListingOption en schema.prisma).
@@ -93,11 +96,11 @@ export async function sendGift(formData: FormData) {
     const rawRefine = formData.get("refineLevel");
     refineLevel = typeof rawRefine === "string" && rawRefine !== "" ? Number(rawRefine) : 0;
     if (!Number.isInteger(refineLevel) || refineLevel < 0) {
-      throw new Error("El refine debe ser un número entero positivo");
+      throw new Error(t("positiveRefine"));
     }
     const maxRefineLevel = await loadMaxRefineLevel();
     if (refineLevel > maxRefineLevel) {
-      throw new Error(`El refine no puede ser mayor que +${maxRefineLevel}`);
+      throw new Error(t("refineTooHigh", { max: maxRefineLevel }));
     }
   }
 
@@ -107,10 +110,10 @@ export async function sendGift(formData: FormData) {
     const rawCardSlots = formData.get("cardSlots");
     cardSlots = typeof rawCardSlots === "string" && rawCardSlots !== "" ? Number(rawCardSlots) : 0;
     if (!Number.isInteger(cardSlots) || cardSlots < 0) {
-      throw new Error("Los slots deben ser un número entero positivo");
+      throw new Error(t("positiveCardSlots"));
     }
     if (cardSlots > maxCardSlots) {
-      throw new Error(`Este item admite como máximo ${maxCardSlots} slots`);
+      throw new Error(t("cardSlotsTooHigh", { max: maxCardSlots }));
     }
   }
 
@@ -138,16 +141,16 @@ export async function sendGift(formData: FormData) {
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const itemName = formatItemDisplayName(item.name, refineLevel, cardSlots);
   await sendDirectMessage(parsed.data.recipientId, {
-    title: `${session.user.username} te ha regalado ${itemName}`,
+    title: tDiscord("dm.gifted", { username: session.user.username, item: itemName }),
     url: `${appUrl}/market/gifts`,
     color: DISCORD_EMBED_COLOR.GIFT,
     itemIconUrl: `${appUrl}${item.iconUrl}`,
     fields: [
-      { name: "Cantidad", value: String(quantity), inline: true },
+      { name: tDiscord("fields.quantity"), value: String(quantity), inline: true },
       ...(rawOptions.length > 0
         ? [
             {
-              name: "Options",
+              name: tDiscord("fields.options"),
               value: rawOptions
                 .map((o) => `${defsById.get(o.defId)!.label}: ${formatOptionAmount(o.value, false)}`)
                 .join("\n"),

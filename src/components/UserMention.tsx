@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { createPortal } from "react-dom";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { sendContactMessage } from "@/lib/contact-messages";
 import { Sidebar } from "./Sidebar";
 import { buttonClass, inputBaseClass, labelClass } from "@/lib/ui";
@@ -31,8 +32,9 @@ export function UserMention({
   item?: MentionItem;
   dmAvailable?: boolean;
 }) {
+  const t = useTranslations("common");
   const isSelf = userId === viewerId;
-  const label = isSelf ? (capitalize ? "Tú" : "ti") : `@${username}`;
+  const label = isSelf ? (capitalize ? t("you") : t("yourself")) : `@${username}`;
   const clickable = dmAvailable && !isSelf && !!item;
   const [open, setOpen] = useState(false);
 
@@ -83,6 +85,8 @@ function ContactModal({
   const [sent, setSent] = useState(false);
   const [isPending, startTransition] = useTransition();
   const submittingRef = useRef(false);
+  const t = useTranslations("market.contact");
+  const tCommon = useTranslations("common");
 
   function handleClose() {
     onClose();
@@ -113,14 +117,14 @@ function ContactModal({
   // llegando al <Link> ancestro y navegando a la tarjeta por debajo.
   return createPortal(
     <div onClick={(e) => e.stopPropagation()}>
-    <Sidebar side="right" open={open} onClose={handleClose} title={`Escribir a @${recipientUsername}`}>
+    <Sidebar side="right" open={open} onClose={handleClose} title={t("writeTo", { username: recipientUsername })}>
       <div className="flex flex-col gap-3">
         <div className="flex items-center gap-2 rounded-md border-2 border-ro-panel-border/30 p-2">
           <Image src={item.iconUrl} alt={item.name} width={32} height={32} />
           <span className="text-sm">{item.name}</span>
         </div>
         {sent ? (
-          <p className="text-sm text-green-700">Mensaje enviado.</p>
+          <p className="text-sm text-green-700">{t("sent")}</p>
         ) : (
           <form
             action={(formData) => {
@@ -141,7 +145,7 @@ function ContactModal({
           >
             <input type="hidden" name="recipientId" value={recipientId} />
             <input type="hidden" name="itemId" value={item.id} />
-            <label className={labelClass}>Mensaje</label>
+            <label className={labelClass}>{t("messageLabel")}</label>
             <textarea
               name="message"
               rows={4}
@@ -153,7 +157,7 @@ function ContactModal({
             />
             {error && <p className="text-sm text-red-700">{error}</p>}
             <button type="submit" disabled={isPending} className={buttonClass("primary")}>
-              {isPending ? "Enviando..." : "Enviar"}
+              {isPending ? tCommon("sending") : tCommon("send")}
             </button>
           </form>
         )}

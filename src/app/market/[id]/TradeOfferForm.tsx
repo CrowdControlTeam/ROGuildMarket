@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { createTradeOffer } from "@/lib/trade-offers";
 import { getMaxRefineLevel } from "@/lib/listings";
 import { buttonClass, inputClass, labelClass } from "@/lib/ui";
@@ -22,6 +23,7 @@ export function TradeOfferForm({ listingId }: { listingId: string }) {
   // refleja en el DOM tras el siguiente render, y clics muy seguidos
   // pueden dispararse antes de ese commit — ver NewPublicationForm.tsx.
   const submittingRef = useRef(false);
+  const t = useTranslations("market.detail.tradeForm");
 
   useEffect(() => {
     getMaxRefineLevel().then(setMaxRefineLevel);
@@ -62,19 +64,19 @@ export function TradeOfferForm({ listingId }: { listingId: string }) {
       className="flex flex-col gap-3"
     >
       <div>
-        <label className={labelClass}>Ofrecer item</label>
+        <label className={labelClass}>{t("offerItem")}</label>
         <ItemPicker selected={selectedItem} onSelect={handleItemSelect} onClear={handleItemClear} />
         <input type="hidden" name="itemId" value={selectedItem?.id ?? ""} />
       </div>
 
       <div>
-        <label className={labelClass}>Cantidad</label>
+        <label className={labelClass}>{t("quantity")}</label>
         <input type="number" name="quantity" min={1} defaultValue={1} required className={inputClass} />
       </div>
 
       {refineEligible && (
         <div>
-          <label className={labelClass}>Refine</label>
+          <label className={labelClass}>{t("refine")}</label>
           <input
             type="number"
             name="refineLevel"
@@ -89,7 +91,7 @@ export function TradeOfferForm({ listingId }: { listingId: string }) {
 
       {maxCardSlots > 0 && (
         <div>
-          <label className={labelClass}>Slots de carta</label>
+          <label className={labelClass}>{t("cardSlots")}</label>
           <input
             type="number"
             name="cardSlots"
@@ -103,14 +105,14 @@ export function TradeOfferForm({ listingId }: { listingId: string }) {
       )}
 
       <div>
-        <label className={labelClass}>Zeny adicional (opcional)</label>
+        <label className={labelClass}>{t("zeny")}</label>
         <input type="number" name="zenyOffered" min={0} defaultValue={0} className={inputClass} />
       </div>
 
       {error && <p className="text-sm text-red-700">{error}</p>}
 
       <button type="submit" disabled={!selectedItem || isPending} className={buttonClass("primary")}>
-        {isPending ? "Enviando..." : "Enviar oferta"}
+        {isPending ? t("sending") : t("submit")}
       </button>
     </form>
   );

@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { getTranslations } from "next-intl/server";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { requireAdmin } from "@/lib/admin-guard";
@@ -51,23 +52,6 @@ export async function getMarketConfig() {
   };
 }
 
-const updateConfigSchema = z.object({
-  maxRefineLevel: z.coerce.number().int().nonnegative(),
-  webhookEnabled: z.boolean(),
-  imageRecognitionEnabled: z.boolean(),
-  geminiModel: z.string().refine(isGeminiModel, "Modelo de Gemini no soportado"),
-  locale: z.string().refine(isAppLocale, "Idioma no soportado"),
-  dmNotificationsEnabled: z.boolean(),
-  maintenanceModeEnabled: z.boolean(),
-  optionsEnabled: z.boolean(),
-  // Vacío = no tocar el valor ya guardado (patrón "enmascarado + reemplazar":
-  // el formulario nunca recibe el valor real, así que no puede reenviarlo).
-  webhookUrl: z.string().trim().optional(),
-  // A diferencia de webhookUrl, este campo no está enmascarado — vacío
-  // aquí sí significa "volver a sin configurar" (cae al placeholder).
-  siteName: z.string().trim().optional(),
-});
-
 // IDs de rol de Discord (snowflakes): solo dígitos. Se filtra en vez de
 // rechazar todo el formulario por una línea mal pegada — es una lista de
 // texto libre en el caso sin bot, conviene ser tolerante.
@@ -89,6 +73,24 @@ function parseAdminRoleIds(formData: FormData): string[] {
 
 export async function updateMarketConfig(formData: FormData) {
   await requireAdmin();
+  const t = await getTranslations("errors");
+
+  const updateConfigSchema = z.object({
+    maxRefineLevel: z.coerce.number().int().nonnegative(),
+    webhookEnabled: z.boolean(),
+    imageRecognitionEnabled: z.boolean(),
+    geminiModel: z.string().refine(isGeminiModel, t("unsupportedGeminiModel")),
+    locale: z.string().refine(isAppLocale, t("unsupportedLocale")),
+    dmNotificationsEnabled: z.boolean(),
+    maintenanceModeEnabled: z.boolean(),
+    optionsEnabled: z.boolean(),
+    // Vacío = no tocar el valor ya guardado (patrón "enmascarado + reemplazar":
+    // el formulario nunca recibe el valor real, así que no puede reenviarlo).
+    webhookUrl: z.string().trim().optional(),
+    // A diferencia de webhookUrl, este campo no está enmascarado — vacío
+    // aquí sí significa "volver a sin configurar" (cae al placeholder).
+    siteName: z.string().trim().optional(),
+  });
 
   const parsed = updateConfigSchema.safeParse({
     maxRefineLevel: formData.get("maxRefineLevel"),
@@ -103,7 +105,7 @@ export async function updateMarketConfig(formData: FormData) {
     siteName: formData.get("siteName") || undefined,
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Datos inválidos");
+    throw new Error(parsed.error.issues[0]?.message ?? t("invalidData"));
   }
   const adminRoleIds = parseAdminRoleIds(formData);
 

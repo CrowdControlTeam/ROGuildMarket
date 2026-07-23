@@ -49,6 +49,7 @@ export function MarketFilters() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const t = useTranslations("market");
+  const tCommon = useTranslations("common");
 
   const [q, setQ] = useState(searchParams.get("q") ?? "");
   const [type, setType] = useState(searchParams.get("type") ?? "");
@@ -272,21 +273,21 @@ export function MarketFilters() {
   return (
     <form onSubmit={applyFilters} className="flex flex-wrap items-end gap-3">
       <div className="min-w-[160px] flex-1">
-        <label className={labelClass}>Nombre</label>
+        <label className={labelClass}>{t("filters.name")}</label>
         <input
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Buscar item..."
+          placeholder={t("filters.namePlaceholder")}
           className={inputClass}
         />
       </div>
 
       {!typeLocked && (
         <div>
-          <label className={labelClass}>Tipo</label>
+          <label className={labelClass}>{t("filters.type")}</label>
           <select value={type} onChange={(e) => setType(e.target.value)} className={selectClass}>
-            <option value="">Todas</option>
+            <option value="">{t("filters.all")}</option>
             {Object.values(ListingType).map((type) => (
               <option key={type} value={type}>
                 {listingTypeLabel(t, type)}
@@ -297,7 +298,7 @@ export function MarketFilters() {
       )}
 
       <div>
-        <label className={labelClass}>Categoría</label>
+        <label className={labelClass}>{t("filters.category")}</label>
         <select
           value={category}
           onChange={(e) => {
@@ -311,7 +312,7 @@ export function MarketFilters() {
           }}
           className={selectClass}
         >
-          <option value="">Todas</option>
+          <option value="">{t("filters.all")}</option>
           {Object.values(ItemCategory).map((c) => (
             <option key={c} value={c}>
               {categoryLabel(t, c)}
@@ -321,14 +322,14 @@ export function MarketFilters() {
       </div>
 
       <div>
-        <label className={labelClass}>Armadura</label>
+        <label className={labelClass}>{t("filters.slot")}</label>
         <select
           value={slot}
           disabled={!showSlot}
           onChange={(e) => setSlot(e.target.value)}
           className={selectClass}
         >
-          <option value="">Cualquiera</option>
+          <option value="">{t("filters.any")}</option>
           {Object.values(EquipSlot).map((s) => (
             <option key={s} value={s}>
               {slotLabel(t, s)}
@@ -338,14 +339,14 @@ export function MarketFilters() {
       </div>
 
       <div>
-        <label className={labelClass}>Tipo de arma</label>
+        <label className={labelClass}>{t("filters.weaponType")}</label>
         <select
           value={weaponType}
           disabled={!showWeaponType}
           onChange={(e) => setWeaponType(e.target.value)}
           className={selectClass}
         >
-          <option value="">Cualquiera</option>
+          <option value="">{t("filters.any")}</option>
           {Object.values(WeaponType).map((w) => (
             <option key={w} value={w}>
               {weaponTypeLabel(t, w)}
@@ -358,7 +359,7 @@ export function MarketFilters() {
           partirse por la mitad. */}
       <div className="flex gap-3">
         <div>
-          <label className={labelClass}>Refine mín.</label>
+          <label className={labelClass}>{t("filters.refineMin")}</label>
           <input
             type="number"
             min={0}
@@ -371,7 +372,7 @@ export function MarketFilters() {
         </div>
 
         <div>
-          <label className={labelClass}>Refine máx.</label>
+          <label className={labelClass}>{t("filters.refineMax")}</label>
           <input
             type="number"
             min={0}
@@ -388,7 +389,7 @@ export function MarketFilters() {
           partirse por la mitad. */}
       <div className="flex gap-3">
         <div>
-          <label className={labelClass}>Slots mín.</label>
+          <label className={labelClass}>{t("filters.cardSlotsMin")}</label>
           <input
             type="number"
             min={0}
@@ -401,7 +402,7 @@ export function MarketFilters() {
         </div>
 
         <div>
-          <label className={labelClass}>Slots máx.</label>
+          <label className={labelClass}>{t("filters.cardSlotsMax")}</label>
           <input
             type="number"
             min={0}
@@ -418,7 +419,7 @@ export function MarketFilters() {
           partirse por la mitad. */}
       <div className="flex gap-3">
         <div>
-          <label className={labelClass}>Precio mín.</label>
+          <label className={labelClass}>{t("filters.priceMin")}</label>
           <MaskedPriceInput
             value={minPrice}
             onChange={setMinPrice}
@@ -427,7 +428,7 @@ export function MarketFilters() {
         </div>
 
         <div>
-          <label className={labelClass}>Precio máx.</label>
+          <label className={labelClass}>{t("filters.priceMax")}</label>
           <MaskedPriceInput
             value={maxPrice}
             onChange={setMaxPrice}
@@ -440,10 +441,10 @@ export function MarketFilters() {
           quedar cada uno en una línea distinta. */}
       <div className="flex gap-3">
         <button type="submit" className={buttonClass("primary")}>
-          Buscar
+          {tCommon("search")}
         </button>
         <button type="button" onClick={resetFilters} className={buttonClass("outline")}>
-          Reset
+          {tCommon("reset")}
         </button>
       </div>
 
@@ -455,7 +456,7 @@ export function MarketFilters() {
             aria-expanded={optionsExpanded}
             className={`flex items-center gap-1 ${labelClass}`}
           >
-            Options
+            {t("filters.options")}
             {optionsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
           {optionsExpanded && isBuyFilter && (
@@ -486,7 +487,7 @@ export function MarketFilters() {
                   onChange={(e) => handleOptionSelectChange(index, e.target.value)}
                   className={`min-w-0 flex-1 ${selectClass}`}
                 >
-                  <option value="">{`-- Option ${slotIndex} --`}</option>
+                  <option value="">{t("filters.optionPlaceholder", { slot: slotIndex })}</option>
                   {statsForSlot.map((s) => (
                     <option key={s.statCode} value={s.statCode}>
                       {s.label}
@@ -496,7 +497,7 @@ export function MarketFilters() {
                 {!isBuyFilter && (
                   <input
                     type="number"
-                    placeholder={selectedStat ? String(selectedStat.minValue) : "Mín"}
+                    placeholder={selectedStat ? String(selectedStat.minValue) : t("filters.min")}
                     value={sel.min}
                     disabled={!sel.statCode}
                     onChange={(e) =>
@@ -516,8 +517,8 @@ export function MarketFilters() {
                         ? `${selectedStat.minValue}-${selectedStat.maxValue}`
                         : String(selectedStat.maxValue)
                       : isBuyFilter
-                        ? "Valor"
-                        : "Máx"
+                        ? t("filters.value")
+                        : t("filters.max")
                   }
                   value={sel.max}
                   disabled={!sel.statCode}

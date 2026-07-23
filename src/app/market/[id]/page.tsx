@@ -57,7 +57,7 @@ export default async function ListingDetailPage({
 
   return (
     <main className="mx-auto max-w-lg px-6 py-8">
-      <BackLink href="/market" label="Volver al mercado" />
+      <BackLink href="/market" label={t("detail.back")} />
       <Panel>
         <div className="flex items-center gap-4">
           <Image
@@ -85,12 +85,12 @@ export default async function ListingDetailPage({
 
         <dl className="mt-6 flex flex-col gap-2 text-sm">
           <div className="flex justify-between border-b border-ro-panel-border/30 pb-2">
-            <dt className="text-ro-text-muted">{isBuy ? "Cantidad" : "Disponibles"}</dt>
+            <dt className="text-ro-text-muted">{isBuy ? t("detail.quantity") : t("detail.available")}</dt>
             <dd>{isBuy ? listing.quantity : remaining}</dd>
           </div>
           {!isTrade && listing.price !== null && (
             <div className="flex justify-between border-b border-ro-panel-border/30 pb-2">
-              <dt className="text-ro-text-muted">{isBuy ? "Pago hasta" : "Precio por unidad"}</dt>
+              <dt className="text-ro-text-muted">{isBuy ? t("detail.payUpTo") : t("detail.unitPrice")}</dt>
               <dd className={`font-bold ${priceColorClass(listing.price)}`}>
                 {formatPrice(listing.price)}
               </dd>
@@ -114,16 +114,16 @@ export default async function ListingDetailPage({
               !isBuy && listing.quantity > 1 ? "border-b border-ro-panel-border/30 pb-2" : ""
             }`}
           >
-            <dt className="text-ro-text-muted">Publicado</dt>
+            <dt className="text-ro-text-muted">{t("detail.posted")}</dt>
             <dd>{listing.createdAt.toLocaleString()}</dd>
           </div>
           {/* Con 1 sola unidad, "Vendidos: 0 de 1" no aporta nada que
               "Disponibles" ya no diga. quantitySold no se usa en BUY. */}
           {!isBuy && listing.quantity > 1 && (
             <div className="flex justify-between">
-              <dt className="text-ro-text-muted">Vendidos</dt>
+              <dt className="text-ro-text-muted">{t("detail.sold")}</dt>
               <dd>
-                {listing.quantitySold} de {listing.quantity}
+                {listing.quantitySold} {t("detail.of")} {listing.quantity}
               </dd>
             </div>
           )}
@@ -131,7 +131,7 @@ export default async function ListingDetailPage({
 
         {listing.options.length > 0 && (
           <div className="mt-4">
-            <p className={labelClass}>{isBuy ? "Stats mínimos buscados" : "Options"}</p>
+            <p className={labelClass}>{isBuy ? t("detail.minStats") : t("detail.options")}</p>
             <ul className="flex flex-col gap-1 text-sm">
               {listing.options.map((o) => (
                 <li key={o.slotIndex} className="flex justify-between border-b border-ro-panel-border/30 pb-1">
@@ -166,7 +166,7 @@ export default async function ListingDetailPage({
               if (!accepted) return null;
               return (
                 <>
-                  Intercambiado con{" "}
+                  {t("detail.tradedWith")}{" "}
                   <UserMention
                     userId={accepted.offererId}
                     username={accepted.offerer.username}
@@ -174,7 +174,9 @@ export default async function ListingDetailPage({
                     item={listing.item}
                     dmAvailable={dmAvailable}
                   />{" "}
-                  por {formatItemDisplayName(accepted.item.name, accepted.refineLevel, accepted.cardSlots)}
+                  {t("detail.forItem", {
+                    item: formatItemDisplayName(accepted.item.name, accepted.refineLevel, accepted.cardSlots),
+                  })}
                   {accepted.quantity > 1 && ` x${accepted.quantity}`}
                   {accepted.zenyOffered > 0 && ` + ${formatPrice(accepted.zenyOffered)}`}
                 </>
@@ -185,7 +187,7 @@ export default async function ListingDetailPage({
 
         {isTrade && (isPoster ? pendingOffers.length > 0 : myOffers.length > 0) && (
           <div className="mt-6">
-            <p className={labelClass}>{isPoster ? "Ofertas recibidas" : "Tus ofertas"}</p>
+            <p className={labelClass}>{isPoster ? t("detail.offersReceived") : t("detail.yourOffers")}</p>
             <ul className="mt-2 flex flex-col gap-3">
               {(isPoster ? pendingOffers : myOffers).map((offer) => (
                 <li key={offer.id} className="rounded-md border-2 border-ro-panel-border/30 p-3 text-sm">
@@ -202,7 +204,7 @@ export default async function ListingDetailPage({
                   </div>
                   {isPoster && (
                     <p className="mt-1 text-ro-text-muted">
-                      De{" "}
+                      {t("detail.offerFrom")}{" "}
                       <UserMention
                         userId={offer.offererId}
                         username={offer.offerer.username}

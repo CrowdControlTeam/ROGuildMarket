@@ -47,6 +47,7 @@ export function MarketResults({
   const [loadMoreError, setLoadMoreError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const t = useTranslations("market");
+  const tCommon = useTranslations("common");
 
   function loadMore() {
     setLoadMoreError(null);
@@ -57,7 +58,7 @@ export function MarketResults({
         setListings((prev) => [...prev, ...result.listings]);
         setCursor(result.nextCursor);
       } catch (err) {
-        setLoadMoreError(getErrorMessage(err, "No se ha podido cargar más. Inténtalo de nuevo."));
+        setLoadMoreError(getErrorMessage(err, t("results.loadMoreError")));
       }
     });
   }
@@ -65,7 +66,7 @@ export function MarketResults({
   if (listings.length === 0) {
     return (
       <p className="text-ro-text-light/70">
-        No hay publicaciones que coincidan con la búsqueda.
+        {t("results.empty")}
       </p>
     );
   }
@@ -97,8 +98,9 @@ export function MarketResults({
                   )}
                 </p>
                 <p className="text-sm text-ro-text-muted">
-                  {listing.type !== "BUY" && `x${listing.quantity - listing.quantitySold} disponibles · `}
-                  {listing.type === "BUY" ? "buscado por" : "vendido por"}{" "}
+                  {listing.type !== "BUY" &&
+                    `${t("results.available", { count: listing.quantity - listing.quantitySold })} · `}
+                  {listing.type === "BUY" ? t("results.wantedBy") : t("results.soldBy")}{" "}
                   <UserMention
                     userId={listing.poster.id}
                     username={listing.poster.username}
@@ -122,7 +124,7 @@ export function MarketResults({
               </div>
               {listing.type !== "TRADE" && listing.price !== null && (
                 <p className={`font-bold ${priceColorClass(listing.price)}`}>
-                  {listing.type === "BUY" ? "hasta " : ""}
+                  {listing.type === "BUY" ? t("results.upTo") : ""}
                   {formatPrice(listing.price)}
                 </p>
               )}
@@ -139,7 +141,7 @@ export function MarketResults({
           disabled={isPending}
           className={`mt-4 w-full ${buttonClass("secondary")}`}
         >
-          {isPending ? "Cargando..." : "Cargar más"}
+          {isPending ? tCommon("loading") : t("results.loadMore")}
         </button>
       )}
     </div>

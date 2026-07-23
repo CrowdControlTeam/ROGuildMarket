@@ -1,6 +1,7 @@
 "use server";
 
 import { z } from "zod";
+import { getTranslations } from "next-intl/server";
 import { ItemOptionGroup, ListingType } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
@@ -97,19 +98,23 @@ export async function getAllOptionChoices() {
   });
 }
 
-const createListingSchema = z.object({
-  itemId: z.string().min(1, "Selecciona un item"),
-  type: z.enum(ListingType).default("SALE"),
-  quantity: z.coerce.number().int().positive("La cantidad debe ser mayor que 0"),
-});
-
 export async function createListing(formData: FormData) {
   const session = await requireSession();
+  const t = await getTranslations("errors");
 
   const { maintenanceModeEnabled } = await loadMarketConfig();
   if (maintenanceModeEnabled && !session.user.isAdmin) {
-    throw new Error("El mercado está en mantenimiento; inténtalo más tarde.");
+    throw new Error(t("maintenanceMode"));
   }
+
+  // Los mensajes de zod se resuelven aquí dentro (no como const a nivel de
+  // módulo) porque necesitan el traductor, que solo existe dentro de la
+  // request — reconstruir el schema en cada llamada no tiene coste real.
+  const createListingSchema = z.object({
+    itemId: z.string().min(1, t("selectItem")),
+    type: z.enum(ListingType).default("SALE"),
+    quantity: z.coerce.number().int().positive(t("positiveQuantity")),
+  });
 
   const parsed = createListingSchema.safeParse({
     itemId: formData.get("itemId"),
@@ -117,7 +122,7 @@ export async function createListing(formData: FormData) {
     quantity: formData.get("quantity"),
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Datos inválidos");
+    throw new Error(parsed.error.issues[0]?.message ?? t("invalidData"));
   }
 
   // El precio no aplica a un trade (se intercambia por otro item, nunca
@@ -130,10 +135,10 @@ export async function createListing(formData: FormData) {
     const pricedParsed = z.coerce
       .number()
       .int()
-      .positive("El precio debe ser mayor que 0")
+      .positive(t("positivePrice"))
       .safeParse(formData.get("price"));
     if (!pricedParsed.success) {
-      throw new Error(pricedParsed.error.issues[0]?.message ?? "Precio inválido");
+      throw new Error(pricedParsed.error.issues[0]?.message ?? t("invalidPrice"));
     }
     price = pricedParsed.data;
   }
@@ -141,7 +146,7 @@ export async function createListing(formData: FormData) {
   const item = await prisma.item.findUnique({
     where: { id: parsed.data.itemId },
   });
-  if (!item) throw new Error("El item seleccionado no existe");
+  if (!item) throw new Error(t("itemNotFound"));
 
   const [magicalTypes, optionsAvailable] = await Promise.all([
     loadMagicalWeaponTypes(),
@@ -149,7 +154,7 @@ export async function createListing(formData: FormData) {
   ]);
   const optionGroup = optionsAvailable ? getItemOptionGroup(item, magicalTypes) : null;
 
-  const rawOptions = parseOptionsFromFormData(formData);
+  const rawOptions = await parseOptionsFromFormData(formData);
   // En SALE/TRADE es el roll exacto de una instancia real; en BUY es el
   // mínimo que el comprador pide (ver comentario de ListingOption en
   // schema.prisma) — el rango válido [minValue, maxValue] es el mismo en
@@ -176,11 +181,11 @@ export async function createListing(formData: FormData) {
     const rawRefine = formData.get("refineLevel");
     refineLevel = typeof rawRefine === "string" && rawRefine !== "" ? Number(rawRefine) : 0;
     if (!Number.isInteger(refineLevel) || refineLevel < 0) {
-      throw new Error("El refine debe ser un número entero positivo");
+      throw new Error(t("positiveRefine"));
     }
     const maxRefineLevel = await loadMaxRefineLevel();
     if (refineLevel > maxRefineLevel) {
-      throw new Error(`El refine no puede ser mayor que +${maxRefineLevel}`);
+      throw new Error(t("refineTooHigh", { max: maxRefineLevel }));
     }
   }
 
@@ -190,10 +195,10 @@ export async function createListing(formData: FormData) {
     const rawCardSlots = formData.get("cardSlots");
     cardSlots = typeof rawCardSlots === "string" && rawCardSlots !== "" ? Number(rawCardSlots) : 0;
     if (!Number.isInteger(cardSlots) || cardSlots < 0) {
-      throw new Error("Los slots deben ser un número entero positivo");
+      throw new Error(t("positiveCardSlots"));
     }
     if (cardSlots > maxCardSlots) {
-      throw new Error(`Este item admite como máximo ${maxCardSlots} slots`);
+      throw new Error(t("cardSlotsTooHigh", { max: maxCardSlots }));
     }
   }
 
@@ -246,16 +251,17 @@ export async function createListing(formData: FormData) {
 // fulfillListing) o se acepta una oferta (TRADE, ver trade-offers.ts).
 export async function cancelListing(listingId: string) {
   const session = await requireSession();
+  const t = await getTranslations("errors");
 
   const listing = await prisma.listing.findUnique({
     where: { id: listingId },
   });
-  if (!listing) throw new Error("Publicación no encontrada");
+  if (!listing) throw new Error(t("listingNotFound"));
   if (listing.posterId !== session.user.discordId) {
-    throw new Error("Solo quien la publicó puede cancelarla");
+    throw new Error(t("onlyPosterCancel"));
   }
   if (listing.status !== "ACTIVE") {
-    throw new Error("Esta publicación ya no está activa");
+    throw new Error(t("listingNotActive"));
   }
 
   await prisma.listing.update({
@@ -273,19 +279,20 @@ export async function cancelListing(listingId: string) {
 // reutiliza ListingStatus.SOLD, la UI lo muestra como "Cumplida".
 export async function fulfillListing(listingId: string) {
   const session = await requireSession();
+  const t = await getTranslations("errors");
 
   const listing = await prisma.listing.findUnique({
     where: { id: listingId },
   });
-  if (!listing) throw new Error("Publicación no encontrada");
+  if (!listing) throw new Error(t("listingNotFound"));
   if (listing.type !== "BUY") {
-    throw new Error("Solo una petición de compra se puede marcar como cumplida a mano");
+    throw new Error(t("onlyBuyFulfill"));
   }
   if (listing.posterId !== session.user.discordId) {
-    throw new Error("Solo quien la publicó puede marcarla como cumplida");
+    throw new Error(t("onlyPosterFulfill"));
   }
   if (listing.status !== "ACTIVE") {
-    throw new Error("Esta publicación ya no está activa");
+    throw new Error(t("listingNotActive"));
   }
 
   await prisma.listing.update({
@@ -297,43 +304,45 @@ export async function fulfillListing(listingId: string) {
   revalidatePath(`/market/${listingId}`);
 }
 
-const purchaseSchema = z.object({
-  quantity: z.coerce.number().int().positive("La cantidad debe ser mayor que 0"),
-});
-
 export async function purchaseListing(listingId: string, formData: FormData) {
   const session = await requireSession();
+  const t = await getTranslations("errors");
+  const tDiscord = await getTranslations("discord");
 
   const { maintenanceModeEnabled } = await loadMarketConfig();
   if (maintenanceModeEnabled && !session.user.isAdmin) {
-    throw new Error("El mercado está en mantenimiento; inténtalo más tarde.");
+    throw new Error(t("maintenanceMode"));
   }
+
+  const purchaseSchema = z.object({
+    quantity: z.coerce.number().int().positive(t("positiveQuantity")),
+  });
 
   const parsed = purchaseSchema.safeParse({
     quantity: formData.get("quantity"),
   });
   if (!parsed.success) {
-    throw new Error(parsed.error.issues[0]?.message ?? "Datos inválidos");
+    throw new Error(parsed.error.issues[0]?.message ?? t("invalidData"));
   }
   const { quantity } = parsed.data;
 
   const { listing, unitPrice } = await prisma.$transaction(async (tx) => {
     const listing = await tx.listing.findUnique({ where: { id: listingId }, include: { item: true } });
-    if (!listing) throw new Error("Publicación no encontrada");
+    if (!listing) throw new Error(t("listingNotFound"));
     if (listing.posterId === session.user.discordId) {
-      throw new Error("No puedes comprar tu propia publicación");
+      throw new Error(t("cannotBuyOwn"));
     }
     if (listing.status !== "ACTIVE") {
-      throw new Error("Esta publicación ya no está activa");
+      throw new Error(t("listingNotActive"));
     }
     if (listing.type !== "SALE" || listing.price === null) {
-      throw new Error("Esta publicación no es una venta directa");
+      throw new Error(t("notDirectSale"));
     }
     const unitPrice = listing.price;
 
     const remaining = listing.quantity - listing.quantitySold;
     if (quantity > remaining) {
-      throw new Error(`Solo quedan ${remaining} unidades disponibles`);
+      throw new Error(t("notEnoughStock", { remaining }));
     }
 
     await tx.purchase.create({
@@ -362,13 +371,16 @@ export async function purchaseListing(listingId: string, formData: FormData) {
   // compra que ya se confirmó.
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   await sendDirectMessage(listing.posterId, {
-    title: `${session.user.username} ha comprado tu ${formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}`,
+    title: tDiscord("dm.purchased", {
+      username: session.user.username,
+      item: formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots),
+    }),
     url: `${appUrl}/market/${listingId}`,
     color: DISCORD_EMBED_COLOR.SALE,
     itemIconUrl: `${appUrl}${listing.item.iconUrl}`,
     fields: [
-      { name: "Cantidad", value: String(quantity), inline: true },
-      { name: "Precio total", value: formatPrice(quantity * unitPrice), inline: true },
+      { name: tDiscord("fields.quantity"), value: String(quantity), inline: true },
+      { name: tDiscord("fields.totalPrice"), value: formatPrice(quantity * unitPrice), inline: true },
     ],
   });
 

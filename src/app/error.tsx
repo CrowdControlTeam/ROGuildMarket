@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { useTranslations } from "next-intl";
 import { Panel } from "@/components/Panel";
 import { buttonClass } from "@/lib/ui";
 
@@ -16,6 +17,8 @@ export default function Error({
   error: Error & { digest?: string };
   unstable_retry: () => void;
 }) {
+  const t = useTranslations("errors.boundary");
+
   useEffect(() => {
     console.error(error);
   }, [error]);
@@ -23,16 +26,14 @@ export default function Error({
   return (
     <main className="mx-auto max-w-lg px-6 py-8">
       <Panel>
-        <h1 className="font-heading text-lg text-ro-gold">Algo ha ido mal</h1>
-        <p className="mt-2 text-sm text-ro-text-muted">
-          Ha ocurrido un error inesperado. Puedes intentarlo de nuevo.
-        </p>
+        <h1 className="font-heading text-lg text-ro-gold">{t("title")}</h1>
+        <p className="mt-2 text-sm text-ro-text-muted">{t("message")}</p>
         <button
           type="button"
           onClick={() => unstable_retry()}
           className={`mt-4 ${buttonClass("secondary")}`}
         >
-          Reintentar
+          {t("retry")}
         </button>
       </Panel>
     </main>

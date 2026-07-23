@@ -5,7 +5,11 @@ import "./globals.css";
 // error.tsx no cubre fallos en el propio layout.tsx raíz (SiteHeader,
 // SiteFooter, el provider de next-intl...) — para eso hace falta este
 // archivo aparte, que sustituye TODO el layout mientras está activo
-// (por eso define su propio <html>/<body> y reimporta globals.css).
+// (por eso define su propio <html>/<body> y reimporta globals.css). Al
+// sustituir el layout, también sustituye el <NextIntlClientProvider> que
+// vive ahí — useTranslations no tendría contexto del que leer, así que
+// este texto se queda fijo en español a propósito (único sitio de toda la
+// migración a i18n donde esto aplica).
 export default function GlobalError({
   error,
   unstable_retry,

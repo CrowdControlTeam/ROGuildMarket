@@ -6,6 +6,7 @@ import {
   ListingType,
   TradeOfferStatus,
 } from "@prisma/client";
+import type { MarketSort } from "@/lib/market";
 
 // Traductor ya escopado al namespace "market" (useTranslations("market") en
 // cliente, getTranslations("market") en servidor) — cada helper de aquí
@@ -59,6 +60,10 @@ export function offerStatusLabel(t: T, status: TradeOfferStatus): string {
   return t(`listing.offerStatus.${status}`);
 }
 
+export function sortLabel(t: T, sort: MarketSort): string {
+  return t(`sort.${sort}`);
+}
+
 // Badge de tipo en las cards/detalle. Mismos colores que
 // DISCORD_EMBED_COLOR (ver discord-colors.ts) traducidos a Tailwind. Solo
 // tiene sentido en la vista general "Mercado" (mezcla los 3 tipos) — en
@@ -77,8 +82,7 @@ export const LISTING_TYPE_BADGE_CLASS: Record<ListingType, string> = {
 // ListingOption en schema.prisma sobre el doble sentido de `value` según
 // el tipo. Solo el número: cada sitio decide cómo pegarlo al label (badge
 // de mercado, campo del webhook, etc.). No es texto en idioma natural, así
-// que no pasa por i18n — usado también por código que envía a Discord
-// (gifts.ts, discord-webhook.ts), cuyo idioma es una decisión aparte.
+// que no pasa por i18n aunque lo use también código que envía a Discord.
 export function formatOptionAmount(value: number, isMinimum: boolean): string {
   return isMinimum ? `${value}+` : `+${value}`;
 }

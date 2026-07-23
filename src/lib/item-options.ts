@@ -1,4 +1,5 @@
 import { ItemOptionDef, ItemOptionGroup, WeaponType } from "@prisma/client";
+import { getTranslations } from "next-intl/server";
 import { prisma } from "@/lib/prisma";
 import { loadMarketConfig } from "@/lib/market-config";
 import { MAX_OPTION_SLOTS, getItemOptionGroup } from "@/lib/item-options-constants";
@@ -36,18 +37,19 @@ export type RawOption = { slotIndex: number; defId: string; value: number };
 // en adelante sin huecos, sin necesidad de validarlo aparte. Compartido
 // entre listings.ts (SALE/TRADE/BUY) y gifts.ts (GIFT) — mismo formato de
 // campos en los dos formularios.
-export function parseOptionsFromFormData(formData: FormData): RawOption[] {
+export async function parseOptionsFromFormData(formData: FormData): Promise<RawOption[]> {
+  const t = await getTranslations("errors");
   const options: RawOption[] = [];
   for (let slotIndex = 1; slotIndex <= MAX_OPTION_SLOTS; slotIndex++) {
     const defId = formData.get(`option${slotIndex}DefId`);
     if (!defId) break;
     const rawValue = formData.get(`option${slotIndex}Value`);
     if (typeof defId !== "string" || typeof rawValue !== "string") {
-      throw new Error("Datos de option inválidos");
+      throw new Error(t("invalidOptionData"));
     }
     const value = Number(rawValue);
     if (!Number.isInteger(value)) {
-      throw new Error("El valor de la option debe ser un número entero");
+      throw new Error(t("invalidOptionValue"));
     }
     options.push({ slotIndex, defId, value });
   }
@@ -67,8 +69,9 @@ export async function validateOptions(
 ): Promise<Map<string, ItemOptionDef>> {
   const defsById = new Map<string, ItemOptionDef>();
   if (rawOptions.length === 0) return defsById;
+  const t = await getTranslations("errors");
   if (!optionGroup) {
-    throw new Error("Este item no admite random options");
+    throw new Error(t("noOptionsAllowed"));
   }
 
   const defs = await prisma.itemOptionDef.findMany({
@@ -79,10 +82,10 @@ export async function validateOptions(
   for (const raw of rawOptions) {
     const def = defsById.get(raw.defId);
     if (!def || def.group !== optionGroup || def.slotIndex !== raw.slotIndex) {
-      throw new Error("Option inválida para este item");
+      throw new Error(t("invalidOptionForItem"));
     }
     if (raw.value < def.minValue || raw.value > def.maxValue) {
-      throw new Error(`El valor de "${def.label}" debe estar entre ${def.minValue} y ${def.maxValue}`);
+      throw new Error(t("optionValueRange", { label: def.label, min: def.minValue, max: def.maxValue }));
     }
   }
   return defsById;
