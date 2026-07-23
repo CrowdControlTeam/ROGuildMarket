@@ -8,7 +8,7 @@ import { requireAdmin } from "@/lib/admin-guard";
 import { loadMarketConfig } from "@/lib/market-config";
 import { getOptionsCatalogCount } from "@/lib/item-options";
 import { fetchGuildRoles } from "@/lib/discord-bot";
-import { GEMINI_MODEL_OPTIONS, isGeminiModel } from "@/lib/gemini-model-constants";
+import { GEMINI_MODEL_VALUES, isGeminiModel } from "@/lib/gemini-model-constants";
 import { LOCALE_OPTIONS, isAppLocale } from "@/lib/locale-constants";
 
 // El valor real de un secreto nunca sale del servidor una vez guardado —
@@ -20,12 +20,19 @@ function maskSecret(value: string): string {
 export async function getMarketConfig() {
   await requireAdmin();
 
-  const [config, optionsCatalogCount, guildRolesResult, rawConfig] = await Promise.all([
+  const [config, optionsCatalogCount, guildRolesResult, rawConfig, t] = await Promise.all([
     loadMarketConfig(),
     getOptionsCatalogCount(),
     fetchGuildRoles(),
     prisma.marketConfig.findUnique({ where: { id: 1 }, select: { siteName: true } }),
+    getTranslations("admin.recognition.models"),
   ]);
+
+  const geminiModelOptions = GEMINI_MODEL_VALUES.map((value) => ({
+    value,
+    label: t(`${value}.label`),
+    description: t(`${value}.description`),
+  }));
 
   return {
     // Valor sin resolver (puede ser null) para que el campo del formulario
@@ -39,7 +46,7 @@ export async function getMarketConfig() {
     imageRecognitionEnabled: config.imageRecognitionEnabled,
     hasGeminiApiKey: !!process.env.GEMINI_API_KEY,
     geminiModel: config.geminiModel,
-    geminiModelOptions: GEMINI_MODEL_OPTIONS,
+    geminiModelOptions,
     dmNotificationsEnabled: config.dmNotificationsEnabled,
     hasDiscordBotToken: !!process.env.DISCORD_BOT_TOKEN,
     maintenanceModeEnabled: config.maintenanceModeEnabled,

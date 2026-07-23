@@ -146,7 +146,17 @@
       "apiKeyConfigured": "configured",
       "apiKeyNotConfigured": "not configured (GEMINI_API_KEY environment variable)",
       "requirement": "This AND the toggle both need to be on for the feature to work.",
-      "modelLabel": "Gemini model"
+      "modelLabel": "Gemini model",
+      "models": {
+        "gemini-flash-latest": {
+          "label": "Flash (recommended)",
+          "description": "Also does a good job detecting the number of card slots from the tooltip icons."
+        },
+        "gemini-flash-lite-latest": {
+          "label": "Flash Lite",
+          "description": "Cheaper and faster, but may miscount card slots (small icons)."
+        }
+      }
     },
     "options": {
       "legend": "Random options",
