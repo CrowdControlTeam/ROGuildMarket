@@ -28,6 +28,21 @@ desde `main`) pasa a ser la rama base para todo trabajo nuevo; `main`
 queda reservada a lo ya desplegado. Las ramas de tarea salen de `develop`
 y se mergean ahí, no directo a `main`.
 
+**Actualización (2026-07-23): versionado automático con tags** —
+adaptados de `CrowdControlWeb` (mismo modelo de ramas) los workflows
+`.github/workflows/release.yml` (push a `main` → tag SemVer con
+`anothrNick/github-tag-action`, bump por token `#major`/`#minor`/`#patch`
+en el mensaje del commit de merge, `patch` por defecto, prefijo `v` →
+publica GitHub Release con `--generate-notes`) y `prerelease.yml` (manual,
+tag `-rc` desde `develop`, copiado tal cual sin cambios). **Sin paso de
+build/deploy en ninguno de los dos** — a diferencia de CrowdControlWeb
+(Cloudflare vía `wrangler`), aquí Vercel ya despliega solo con su
+integración de Git (preview en cada PR, producción en cada push a `main`),
+así que el Action no toca el despliegue, solo etiqueta y publica el
+release. Como `main` sigue varios commits por detrás de `develop` desde el
+cambio de flujo, el primer tag no saldrá hasta la primera PR
+`develop → main`. Aún no hay tags creados en el repo.
+
 **Desviaciones/decisiones respecto al documento original:**
 - Next.js 16 (no 14) + Tailwind v4 (no v3) — el plan se escribió antes de esas versiones; NextAuth v5 (beta, pero es el estándar de facto para App Router).
 - Base de datos: Supabase en vez de Neon, conectada a Vercel vía su integración oficial (variables `POSTGRES_PRISMA_URL`/`POSTGRES_URL_NON_POOLING`, autosincronizadas — no se pegan credenciales a mano). En local, Postgres por Docker (`docker-compose.yml`, puerto 5433).
