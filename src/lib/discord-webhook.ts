@@ -25,6 +25,7 @@ export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) 
   const webhookUrl = config.webhookUrl;
 
   const t = await getTranslations("discord");
+  const tField = await getTranslations("market.field");
 
   const body = {
     embeds: [
@@ -42,16 +43,16 @@ export async function sendListingCreatedWebhook(payload: ListingWebhookPayload) 
             ? []
             : [
                 {
-                  name: payload.type === "BUY" ? t("fields.payUpTo") : t("fields.price"),
+                  name: payload.type === "BUY" ? tField("payUpTo") : t("fields.price"),
                   value: formatPrice(payload.price!),
                   inline: true,
                 },
               ]),
-          { name: t("fields.quantity"), value: String(payload.quantity), inline: true },
+          { name: tField("quantity"), value: String(payload.quantity), inline: true },
           ...(payload.options && payload.options.length > 0
             ? [
                 {
-                  name: t("fields.options"),
+                  name: tField("options"),
                   value: payload.options
                     .map((o) => `${o.label}: ${formatOptionAmount(o.value, payload.type === "BUY")}`)
                     .join("\n"),

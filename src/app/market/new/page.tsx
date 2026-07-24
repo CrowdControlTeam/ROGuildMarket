@@ -31,7 +31,7 @@ export default async function NewListingPage({
 
   return (
     <main className="mx-auto max-w-lg px-6 py-8">
-      <BackLink href="/market" label={t("market.detail.back")} />
+      <BackLink href="/market" label={t("market.nav.backToMarket")} />
       <Panel title={t("nav.newPublication")}>
         <NewPublicationForm recognitionEnabled={recognitionEnabled} initialType={initialType} />
       </Panel>

@@ -106,6 +106,7 @@ export function MarketResults({
                     username={listing.poster.username}
                     viewerId={currentUserId}
                     item={listing.item}
+                    listingId={listing.id}
                     dmAvailable={dmAvailable}
                   />
                 </p>

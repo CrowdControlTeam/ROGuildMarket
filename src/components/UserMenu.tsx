@@ -4,7 +4,7 @@ import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { useTranslations } from "next-intl";
-import { Settings, LogOut } from "lucide-react";
+import { Settings, LogOut, Package } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { buttonClass } from "@/lib/ui";
 import { signOutAction } from "@/lib/auth-actions";
@@ -86,6 +86,15 @@ export function UserMenu({ user }: { user: FullUser }) {
         </dl>
 
         <div className="mt-6 flex flex-col gap-2">
+          <Link
+            href="/my/listings"
+            onClick={() => setOpen(false)}
+            className={`w-full ${buttonClass("outline")}`}
+          >
+            <Package size={16} />
+            {t("myActivity")}
+          </Link>
+
           {user.isAdmin && (
             <Link
               href="/admin"

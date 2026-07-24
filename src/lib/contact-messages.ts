@@ -18,6 +18,7 @@ export async function sendContactMessage(formData: FormData) {
   const session = await requireSession();
   const t = await getTranslations("errors");
   const tDiscord = await getTranslations("discord");
+  const tField = await getTranslations("market.field");
 
   if (!(await isDmFeatureAvailable())) {
     throw new Error(t("dmNotAvailable"));
@@ -26,12 +27,16 @@ export async function sendContactMessage(formData: FormData) {
   const sendContactMessageSchema = z.object({
     recipientId: z.string().min(1),
     itemId: z.string().min(1),
+    // Opcional: no toda mención viene desde un listing (p.ej. Regalos no
+    // tiene uno que enlazar) — ver comentario de listingId en UserMention.tsx.
+    listingId: z.string().trim().min(1).optional(),
     message: z.string().trim().min(1, t("writeMessage")).max(500, t("maxCharacters")),
   });
 
   const parsed = sendContactMessageSchema.safeParse({
     recipientId: formData.get("recipientId"),
     itemId: formData.get("itemId"),
+    listingId: formData.get("listingId") || undefined,
     message: formData.get("message"),
   });
   if (!parsed.success) {
@@ -51,8 +56,16 @@ export async function sendContactMessage(formData: FormData) {
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   await sendDirectMessage(parsed.data.recipientId, {
     title: tDiscord("dm.contactMessage", { username: session.user.username, item: item.name }),
+    url: parsed.data.listingId ? `${appUrl}/market/${parsed.data.listingId}` : undefined,
     color: DISCORD_EMBED_COLOR.MESSAGE,
     itemIconUrl: `${appUrl}${item.iconUrl}`,
-    fields: [{ name: tDiscord("fields.message"), value: parsed.data.message, inline: false }],
+    fields: [
+      { name: tField("message"), value: parsed.data.message, inline: false },
+      // Mención nativa de Discord: dentro del canal privado bot<->destinatario
+      // no le hace ping a nadie (el remitente no está en ese canal), solo
+      // renderiza un chip clicable que abre su perfil — desde ahí se puede
+      // responder por DM sin salir de Discord.
+      { name: tDiscord("fields.replyTo"), value: `<@${session.user.discordId}>`, inline: false },
+    ],
   });
 }

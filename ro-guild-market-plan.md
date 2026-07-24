@@ -1,6 +1,6 @@
 # Plan de desarrollo — Mercado de guild (Ragnarok Online)
 
-## 0. Estado actual (actualizado 2026-07-23)
+## 0. Estado actual (actualizado 2026-07-24)
 
 Léase esto primero al retomar el proyecto, antes que el resto del documento —
 resume la realidad actual del desarrollo; el resto del archivo es la
@@ -743,7 +743,7 @@ servidor con `getTranslations("admin.recognition.models")`. Verificado en
 vivo (switch a inglés → "Flash (recommended)" / descripciones en inglés,
 vuelta a español OK, sin errores de consola).
 
-**Backlog de mejoras propuestas (2026-07-24, sin empezar todavía)** — notas
+**Backlog de mejoras propuestas (2026-07-24, completadas)** — notas
 del usuario para no perderlas, desglosadas en tareas. Ninguna de las tres
 necesita cambios de esquema (todas leen datos ya existentes), así que no
 arrastran migración de producción.

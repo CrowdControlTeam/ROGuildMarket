@@ -49,6 +49,7 @@ export function NewPublicationForm({
   const [isSubmitting, startSubmitTransition] = useTransition();
   const [recognitionNote, setRecognitionNote] = useState<string | null>(null);
   const t = useTranslations("market.form");
+  const tField = useTranslations("market.field");
   const tFilters = useTranslations("market.filters");
 
   useEffect(() => {
@@ -224,7 +225,7 @@ export function NewPublicationForm({
       </div>
 
       <div>
-        <label className={labelClass}>{t("quantityLabel")}</label>
+        <label className={labelClass}>{tField("quantity")}</label>
         {quantityLocked ? (
           <>
             <p className="text-sm text-ro-text-muted">1</p>
@@ -244,7 +245,7 @@ export function NewPublicationForm({
 
       {refineEligible && (
         <div>
-          <label className={labelClass}>{t("refineLabel")}</label>
+          <label className={labelClass}>{tField("refine")}</label>
           <input
             type="number"
             name="refineLevel"
@@ -259,7 +260,7 @@ export function NewPublicationForm({
 
       {maxCardSlots > 0 && (
         <div>
-          <label className={labelClass}>{t("cardSlotsLabel")}</label>
+          <label className={labelClass}>{tField("cardSlots")}</label>
           <input
             type="number"
             name="cardSlots"
@@ -289,7 +290,7 @@ export function NewPublicationForm({
 
       {hasOptionCatalog && (
         <div>
-          <label className={labelClass}>{type === "BUY" ? t("minStatsLabel") : t("optionsLabel")}</label>
+          <label className={labelClass}>{type === "BUY" ? tField("minStats") : tField("options")}</label>
           <div className="flex flex-col gap-2">
             {Array.from({ length: MAX_OPTION_SLOTS }, (_, i) => i + 1).map((slotIndex) => {
               const index = slotIndex - 1;

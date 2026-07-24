@@ -18,6 +18,7 @@ export default function Error({
   unstable_retry: () => void;
 }) {
   const t = useTranslations("errors.boundary");
+  const tButton = useTranslations("market.button");
 
   useEffect(() => {
     console.error(error);
@@ -33,7 +34,7 @@ export default function Error({
           onClick={() => unstable_retry()}
           className={`mt-4 ${buttonClass("secondary")}`}
         >
-          {t("retry")}
+          {tButton("retry")}
         </button>
       </Panel>
     </main>
