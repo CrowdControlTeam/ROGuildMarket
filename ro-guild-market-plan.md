@@ -795,6 +795,56 @@ Orden sugerido: "Mis publicaciones" primero (más autocontenido), luego
 "Filtro por usuario" (reutiliza casi todo lo existente), y "Estadísticas"
 al final (conviene cerrar antes qué métricas exactas se quieren).
 
+**Feedback de un usuario potencial (2026-07-24)** — 3 bugs + 1 propuesta:
+
+- **Buscador roto tras "Reset" (bug, causa identificada):** `resetFilters()`
+  en `MarketFilters.tsx` limpia `q`/categoría/precio/etc. pero
+  deliberadamente NO toca `type` (comentario en el propio código: para no
+  sacar al usuario de una vista ya "fijada" por el menú Vender/Comprar/
+  Comerciar). El problema es que `typeLocked` (`!!searchParams.get("type")`)
+  no distingue entre "vine de un enlace del menú" y "elegí un Tipo en el
+  propio desplegable de filtros y busqué" — en el segundo caso, el
+  desplegable "Tipo" desaparece del todo (`{!typeLocked && (...)}`) y
+  Reset nunca lo recupera, así que el filtro de tipo queda pegado en
+  silencio y las búsquedas siguientes parecen no funcionar. Pendiente de
+  confirmar con repro en vivo (no había sesión autenticada disponible al
+  investigarlo), pero la causa encaja con el síntoma. Fix propuesto: que
+  Reset también borre `type` cuando no venga fijado por un enlace de menú
+  real, o separar "tipo elegido en el form" de "tipo fijado por el menú".
+- **Botón "Comprar" poco claro — PENDIENTE, no investigado a petición
+  explícita del usuario ("hablaremos después").** Sugerencia de quien dio
+  el feedback: que en vez de comprar directamente, contactara/abriera DM
+  con quien publica.
+- **Error de render al reconocer item con Gemini (bug, sin causa
+  confirmada):** revisado el flujo completo (`ScreenshotDropzone.tsx`,
+  `handleScreenshotScan` en `NewPublicationForm.tsx`,
+  `recognizeItemFromScreenshot` en `item-recognition.ts`) sin encontrar un
+  defecto claro por lectura estática — todos los paths de error devuelven
+  string, no hay hooks condicionales, ni objetos crudos pasados a JSX.
+  Hace falta o el texto/stack exacto del error (el overlay de Next en dev
+  lo muestra completo) o reproducirlo en vivo con sesión real para
+  localizarlo.
+- **Propuesta: detalle de listing en panel lateral derecho** (en vez de
+  navegar a `/market/[id]`, para poder seguir viendo el mercado a la
+  izquierda). Planificado usando Parallel Routes + Intercepting Routes de
+  Next.js (verificado contra `node_modules/next/dist/docs/`, es
+  literalmente el patrón que documentan para "opening a shopping cart in a
+  side modal"): `src/app/market/layout.tsx` nuevo con slot `@detail`,
+  `market/@detail/default.tsx` (null) + `market/@detail/[...catchAll]/page.tsx`
+  (null, para cerrar el panel al navegar a cualquier otra ruta) +
+  `market/@detail/(.)[id]/page.tsx` (intercepta el click desde la lista,
+  reutiliza `Sidebar` con `side="right"` y `onClose={() => router.back()}`).
+  El contenido de la ficha se extrae a un componente compartido (mismo
+  patrón que `GiftsHistory.tsx`) para que lo use tanto la página completa
+  (`market/[id]/page.tsx`, sin cambios de comportamiento en visita directa/
+  enlace compartido) como el panel interceptado — sin duplicar lógica de
+  precio/options/formularios de compra-oferta/cancelar. `<Link>` normal en
+  `MarketResults.tsx` no necesita cambios: la intercepción es puramente de
+  routing. Pendiente: decidir si el `Sidebar` actual (`w-72`) es
+  suficientemente ancho para una ficha completa, o si hace falta una
+  variante más ancha. Sin empezar la implementación — pendiente de luz
+  verde.
+
 ---
 
 ## 1. Idea general
