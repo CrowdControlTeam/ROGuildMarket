@@ -743,53 +743,57 @@ servidor con `getTranslations("admin.recognition.models")`. Verificado en
 vivo (switch a inglés → "Flash (recommended)" / descripciones en inglés,
 vuelta a español OK, sin errores de consola).
 
-**Backlog de mejoras — implementado (2026-07-24):** las tres notas del
-usuario (pantalla personal, estadísticas admin, filtro por usuario), más
-una cuarta añadida sobre la marcha (enlace + mención en el DM de
-contacto). Ninguna tocó el esquema, así que no hay migración de
-producción pendiente de esta tanda.
-- **"Mi actividad" (`/my/listings` + `/my/gifts`):** rutas RESTful
-  hermanas bajo un layout compartido con pestañas (`src/app/my/layout.tsx`
-  + `MyActivityTabs.tsx`), en vez de un único `?tab=` — cada pestaña es su
-  propio recurso. `getMyListings()` nuevo (todos mis listings, cualquier
-  estado/tipo, sin paginación por volumen bajo). `/market/gifts` y la
-  entrada "Regalos" del menú hamburguesa quedan intactas; su lógica se
-  extrajo a `GiftsHistory.tsx` para reutilizarla en `/my/gifts` sin
-  duplicar código. Enlace "Mi actividad" en `UserMenu.tsx`.
-- **Filtro por usuario en el mercado:** `posterId` en `MarketFilters`
-  (`market.ts`) + `UserPicker.tsx` extendido con un modo controlado
-  opcional (`selected`/`onClear`, mismo patrón que `ItemPicker`) sin
-  romper el uso existente en el formulario de regalos. `posterId`/
-  `posterName` viajan en la URL para repintar el campo tras recargar.
-- **DM de contacto (desde nombre clicable):** `UserMention`/`ContactModal`
-  ganan un `listingId` opcional que via `sendContactMessage` añade `url`
-  al listing en el embed de Discord, más un field con la mención nativa
-  `<@discordId>` del remitente — dentro del canal privado bot↔destinatario
-  no le hace ping a nadie, solo renderiza un chip clicable al perfil desde
-  el que responder por DM. En Regalos (sin listing que enlazar) se queda
-  sin URL, como antes.
-- **Estadísticas de mercado (`/admin/stats`):** totales (publicaciones por
-  tipo×estado, zeny movido, ofertas de trade por estado, regalos
-  enviados, usuarios que han publicado vs. registrados) + rankings top 10
-  (quién más publica, top vendedores/compradores por zeny, items más
-  publicados/comprados). Todo calculado reduciendo filas planas en JS
-  (cruzar `Purchase`/`TradeOffer` con el poster o el item del `Listing`
-  no es directo con `groupBy`, y el volumen de un mercado de guild hace
-  que reducir en memoria sea barato). Ventana fija de 30 días
-  (`createdAt` en Listing/Purchase/Gift, `updatedAt` en TradeOffer porque
-  importa cuándo se aceptó/rechazó, no solo cuándo se creó) — desplegable
-  de periodo en la UI con un único valor por ahora
-  (`admin-stats-constants.ts`, separado del archivo `"use server"` porque
-  ese exige que todo lo exportado sea async), listo para añadir más
-  periodos sin rehacer nada. Sin gráficos, solo tablas/números, según lo
-  pedido. `Panel.tsx` gana un `headerAction` opcional para el enlace "Ver
-  estadísticas" desde `/admin`.
+**Backlog de mejoras propuestas (2026-07-24, completadas)** — notas
+del usuario para no perderlas, desglosadas en tareas. Ninguna de las tres
+necesita cambios de esquema (todas leen datos ya existentes), así que no
+arrastran migración de producción.
 
-Verificado todo en vivo con datos reales (sesión autenticada), sin
-errores de consola. Los 4 puntos van en una sola rama
-(`feature/my_activity_stats_filters`), un commit por punto, con PR
-conjunta a `develop` cuando los cuatro estuvieron listos (a petición
-explícita del usuario).
+- **Pantalla personal "Mis publicaciones":** `getListings` (`market.ts`)
+  fuerza `status: "ACTIVE"` y no filtra por `posterId` — no sirve tal cual.
+  Precedente directo ya en el repo: `/market/gifts` (`getMyGifts`, lista
+  simple sin paginación cursor). La página de detalle (`/market/[id]`) ya
+  trae las acciones de gestión (`CancelListingButton`, cancelar/cumplir)
+  para el poster, así que la lista nueva no las duplica — cada card enlaza
+  al detalle. Alcance v1: listings que YO he publicado (SALE/BUY/TRADE),
+  no compras que he hecho a otros (eso sería un punto aparte si hace
+  falta). Tareas: (1) `getMyListings({status?, type?})` en `listings.ts`
+  (`where posterId = session.user.discordId`, sin forzar ACTIVE); (2) ruta
+  `src/app/market/mine/page.tsx`, lista tipo Gifts sin paginación cursor
+  (volumen personal bajo); (3) filtro simple de estado/tipo por query
+  params; (4) enlace "Mis publicaciones" en `UserMenu.tsx` (junto a
+  Configuración); (5) i18n `market.mine.*`; (6) verificar en navegador con
+  listings de los 3 tipos y varios estados.
+- **Panel admin de estadísticas del mercado:** no existe ninguna agregación
+  hoy. Sin librería de gráficos en el proyecto — v1 propuesto como
+  tarjetas/tablas de números vía `groupBy`/`aggregate`/`count` de Prisma,
+  sin añadir dependencias; gráficos de evolución temporal quedan como
+  posible v2 aparte si los números no bastan. Métricas candidatas a
+  confirmar con el usuario: listings por estado × tipo, volumen de zeny
+  movido (total y últimos 30 días), top items más publicados/comprados,
+  ofertas de trade por estado, regalos enviados, usuarios activos en un
+  periodo. Tareas: (1) `src/lib/admin-stats.ts` con `getMarketStats()`;
+  (2) ruta `src/app/admin/stats/page.tsx` (mismo `requireAdmin`); (3)
+  enlace "Estadísticas" desde `/admin`; (4) i18n `admin.stats.*`; (5)
+  verificar con datos reales del mercado.
+- **Filtro por usuario:** ambigüedad sin resolver — ¿filtro en el mercado
+  general para ver "todo lo publicado por X" (mismo patrón que
+  `UserPicker`/`searchUsers` de regalos, aplicado a `posterId`), o filtro
+  dentro de las estadísticas de admin para ver la actividad de un usuario
+  concreto? Se asume la primera lectura (encaja con "filtro" en el sentido
+  de `MarketFilters`), a confirmar antes de empezar. Toda la maquinaria ya
+  existe (`UserPicker.tsx` + `searchUsers()`), solo falta conectarla a
+  `posterId`. Tareas (asumiendo esa lectura): (1) `posterId?` en
+  `MarketFilters` (`market.ts`) + aplicarlo en `getListings`; (2) campo de
+  usuario en `MarketFilters.tsx` reutilizando `UserPicker`, guardando
+  `posterId`+nombre en la URL; (3) leer `posterId` de `searchParams` en
+  `market/page.tsx`; (4) opcional: que el `UserMention` de cada card
+  enlace directo a "ver publicaciones de esta persona"; (5) i18n
+  `market.filters.poster`; (6) verificar filtrando por un usuario con
+  publicaciones de varios tipos.
+
+Orden sugerido: "Mis publicaciones" primero (más autocontenido), luego
+"Filtro por usuario" (reutiliza casi todo lo existente), y "Estadísticas"
+al final (conviene cerrar antes qué métricas exactas se quieren).
 
 ---
 
