@@ -72,6 +72,24 @@ export async function getMaxRefineLevel() {
   return loadMaxRefineLevel();
 }
 
+// Todas mis publicaciones (los 3 tipos, cualquier estado) para la pantalla
+// "Mi actividad" — a diferencia de getListings (mercado general), no
+// filtra por status: "ACTIVE" ni por búsqueda/orden, es mi historial
+// completo. Sin paginación: el volumen de publicaciones de una sola
+// persona es bajo, mismo criterio que getMyGifts.
+export async function getMyListings() {
+  const session = await requireSession();
+
+  return prisma.listing.findMany({
+    where: { posterId: session.user.discordId },
+    orderBy: { createdAt: "desc" },
+    include: {
+      item: true,
+      options: { include: { def: true }, orderBy: { slotIndex: "asc" } },
+    },
+  });
+}
+
 // Devuelve el catálogo de options posibles de un grupo, ya ordenado por
 // slot posicional — el formulario de publicar lo usa así, atado al grupo
 // real del item elegido (ahí sí importa: el roll es de una instancia

@@ -26,8 +26,18 @@
       "memberSince": "Member since",
       "roles": "Discord roles",
       "noRoles": "No roles on record",
+      "myActivity": "My activity",
       "settings": "Settings",
       "signOut": "Sign out"
+    }
+  },
+  "myActivity": {
+    "title": "My activity",
+    "back": "Back to the market",
+    "listingsEmpty": "You haven't posted anything yet.",
+    "tabs": {
+      "listings": "My listings",
+      "gifts": "Gifts"
     }
   },
   "home": {

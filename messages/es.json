@@ -26,8 +26,18 @@
       "memberSince": "Miembro desde",
       "roles": "Roles en Discord",
       "noRoles": "Sin roles registrados",
+      "myActivity": "Mi actividad",
       "settings": "Configuración",
       "signOut": "Cerrar sesión"
+    }
+  },
+  "myActivity": {
+    "title": "Mi actividad",
+    "back": "Volver al mercado",
+    "listingsEmpty": "Todavía no has publicado nada.",
+    "tabs": {
+      "listings": "Mis publicaciones",
+      "gifts": "Regalos"
     }
   },
   "home": {
