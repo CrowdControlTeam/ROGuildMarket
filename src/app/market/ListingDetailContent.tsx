@@ -56,12 +56,12 @@ export async function ListingDetailContent({ id }: { id: string }) {
 
   return (
     <>
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         <Image
           src={listing.item.iconUrl}
           alt={listing.item.name}
-          width={56}
-          height={56}
+          width={44}
+          height={44}
         />
         <div>
           <h1 className="flex items-center gap-2 font-heading text-sm text-ro-text">
@@ -80,21 +80,23 @@ export async function ListingDetailContent({ id }: { id: string }) {
         </div>
       </div>
 
-      <dl className="mt-6 flex flex-col gap-2 text-sm">
-        <div className="flex justify-between border-b border-ro-panel-border/30 pb-2">
-          <dt className="text-ro-text-muted">{isBuy ? t("field.quantity") : t("detail.available")}</dt>
+      {/* Grid de 2 columnas en vez de filas apiladas con borde propio —
+          reduce bastante el alto total, sobre todo en el panel móvil. */}
+      <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+        <div>
+          <dt className="text-xs text-ro-text-muted">{isBuy ? t("field.quantity") : t("detail.available")}</dt>
           <dd>{isBuy ? listing.quantity : remaining}</dd>
         </div>
         {!isTrade && listing.price !== null && (
-          <div className="flex justify-between border-b border-ro-panel-border/30 pb-2">
-            <dt className="text-ro-text-muted">{isBuy ? t("field.payUpTo") : t("detail.unitPrice")}</dt>
+          <div>
+            <dt className="text-xs text-ro-text-muted">{isBuy ? t("field.payUpTo") : t("detail.unitPrice")}</dt>
             <dd className={`font-bold ${priceColorClass(listing.price)}`}>
               {formatPrice(listing.price)}
             </dd>
           </div>
         )}
-        <div className="flex justify-between border-b border-ro-panel-border/30 pb-2">
-          <dt className="text-ro-text-muted">{posterLabel(t, listing.type)}</dt>
+        <div>
+          <dt className="text-xs text-ro-text-muted">{posterLabel(t, listing.type)}</dt>
           <dd>
             <UserMention
               userId={listing.posterId}
@@ -107,19 +109,15 @@ export async function ListingDetailContent({ id }: { id: string }) {
             />
           </dd>
         </div>
-        <div
-          className={`flex justify-between ${
-            !isBuy && listing.quantity > 1 ? "border-b border-ro-panel-border/30 pb-2" : ""
-          }`}
-        >
-          <dt className="text-ro-text-muted">{t("detail.posted")}</dt>
+        <div>
+          <dt className="text-xs text-ro-text-muted">{t("detail.posted")}</dt>
           <dd>{listing.createdAt.toLocaleString()}</dd>
         </div>
         {/* Con 1 sola unidad, "Vendidos: 0 de 1" no aporta nada que
             "Disponibles" ya no diga. quantitySold no se usa en BUY. */}
         {!isBuy && listing.quantity > 1 && (
-          <div className="flex justify-between">
-            <dt className="text-ro-text-muted">{t("detail.sold")}</dt>
+          <div>
+            <dt className="text-xs text-ro-text-muted">{t("detail.sold")}</dt>
             <dd>
               {listing.quantitySold} {t("detail.of")} {listing.quantity}
             </dd>
@@ -128,21 +126,21 @@ export async function ListingDetailContent({ id }: { id: string }) {
       </dl>
 
       {listing.options.length > 0 && (
-        <div className="mt-4">
+        <div className="mt-3">
           <p className={labelClass}>{isBuy ? t("field.minStats") : t("field.options")}</p>
-          <ul className="flex flex-col gap-1 text-sm">
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
             {listing.options.map((o) => (
-              <li key={o.slotIndex} className="flex justify-between border-b border-ro-panel-border/30 pb-1">
+              <div key={o.slotIndex} className="flex justify-between gap-2">
                 <span className="text-ro-text-muted">{o.def.label}</span>
                 <span className="font-semibold">{formatOptionAmount(o.value, isBuy)}</span>
-              </li>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
       )}
 
       {listing.status === "ACTIVE" && (
-        <div className="mt-6">
+        <div className="mt-4">
           {isPoster ? (
             <CancelListingButton listingId={listing.id} showFulfill={isBuy} />
           ) : isTrade ? (
@@ -158,7 +156,7 @@ export async function ListingDetailContent({ id }: { id: string }) {
       )}
 
       {isTrade && listing.status === "SOLD" && (
-        <p className="mt-6 text-sm text-ro-text-muted">
+        <p className="mt-4 text-sm text-ro-text-muted">
           {(() => {
             const accepted = listing.tradeOffers.find((o) => o.status === "ACCEPTED");
             if (!accepted) return null;
@@ -185,7 +183,7 @@ export async function ListingDetailContent({ id }: { id: string }) {
       )}
 
       {isTrade && (isPoster ? pendingOffers.length > 0 : myOffers.length > 0) && (
-        <div className="mt-6">
+        <div className="mt-4">
           <p className={labelClass}>{isPoster ? t("detail.offersReceived") : t("detail.yourOffers")}</p>
           <ul className="mt-2 flex flex-col gap-3">
             {(isPoster ? pendingOffers : myOffers).map((offer) => (
