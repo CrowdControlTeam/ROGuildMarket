@@ -6,7 +6,6 @@ import { requireSession } from "@/lib/guard";
 import { loadMarketConfig } from "@/lib/market-config";
 import { isDmFeatureAvailable } from "@/lib/discord-bot";
 import { marketViewTitle } from "@/lib/market-labels";
-import { Panel } from "@/components/Panel";
 import { MarketFilters } from "./MarketFilters";
 import { MarketResults } from "./MarketResults";
 import { SortSelect } from "./SortSelect";
@@ -101,9 +100,7 @@ export async function MarketPageContent({
       )}
       <h1 className="mb-6 font-heading text-lg text-ro-gold">{pageTitle}</h1>
 
-      <Panel className="mb-6">
-        <MarketFilters screenType={screenType} />
-      </Panel>
+      <MarketFilters screenType={screenType} />
 
       <SortSelect />
       {/* key fuerza a remontar el componente cuando cambian los filtros/orden:

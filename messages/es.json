@@ -231,6 +231,7 @@
       "payUpTo": "Pago hasta"
     },
     "filters": {
+      "toggle": "Filtros",
       "buyOptionsHint": "Busca compras que cumplan estos valores.",
       "name": "Nombre",
       "namePlaceholder": "Buscar item...",

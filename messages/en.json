@@ -231,6 +231,7 @@
       "payUpTo": "Pay up to"
     },
     "filters": {
+      "toggle": "Filters",
       "buyOptionsHint": "Search buy requests that match these values.",
       "name": "Name",
       "namePlaceholder": "Search item...",

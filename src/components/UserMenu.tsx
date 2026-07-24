@@ -38,7 +38,7 @@ export function UserMenu({ user }: { user: FullUser }) {
             className="rounded-full border border-ro-panel-border"
           />
         )}
-        <span className="text-sm">{user.username}</span>
+        <span className="hidden text-sm sm:inline">{user.username}</span>
       </button>
 
       <Sidebar side="right" open={open} onClose={() => setOpen(false)} title={t("title")}>
