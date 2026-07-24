@@ -317,18 +317,19 @@ export function MarketFilters({ screenType }: { screenType: ListingType | null }
 
   return (
     <div className="mb-6">
+      {/* Solo en móvil: en desktop hay sitio de sobra para tener los
+          filtros siempre visibles, sin necesidad de colapsarlos. */}
       <button
         type="button"
         onClick={() => setFiltersExpanded((prev) => !prev)}
         aria-expanded={filtersExpanded}
-        className={`flex items-center gap-1 ${labelClass}`}
+        className="flex items-center gap-1 text-xs font-medium text-ro-text-light/80 sm:hidden"
       >
         {t("filters.toggle")}
         {filtersExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
       </button>
-      {filtersExpanded && (
-        <Panel className="mt-2">
-          <form onSubmit={applyFilters} className="flex flex-wrap items-end gap-3">
+      <Panel className={`mt-2 sm:mt-0 sm:block ${filtersExpanded ? "" : "hidden"}`}>
+        <form onSubmit={applyFilters} className="flex flex-wrap items-end gap-3">
             <div className="min-w-[160px] flex-1">
               <label className={labelClass}>{t("filters.name")}</label>
               <input
@@ -600,9 +601,8 @@ export function MarketFilters({ screenType }: { screenType: ListingType | null }
                 })}
               </div>
             )}
-          </form>
-        </Panel>
-      )}
+        </form>
+      </Panel>
     </div>
   );
 }

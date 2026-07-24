@@ -74,64 +74,111 @@ export function MarketResults({
   return (
     <div>
       <ul className="flex flex-col gap-3">
-        {listings.map((listing) => (
-          <li key={listing.id}>
-            <Link
-              href={`/market/${listing.id}`}
-              className="flex items-center gap-4 rounded-lg border-2 border-ro-panel-border bg-ro-panel p-4 text-ro-text transition-colors hover:border-ro-gold"
+        {listings.map((listing) => {
+          const badge = !filters.type && (
+            <span
+              className={`self-start rounded border px-1.5 py-0.5 text-xs font-normal ${LISTING_TYPE_BADGE_CLASS[listing.type]}`}
             >
-              <Image
-                src={listing.item.iconUrl}
-                alt={listing.item.name}
-                width={40}
-                height={40}
+              {listingTypeLabel(t, listing.type)}
+            </span>
+          );
+          const posterLine = (
+            <p className="text-sm text-ro-text-muted">
+              {listing.type !== "BUY" &&
+                `${t("results.available", { count: listing.quantity - listing.quantitySold })} · `}
+              {listing.type === "BUY" ? t("results.wantedBy") : t("results.soldBy")}{" "}
+              <UserMention
+                userId={listing.poster.id}
+                username={listing.poster.username}
+                viewerId={currentUserId}
+                item={listing.item}
+                listingId={listing.id}
+                dmAvailable={dmAvailable}
               />
-              <div className="flex-1">
-                <p className="flex items-center gap-2 font-semibold">
-                  {formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}
-                  {!filters.type && (
-                    <span
-                      className={`rounded border px-1.5 py-0.5 text-xs font-normal ${LISTING_TYPE_BADGE_CLASS[listing.type]}`}
-                    >
-                      {listingTypeLabel(t, listing.type)}
-                    </span>
+            </p>
+          );
+          const priceLine = listing.type !== "TRADE" && listing.price !== null && (
+            <p className={`font-bold ${priceColorClass(listing.price)}`}>
+              {listing.type === "BUY" ? t("results.upTo") : ""}
+              {formatPrice(listing.price)}
+            </p>
+          );
+
+          return (
+            <li key={listing.id}>
+              {/* Fila horizontal (icono | contenido | precio) — cómoda en
+                  desktop, pero en móvil las options envueltas junto al
+                  precio a la derecha hacían que cada card se viera distinta
+                  según cuánto contenido tuviera. En su lugar, en móvil todo
+                  se apila en una columna con las options a ancho completo
+                  (ver bloque siguiente). */}
+              <Link
+                href={`/market/${listing.id}`}
+                className="hidden items-center gap-4 rounded-lg border-2 border-ro-panel-border bg-ro-panel p-4 text-ro-text transition-colors hover:border-ro-gold sm:flex"
+              >
+                <Image
+                  src={listing.item.iconUrl}
+                  alt={listing.item.name}
+                  width={40}
+                  height={40}
+                />
+                <div className="flex-1">
+                  <p className="flex items-center gap-2 font-semibold">
+                    {formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}
+                    {badge}
+                  </p>
+                  {posterLine}
+                  {listing.options.length > 0 && (
+                    <p className="mt-1 flex flex-wrap gap-1">
+                      {listing.options.map((o) => (
+                        <span
+                          key={o.slotIndex}
+                          className="rounded border border-ro-gold-dark/50 bg-ro-gold/10 px-1.5 py-0.5 text-xs text-ro-text-muted"
+                        >
+                          {o.def.label} {formatOptionAmount(o.value, listing.type === "BUY")}
+                        </span>
+                      ))}
+                    </p>
                   )}
-                </p>
-                <p className="text-sm text-ro-text-muted">
-                  {listing.type !== "BUY" &&
-                    `${t("results.available", { count: listing.quantity - listing.quantitySold })} · `}
-                  {listing.type === "BUY" ? t("results.wantedBy") : t("results.soldBy")}{" "}
-                  <UserMention
-                    userId={listing.poster.id}
-                    username={listing.poster.username}
-                    viewerId={currentUserId}
-                    item={listing.item}
-                    listingId={listing.id}
-                    dmAvailable={dmAvailable}
+                </div>
+                {priceLine}
+              </Link>
+
+              {/* Tarjeta apilada, solo en móvil. */}
+              <Link
+                href={`/market/${listing.id}`}
+                className="flex flex-col gap-2 rounded-lg border-2 border-ro-panel-border bg-ro-panel p-4 text-ro-text transition-colors hover:border-ro-gold sm:hidden"
+              >
+                {badge}
+                <div className="flex items-center gap-3">
+                  <Image
+                    src={listing.item.iconUrl}
+                    alt={listing.item.name}
+                    width={40}
+                    height={40}
                   />
-                </p>
+                  <p className="flex-1 font-semibold">
+                    {formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}
+                  </p>
+                </div>
+                {posterLine}
                 {listing.options.length > 0 && (
-                  <p className="mt-1 flex flex-wrap gap-1">
+                  <div className="flex flex-col gap-1">
                     {listing.options.map((o) => (
-                      <span
+                      <div
                         key={o.slotIndex}
-                        className="rounded border border-ro-gold-dark/50 bg-ro-gold/10 px-1.5 py-0.5 text-xs text-ro-text-muted"
+                        className="rounded border border-ro-gold-dark/50 bg-ro-gold/10 px-2 py-1.5 text-sm text-ro-text-muted"
                       >
                         {o.def.label} {formatOptionAmount(o.value, listing.type === "BUY")}
-                      </span>
+                      </div>
                     ))}
-                  </p>
+                  </div>
                 )}
-              </div>
-              {listing.type !== "TRADE" && listing.price !== null && (
-                <p className={`font-bold ${priceColorClass(listing.price)}`}>
-                  {listing.type === "BUY" ? t("results.upTo") : ""}
-                  {formatPrice(listing.price)}
-                </p>
-              )}
-            </Link>
-          </li>
-        ))}
+                {priceLine}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
 
       {loadMoreError && <p className="mt-4 text-sm text-red-700">{loadMoreError}</p>}
