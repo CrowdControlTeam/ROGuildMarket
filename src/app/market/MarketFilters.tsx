@@ -17,6 +17,7 @@ import {
 import { buttonClass, inputClass, inputBaseClass, selectClass, labelClass } from "@/lib/ui";
 import { MaskedPriceInput } from "@/components/MaskedPriceInput";
 import { UserPicker, type UserResult } from "@/components/UserPicker";
+import { Panel } from "@/components/Panel";
 
 type OptionFilterSelection = { statCode: string; min: number | ""; max: number | "" };
 
@@ -111,6 +112,30 @@ export function MarketFilters({ screenType }: { screenType: ListingType | null }
   // para aparecer.
   const [optionsExpanded, setOptionsExpanded] = useState(() =>
     optionSelections.some((sel) => sel.statCode !== ""),
+  );
+
+  // Todo el contenedor de filtros colapsado por defecto (mismo criterio que
+  // Options arriba) — en móvil, con todos los campos desplegados, había que
+  // hacer scroll un buen rato antes de ver un solo resultado. El toggle
+  // "Filtros" vive fuera de cualquier caja (ver return más abajo: el propio
+  // <Panel> solo se monta si está expandido), y se auto-expande si ya llega
+  // con cualquier filtro aplicado desde la URL, para no esconder lo que ya
+  // está filtrando.
+  const [filtersExpanded, setFiltersExpanded] = useState(
+    () =>
+      !!q ||
+      !!poster ||
+      (!typeLocked && !!type) ||
+      !!category ||
+      !!slot ||
+      !!weaponType ||
+      refineMin !== "" ||
+      refineMax !== "" ||
+      cardSlotsMin !== "" ||
+      cardSlotsMax !== "" ||
+      minPrice !== "" ||
+      maxPrice !== "" ||
+      optionSelections.some((sel) => sel.statCode !== ""),
   );
   // Catálogo entero (194 filas), cargado una sola vez — a diferencia del
   // formulario de publicar, el filtro no necesita saber la categoría/slot/
@@ -291,279 +316,294 @@ export function MarketFilters({ screenType }: { screenType: ListingType | null }
   }
 
   return (
-    <form onSubmit={applyFilters} className="flex flex-wrap items-end gap-3">
-      <div className="min-w-[160px] flex-1">
-        <label className={labelClass}>{t("filters.name")}</label>
-        <input
-          type="text"
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder={t("filters.namePlaceholder")}
-          className={inputClass}
-        />
-      </div>
+    <div className="mb-6">
+      {/* Solo en móvil: en desktop hay sitio de sobra para tener los
+          filtros siempre visibles, sin necesidad de colapsarlos. */}
+      <button
+        type="button"
+        onClick={() => setFiltersExpanded((prev) => !prev)}
+        aria-expanded={filtersExpanded}
+        className="flex items-center gap-1 text-xs font-medium text-ro-text-light/80 sm:hidden"
+      >
+        {t("filters.toggle")}
+        {filtersExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+      </button>
+      <Panel className={`mt-2 sm:mt-0 sm:block ${filtersExpanded ? "" : "hidden"}`}>
+        <form onSubmit={applyFilters} className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[160px] flex-1">
+              <label className={labelClass}>{t("filters.name")}</label>
+              <input
+                type="text"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder={t("filters.namePlaceholder")}
+                className={inputClass}
+              />
+            </div>
 
-      <div className="min-w-[160px] flex-1">
-        <label className={labelClass}>{t("filters.poster")}</label>
-        <UserPicker
-          key={poster?.id ?? "empty"}
-          selected={poster}
-          onSelect={setPoster}
-          onClear={() => setPoster(null)}
-        />
-      </div>
+            <div className="min-w-[160px] flex-1">
+              <label className={labelClass}>{t("filters.poster")}</label>
+              <UserPicker
+                key={poster?.id ?? "empty"}
+                selected={poster}
+                onSelect={setPoster}
+                onClear={() => setPoster(null)}
+              />
+            </div>
 
-      {!typeLocked && (
-        <div>
-          <label className={labelClass}>{t("filters.type")}</label>
-          <select value={type} onChange={(e) => setType(e.target.value)} className={selectClass}>
-            <option value="">{t("filters.all")}</option>
-            {Object.values(ListingType).map((type) => (
-              <option key={type} value={type}>
-                {listingTypeLabel(t, type)}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      <div>
-        <label className={labelClass}>{t("filters.category")}</label>
-        <select
-          value={category}
-          onChange={(e) => {
-            setCategory(e.target.value);
-            if (e.target.value !== ItemCategory.ARMOR && e.target.value !== ItemCategory.CARD) {
-              setSlot("");
-            }
-            if (e.target.value !== ItemCategory.WEAPON) {
-              setWeaponType("");
-            }
-          }}
-          className={selectClass}
-        >
-          <option value="">{t("filters.all")}</option>
-          {Object.values(ItemCategory).map((c) => (
-            <option key={c} value={c}>
-              {categoryLabel(t, c)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className={labelClass}>{t("filters.slot")}</label>
-        <select
-          value={slot}
-          disabled={!showSlot}
-          onChange={(e) => setSlot(e.target.value)}
-          className={selectClass}
-        >
-          <option value="">{t("filters.any")}</option>
-          {Object.values(EquipSlot).map((s) => (
-            <option key={s} value={s}>
-              {slotLabel(t, s)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className={labelClass}>{t("filters.weaponType")}</label>
-        <select
-          value={weaponType}
-          disabled={!showWeaponType}
-          onChange={(e) => setWeaponType(e.target.value)}
-          className={selectClass}
-        >
-          <option value="">{t("filters.any")}</option>
-          {Object.values(WeaponType).map((w) => (
-            <option key={w} value={w}>
-              {weaponTypeLabel(t, w)}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {/* Agrupados para que salten de línea juntos al hacer wrap, en vez de
-          partirse por la mitad. */}
-      <div className="flex gap-3">
-        <div>
-          <label className={labelClass}>{t("filters.refineMin")}</label>
-          <input
-            type="number"
-            min={0}
-            max={maxRefineLevel}
-            value={refineMin}
-            disabled={!refineFilterEnabled}
-            onChange={(e) => setRefineMin(e.target.value === "" ? "" : Number(e.target.value))}
-            className={`w-20 ${inputBaseClass}`}
-          />
-        </div>
-
-        <div>
-          <label className={labelClass}>{t("filters.refineMax")}</label>
-          <input
-            type="number"
-            min={0}
-            max={maxRefineLevel}
-            value={refineMax}
-            disabled={!refineFilterEnabled}
-            onChange={(e) => setRefineMax(e.target.value === "" ? "" : Number(e.target.value))}
-            className={`w-20 ${inputBaseClass}`}
-          />
-        </div>
-      </div>
-
-      {/* Agrupados para que salten de línea juntos al hacer wrap, en vez de
-          partirse por la mitad. */}
-      <div className="flex gap-3">
-        <div>
-          <label className={labelClass}>{t("filters.cardSlotsMin")}</label>
-          <input
-            type="number"
-            min={0}
-            max={cardSlotsFilterMax}
-            value={cardSlotsMin}
-            disabled={!cardSlotsFilterEnabled}
-            onChange={(e) => setCardSlotsMin(e.target.value === "" ? "" : Number(e.target.value))}
-            className={`w-20 ${inputBaseClass}`}
-          />
-        </div>
-
-        <div>
-          <label className={labelClass}>{t("filters.cardSlotsMax")}</label>
-          <input
-            type="number"
-            min={0}
-            max={cardSlotsFilterMax}
-            value={cardSlotsMax}
-            disabled={!cardSlotsFilterEnabled}
-            onChange={(e) => setCardSlotsMax(e.target.value === "" ? "" : Number(e.target.value))}
-            className={`w-20 ${inputBaseClass}`}
-          />
-        </div>
-      </div>
-
-      {/* Agrupados para que salten de línea juntos al hacer wrap, en vez de
-          partirse por la mitad. */}
-      <div className="flex gap-3">
-        <div>
-          <label className={labelClass}>{t("filters.priceMin")}</label>
-          <MaskedPriceInput
-            value={minPrice}
-            onChange={setMinPrice}
-            className={`w-36 ${inputBaseClass}`}
-          />
-        </div>
-
-        <div>
-          <label className={labelClass}>{t("filters.priceMax")}</label>
-          <MaskedPriceInput
-            value={maxPrice}
-            onChange={setMaxPrice}
-            className={`w-36 ${inputBaseClass}`}
-          />
-        </div>
-      </div>
-
-      {/* Agrupados para que salten de línea juntos al hacer wrap, en vez de
-          quedar cada uno en una línea distinta. */}
-      <div className="flex gap-3">
-        <button type="submit" className={buttonClass("primary")}>
-          {tCommon("search")}
-        </button>
-        <button type="button" onClick={resetFilters} className={buttonClass("outline")}>
-          {tCommon("reset")}
-        </button>
-      </div>
-
-      {optionsFeatureAvailable && allOptionDefs.length > 0 && (
-        <div className="flex w-full flex-col gap-2">
-          <button
-            type="button"
-            onClick={() => setOptionsExpanded((prev) => !prev)}
-            aria-expanded={optionsExpanded}
-            className={`flex items-center gap-1 ${labelClass}`}
-          >
-            {t("field.options")}
-            {optionsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </button>
-          {optionsExpanded && isBuyFilter && (
-            <p className="-mt-1 text-xs italic text-ro-text-muted">{t("filters.buyOptionsHint")}</p>
-          )}
-          {optionsExpanded &&
-          Array.from({ length: MAX_OPTION_SLOTS }, (_, i) => i + 1).map((slotIndex) => {
-            const index = slotIndex - 1;
-            const sel = optionSelections[index];
-            const statsForSlot = statsBySlot[index];
-            const selectedStat = statsForSlot.find((s) => s.statCode === sel.statCode);
-            // Mismo criterio que NewPublicationForm: solo se marca en rojo si
-            // hay un valor escrito y se sale del rango real de esa stat,
-            // nunca por estar vacío.
-            const isMinOutOfRange =
-              selectedStat !== undefined &&
-              sel.min !== "" &&
-              (sel.min < selectedStat.minValue || sel.min > selectedStat.maxValue);
-            const isMaxOutOfRange =
-              selectedStat !== undefined &&
-              sel.max !== "" &&
-              (sel.max < selectedStat.minValue || sel.max > selectedStat.maxValue);
-
-            return (
-              <div key={slotIndex} className="flex items-center gap-2">
-                <select
-                  value={sel.statCode}
-                  onChange={(e) => handleOptionSelectChange(index, e.target.value)}
-                  className={`min-w-0 flex-1 ${selectClass}`}
-                >
-                  <option value="">{t("filters.optionPlaceholder", { slot: slotIndex })}</option>
-                  {statsForSlot.map((s) => (
-                    <option key={s.statCode} value={s.statCode}>
-                      {s.label}
+            {!typeLocked && (
+              <div>
+                <label className={labelClass}>{t("filters.type")}</label>
+                <select value={type} onChange={(e) => setType(e.target.value)} className={selectClass}>
+                  <option value="">{t("filters.all")}</option>
+                  {Object.values(ListingType).map((type) => (
+                    <option key={type} value={type}>
+                      {listingTypeLabel(t, type)}
                     </option>
                   ))}
                 </select>
-                {!isBuyFilter && (
-                  <input
-                    type="number"
-                    placeholder={selectedStat ? String(selectedStat.minValue) : t("filters.min")}
-                    value={sel.min}
-                    disabled={!sel.statCode}
-                    onChange={(e) =>
-                      handleOptionMinChange(index, e.target.value === "" ? "" : Number(e.target.value))
-                    }
-                    className={`w-20 ${inputBaseClass}`}
-                    // Un className condicional no basta aquí — ver el mismo
-                    // comentario en NewPublicationForm.tsx.
-                    style={isMinOutOfRange ? { borderColor: "#dc2626" } : undefined}
-                  />
-                )}
+              </div>
+            )}
+
+            <div>
+              <label className={labelClass}>{t("filters.category")}</label>
+              <select
+                value={category}
+                onChange={(e) => {
+                  setCategory(e.target.value);
+                  if (e.target.value !== ItemCategory.ARMOR && e.target.value !== ItemCategory.CARD) {
+                    setSlot("");
+                  }
+                  if (e.target.value !== ItemCategory.WEAPON) {
+                    setWeaponType("");
+                  }
+                }}
+                className={selectClass}
+              >
+                <option value="">{t("filters.all")}</option>
+                {Object.values(ItemCategory).map((c) => (
+                  <option key={c} value={c}>
+                    {categoryLabel(t, c)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>{t("filters.slot")}</label>
+              <select
+                value={slot}
+                disabled={!showSlot}
+                onChange={(e) => setSlot(e.target.value)}
+                className={selectClass}
+              >
+                <option value="">{t("filters.any")}</option>
+                {Object.values(EquipSlot).map((s) => (
+                  <option key={s} value={s}>
+                    {slotLabel(t, s)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className={labelClass}>{t("filters.weaponType")}</label>
+              <select
+                value={weaponType}
+                disabled={!showWeaponType}
+                onChange={(e) => setWeaponType(e.target.value)}
+                className={selectClass}
+              >
+                <option value="">{t("filters.any")}</option>
+                {Object.values(WeaponType).map((w) => (
+                  <option key={w} value={w}>
+                    {weaponTypeLabel(t, w)}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Agrupados para que salten de línea juntos al hacer wrap, en vez de
+                partirse por la mitad. */}
+            <div className="flex gap-3">
+              <div>
+                <label className={labelClass}>{t("filters.refineMin")}</label>
                 <input
                   type="number"
-                  placeholder={
-                    selectedStat
-                      ? isBuyFilter
-                        ? `${selectedStat.minValue}-${selectedStat.maxValue}`
-                        : String(selectedStat.maxValue)
-                      : isBuyFilter
-                        ? t("filters.value")
-                        : t("filters.max")
-                  }
-                  value={sel.max}
-                  disabled={!sel.statCode}
-                  onChange={(e) =>
-                    handleOptionMaxChange(index, e.target.value === "" ? "" : Number(e.target.value))
-                  }
+                  min={0}
+                  max={maxRefineLevel}
+                  value={refineMin}
+                  disabled={!refineFilterEnabled}
+                  onChange={(e) => setRefineMin(e.target.value === "" ? "" : Number(e.target.value))}
                   className={`w-20 ${inputBaseClass}`}
-                  style={isMaxOutOfRange ? { borderColor: "#dc2626" } : undefined}
                 />
               </div>
-            );
-          })}
-        </div>
-      )}
-    </form>
+
+              <div>
+                <label className={labelClass}>{t("filters.refineMax")}</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={maxRefineLevel}
+                  value={refineMax}
+                  disabled={!refineFilterEnabled}
+                  onChange={(e) => setRefineMax(e.target.value === "" ? "" : Number(e.target.value))}
+                  className={`w-20 ${inputBaseClass}`}
+                />
+              </div>
+            </div>
+
+            {/* Agrupados para que salten de línea juntos al hacer wrap, en vez de
+                partirse por la mitad. */}
+            <div className="flex gap-3">
+              <div>
+                <label className={labelClass}>{t("filters.cardSlotsMin")}</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={cardSlotsFilterMax}
+                  value={cardSlotsMin}
+                  disabled={!cardSlotsFilterEnabled}
+                  onChange={(e) => setCardSlotsMin(e.target.value === "" ? "" : Number(e.target.value))}
+                  className={`w-20 ${inputBaseClass}`}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>{t("filters.cardSlotsMax")}</label>
+                <input
+                  type="number"
+                  min={0}
+                  max={cardSlotsFilterMax}
+                  value={cardSlotsMax}
+                  disabled={!cardSlotsFilterEnabled}
+                  onChange={(e) => setCardSlotsMax(e.target.value === "" ? "" : Number(e.target.value))}
+                  className={`w-20 ${inputBaseClass}`}
+                />
+              </div>
+            </div>
+
+            {/* Agrupados para que salten de línea juntos al hacer wrap, en vez de
+                partirse por la mitad. */}
+            <div className="flex gap-3">
+              <div>
+                <label className={labelClass}>{t("filters.priceMin")}</label>
+                <MaskedPriceInput
+                  value={minPrice}
+                  onChange={setMinPrice}
+                  className={`w-36 ${inputBaseClass}`}
+                />
+              </div>
+
+              <div>
+                <label className={labelClass}>{t("filters.priceMax")}</label>
+                <MaskedPriceInput
+                  value={maxPrice}
+                  onChange={setMaxPrice}
+                  className={`w-36 ${inputBaseClass}`}
+                />
+              </div>
+            </div>
+
+            {/* Agrupados para que salten de línea juntos al hacer wrap, en vez de
+                quedar cada uno en una línea distinta. */}
+            <div className="flex gap-3">
+              <button type="submit" className={buttonClass("primary")}>
+                {tCommon("search")}
+              </button>
+              <button type="button" onClick={resetFilters} className={buttonClass("outline")}>
+                {tCommon("reset")}
+              </button>
+            </div>
+
+            {optionsFeatureAvailable && allOptionDefs.length > 0 && (
+              <div className="flex w-full flex-col gap-2">
+                <button
+                  type="button"
+                  onClick={() => setOptionsExpanded((prev) => !prev)}
+                  aria-expanded={optionsExpanded}
+                  className={`flex items-center gap-1 ${labelClass}`}
+                >
+                  {t("field.options")}
+                  {optionsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                </button>
+                {optionsExpanded && isBuyFilter && (
+                  <p className="-mt-1 text-xs italic text-ro-text-muted">{t("filters.buyOptionsHint")}</p>
+                )}
+                {optionsExpanded &&
+                Array.from({ length: MAX_OPTION_SLOTS }, (_, i) => i + 1).map((slotIndex) => {
+                  const index = slotIndex - 1;
+                  const sel = optionSelections[index];
+                  const statsForSlot = statsBySlot[index];
+                  const selectedStat = statsForSlot.find((s) => s.statCode === sel.statCode);
+                  // Mismo criterio que NewPublicationForm: solo se marca en rojo si
+                  // hay un valor escrito y se sale del rango real de esa stat,
+                  // nunca por estar vacío.
+                  const isMinOutOfRange =
+                    selectedStat !== undefined &&
+                    sel.min !== "" &&
+                    (sel.min < selectedStat.minValue || sel.min > selectedStat.maxValue);
+                  const isMaxOutOfRange =
+                    selectedStat !== undefined &&
+                    sel.max !== "" &&
+                    (sel.max < selectedStat.minValue || sel.max > selectedStat.maxValue);
+
+                  return (
+                    <div key={slotIndex} className="flex items-center gap-2">
+                      <select
+                        value={sel.statCode}
+                        onChange={(e) => handleOptionSelectChange(index, e.target.value)}
+                        className={`min-w-0 flex-1 ${selectClass}`}
+                      >
+                        <option value="">{t("filters.optionPlaceholder", { slot: slotIndex })}</option>
+                        {statsForSlot.map((s) => (
+                          <option key={s.statCode} value={s.statCode}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </select>
+                      {!isBuyFilter && (
+                        <input
+                          type="number"
+                          placeholder={selectedStat ? String(selectedStat.minValue) : t("filters.min")}
+                          value={sel.min}
+                          disabled={!sel.statCode}
+                          onChange={(e) =>
+                            handleOptionMinChange(index, e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                          className={`w-20 ${inputBaseClass}`}
+                          // Un className condicional no basta aquí — ver el mismo
+                          // comentario en NewPublicationForm.tsx.
+                          style={isMinOutOfRange ? { borderColor: "#dc2626" } : undefined}
+                        />
+                      )}
+                      <input
+                        type="number"
+                        placeholder={
+                          selectedStat
+                            ? isBuyFilter
+                              ? `${selectedStat.minValue}-${selectedStat.maxValue}`
+                              : String(selectedStat.maxValue)
+                            : isBuyFilter
+                              ? t("filters.value")
+                              : t("filters.max")
+                        }
+                        value={sel.max}
+                        disabled={!sel.statCode}
+                        onChange={(e) =>
+                          handleOptionMaxChange(index, e.target.value === "" ? "" : Number(e.target.value))
+                        }
+                        className={`w-20 ${inputBaseClass}`}
+                        style={isMaxOutOfRange ? { borderColor: "#dc2626" } : undefined}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+        </form>
+      </Panel>
+    </div>
   );
 }
 

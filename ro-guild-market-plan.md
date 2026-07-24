@@ -835,26 +835,63 @@ al final (conviene cerrar antes qué métricas exactas se quieren).
   Hace falta o el texto/stack exacto del error (el overlay de Next en dev
   lo muestra completo) o reproducirlo en vivo con sesión real para
   localizarlo.
-- **Propuesta: detalle de listing en panel lateral derecho** (en vez de
-  navegar a `/market/[id]`, para poder seguir viendo el mercado a la
-  izquierda). Planificado usando Parallel Routes + Intercepting Routes de
-  Next.js (verificado contra `node_modules/next/dist/docs/`, es
-  literalmente el patrón que documentan para "opening a shopping cart in a
-  side modal"): `src/app/market/layout.tsx` nuevo con slot `@detail`,
-  `market/@detail/default.tsx` (null) + `market/@detail/[...catchAll]/page.tsx`
-  (null, para cerrar el panel al navegar a cualquier otra ruta) +
-  `market/@detail/(.)[id]/page.tsx` (intercepta el click desde la lista,
-  reutiliza `Sidebar` con `side="right"` y `onClose={() => router.back()}`).
-  El contenido de la ficha se extrae a un componente compartido (mismo
-  patrón que `GiftsHistory.tsx`) para que lo use tanto la página completa
-  (`market/[id]/page.tsx`, sin cambios de comportamiento en visita directa/
-  enlace compartido) como el panel interceptado — sin duplicar lógica de
-  precio/options/formularios de compra-oferta/cancelar. `<Link>` normal en
-  `MarketResults.tsx` no necesita cambios: la intercepción es puramente de
-  routing. Pendiente: decidir si el `Sidebar` actual (`w-72`) es
-  suficientemente ancho para una ficha completa, o si hace falta una
-  variante más ancha. Sin empezar la implementación — pendiente de luz
-  verde.
+- **Detalle de listing en panel de detalle — IMPLEMENTADO.** En vez de
+  navegar a `/market/[id]`, un click desde la lista abre la ficha en un
+  panel (desktop: lateral derecho, 420px; móvil: bottom sheet al 75% de
+  alto) manteniendo el mercado visible y navegable detrás — sin fondo
+  oscurecido y sin cierre al hacer clic fuera (decisión explícita: el
+  objetivo es poder seguir interactuando con el mercado, no un modal). Se
+  cierra con la X, con Escape, o (en móvil) deslizando el panel hacia
+  abajo por encima de un umbral de 100px.
+  - **Routing:** Parallel Routes + Intercepting Routes de Next.js
+    (patrón documentado para "opening a shopping cart in a side modal",
+    verificado contra `node_modules/next/dist/docs/`) —
+    [layout.tsx](src/app/market/layout.tsx) nuevo con slot `@detail`,
+    [@detail/default.tsx](src/app/market/@detail/default.tsx) (null),
+    [@detail/[...catchAll]/page.tsx](src/app/market/@detail/[...catchAll]/page.tsx)
+    (null, cierra el panel al navegar a cualquier otra ruta) y
+    [@detail/(.)[id]/page.tsx](src/app/market/@detail/(.)[id]/page.tsx)
+    (intercepta el click desde la lista). `<Link>` normal en
+    `MarketResults.tsx` no necesitó cambios — la intercepción es
+    puramente de routing. Carga directa/recarga de `/market/[id]` sigue
+    resolviendo a la página completa normal, sin cambios de
+    comportamiento.
+  - **Componente propio, no reutiliza `Sidebar`:** el `Sidebar` existente
+    (menú hamburguesa) es un modal con fondo oscurecido — justo lo
+    contrario de lo que pedía esta feature. Se creó
+    [DetailPanel.tsx](src/app/market/DetailPanel.tsx) (cliente) desde
+    cero: sin backdrop, el elemento `fixed` es el propio panel (no un
+    wrapper a pantalla completa), así el resto de la página queda
+    100% interactivo de forma nativa. Responsive por CSS (bottom sheet
+    por defecto, `md:` cambia a panel lateral) sin JS de por medio para
+    la orientación. Deslizar para cerrar en móvil implementado a mano
+    con Pointer Events (sin librería), sobre un tirador visible solo en
+    móvil (`md:hidden`).
+  - **Ficha compartida:** el contenido (antes todo en
+    `market/[id]/page.tsx`) se extrajo a
+    [ListingDetailContent.tsx](src/app/market/ListingDetailContent.tsx),
+    usado tanto por la página completa como por el panel interceptado —
+    sin duplicar precio/options/formularios de compra-oferta/cancelar.
+  - **Nota de desarrollo (no afecta a producción):** en local, editar
+    archivos bajo esta zona de rutas mientras el servidor dev está
+    corriendo puede corromper temporalmente el matcher de Fast Refresh
+    para la ruta interceptada (error "Invalid interception route" con un
+    patrón `(.)(.)(.)` repetido, cae a servir la página completa en vez
+    del panel) — se resuelve reiniciando el servidor dev (borrar `.next`
+    si persiste). No se reprodujo en ningún momento como error real de
+    build/producción, solo como inestabilidad de HMR tras tocar estos
+    archivos.
+  - **Verificado en navegador:** desktop (panel 420px de ancho completo a
+    la derecha, mercado visible detrás) y móvil (bottom sheet ocupando
+    75% de alto, ~220px de listados visibles arriba) — en ambos casos:
+    contenido correcto de la ficha, cierre con X vuelve a `/market`,
+    cierre con Escape, cambiar de listing con el panel abierto sustituye
+    el contenido sin cerrarlo, navegar a otra ruta (`/market/sale`)
+    cierra el panel, carga directa a `/market/[id]` renderiza la página
+    completa sin panel. Sin errores de consola ni de servidor. El gesto
+    de deslizar hacia abajo no se pudo probar con clics sintéticos (no
+    hay forma de simular Pointer Events realistas en este entorno de
+    pruebas), pero X y Escape quedan siempre como alternativa.
 
 ---
 

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { Plus } from "lucide-react";
 import { buttonClass } from "@/lib/ui";
 
 // El tipo preseleccionado depende de la pantalla activa (norma del punto
@@ -26,7 +27,8 @@ export function CreatePublicationButton() {
 
   return (
     <Link href={href} className={buttonClass("primary")}>
-      {t("newPublication")}
+      <Plus size={18} />
+      <span className="hidden sm:inline">{t("newPublication")}</span>
     </Link>
   );
 }

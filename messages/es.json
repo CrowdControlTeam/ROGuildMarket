@@ -22,9 +22,9 @@
       "memberSince": "Miembro desde",
       "roles": "Roles en Discord",
       "noRoles": "Sin roles registrados",
-      "myActivity": "Mi actividad",
-      "settings": "Configuración",
-      "signOut": "Cerrar sesión"
+      "myActivity": "Actividad",
+      "settings": "Ajustes",
+      "signOut": "Salir"
     }
   },
   "myActivity": {
@@ -102,10 +102,10 @@
   },
   "admin": {
     "title": "Configuración",
-    "statsLink": "Ver estadísticas",
+    "statsLink": "Estadísticas",
     "stats": {
       "title": "Estadísticas del mercado",
-      "backToConfig": "Volver a configuración",
+      "backToConfig": "Volver",
       "period": {
         "label": "Periodo",
         "30d": "Últimos 30 días"
@@ -227,10 +227,11 @@
       "message": "Mensaje",
       "refine": "Refine",
       "cardSlots": "Slots de carta",
-      "minStats": "Stats mínimos buscados",
+      "minStats": "Stats mínimos",
       "payUpTo": "Pago hasta"
     },
     "filters": {
+      "toggle": "Filtros",
       "buyOptionsHint": "Busca compras que cumplan estos valores.",
       "name": "Nombre",
       "namePlaceholder": "Buscar item...",
@@ -359,12 +360,12 @@
     },
     "detail": {
       "available": "Disponibles",
-      "unitPrice": "Precio por unidad",
+      "unitPrice": "Precio/ud",
       "posted": "Publicado",
       "sold": "Vendidos",
       "of": "de",
-      "markFulfilled": "Marcar como cumplida",
-      "cancelListing": "Cancelar publicación",
+      "markFulfilled": "Completado",
+      "cancelListing": "Cancelar",
       "tradedWith": "Intercambiado con",
       "forItem": "por {item}",
       "offersReceived": "Ofertas recibidas",
@@ -379,12 +380,12 @@
       "tradeForm": {
         "offerItem": "Ofrecer item",
         "zeny": "Zeny adicional (opcional)",
-        "submit": "Enviar oferta"
+        "submit": "Ofrecer"
       },
       "tradeActions": {
         "accept": "Aceptar",
         "reject": "Rechazar",
-        "cancelOffer": "Cancelar oferta"
+        "cancelOffer": "Cancelar"
       }
     },
     "form": {
@@ -396,9 +397,9 @@
         "GIFT": "Regalo"
       },
       "submitLabels": {
-        "SALE": "Publicar venta",
-        "BUY": "Publicar petición",
-        "TRADE": "Publicar intercambio",
+        "SALE": "Publicar",
+        "BUY": "Publicar",
+        "TRADE": "Publicar",
         "GIFT": "Regalar"
       },
       "publishing": "Publicando...",
