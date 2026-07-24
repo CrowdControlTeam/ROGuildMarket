@@ -105,6 +105,7 @@ export default async function ListingDetailPage({
                 viewerId={session.user.discordId}
                 capitalize
                 item={listing.item}
+                listingId={listing.id}
                 dmAvailable={dmAvailable}
               />
             </dd>
@@ -172,6 +173,7 @@ export default async function ListingDetailPage({
                     username={accepted.offerer.username}
                     viewerId={session.user.discordId}
                     item={listing.item}
+                    listingId={listing.id}
                     dmAvailable={dmAvailable}
                   />{" "}
                   {t("detail.forItem", {
@@ -210,6 +212,7 @@ export default async function ListingDetailPage({
                         username={offer.offerer.username}
                         viewerId={session.user.discordId}
                         item={offer.item}
+                        listingId={listing.id}
                         dmAvailable={dmAvailable}
                       />
                     </p>

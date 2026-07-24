@@ -23,6 +23,7 @@ export function UserMention({
   viewerId,
   capitalize = false,
   item,
+  listingId,
   dmAvailable = false,
 }: {
   userId: string;
@@ -30,6 +31,10 @@ export function UserMention({
   viewerId: string;
   capitalize?: boolean;
   item?: MentionItem;
+  // Listing desde la que se menciona a esta persona (si la hay) — permite
+  // que el DM de contacto enlace de vuelta al listing. No todas las
+  // menciones tienen una (p.ej. en Regalos no hay listing que enlazar).
+  listingId?: string;
   dmAvailable?: boolean;
 }) {
   const t = useTranslations("common");
@@ -62,6 +67,7 @@ export function UserMention({
         recipientId={userId}
         recipientUsername={username}
         item={item}
+        listingId={listingId}
       />
     </>
   );
@@ -73,12 +79,14 @@ function ContactModal({
   recipientId,
   recipientUsername,
   item,
+  listingId,
 }: {
   open: boolean;
   onClose: () => void;
   recipientId: string;
   recipientUsername: string;
   item: MentionItem;
+  listingId?: string;
 }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -145,6 +153,7 @@ function ContactModal({
           >
             <input type="hidden" name="recipientId" value={recipientId} />
             <input type="hidden" name="itemId" value={item.id} />
+            {listingId && <input type="hidden" name="listingId" value={listingId} />}
             <label className={labelClass}>{t("messageLabel")}</label>
             <textarea
               name="message"

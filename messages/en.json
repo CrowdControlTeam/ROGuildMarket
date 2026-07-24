@@ -431,7 +431,8 @@
       "zenyIncluded": "Zeny included",
       "yourOffer": "Your offer",
       "youReceived": "You received",
-      "message": "Message"
+      "message": "Message",
+      "replyTo": "Reply to"
     },
     "dm": {
       "purchased": "{username} bought your {item}",
