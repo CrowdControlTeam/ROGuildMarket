@@ -66,13 +66,11 @@ export async function ListingDetailContent({ id }: { id: string }) {
         <div>
           <h1 className="flex items-center gap-2 font-heading text-sm text-ro-text">
             {formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}
-            {listing.type !== "SALE" && (
-              <span
-                className={`rounded border px-1.5 py-0.5 text-xs font-normal ${LISTING_TYPE_BADGE_CLASS[listing.type]}`}
-              >
-                {listingTypeLabel(t, listing.type)}
-              </span>
-            )}
+            <span
+              className={`rounded border px-1.5 py-0.5 text-xs font-normal ${LISTING_TYPE_BADGE_CLASS[listing.type]}`}
+            >
+              {listingTypeLabel(t, listing.type)}
+            </span>
           </h1>
           <p className="mt-1 text-sm text-ro-text-muted">
             {listingStatusLabel(t, listing.status, listing.type)}
@@ -128,12 +126,25 @@ export async function ListingDetailContent({ id }: { id: string }) {
       {listing.options.length > 0 && (
         <div className="mt-3">
           <p className={labelClass}>{isBuy ? t("field.minStats") : t("field.options")}</p>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+          {/* Texto plano en móvil (cabe en la mitad de columna sin
+              apretarse); badge como en las cards del mercado a partir de
+              sm, donde ya sobra sitio. */}
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm sm:hidden">
             {listing.options.map((o) => (
               <div key={o.slotIndex} className="flex justify-between gap-2">
                 <span className="text-ro-text-muted">{o.def.label}</span>
                 <span className="font-semibold">{formatOptionAmount(o.value, isBuy)}</span>
               </div>
+            ))}
+          </div>
+          <div className="hidden flex-wrap gap-1 sm:flex">
+            {listing.options.map((o) => (
+              <span
+                key={o.slotIndex}
+                className="rounded border border-ro-gold-dark/50 bg-ro-gold/10 px-1.5 py-0.5 text-xs text-ro-text-muted"
+              >
+                {o.def.label} {formatOptionAmount(o.value, isBuy)}
+              </span>
             ))}
           </div>
         </div>
