@@ -22,7 +22,7 @@
       "memberSince": "Member since",
       "roles": "Discord roles",
       "noRoles": "No roles on record",
-      "myActivity": "My activity",
+      "myActivity": "Activity",
       "settings": "Settings",
       "signOut": "Sign out"
     }
@@ -102,10 +102,10 @@
   },
   "admin": {
     "title": "Settings",
-    "statsLink": "View stats",
+    "statsLink": "Stats",
     "stats": {
       "title": "Market stats",
-      "backToConfig": "Back to settings",
+      "backToConfig": "Back",
       "period": {
         "label": "Period",
         "30d": "Last 30 days"
@@ -227,7 +227,7 @@
       "message": "Message",
       "refine": "Refine",
       "cardSlots": "Card slots",
-      "minStats": "Minimum stats wanted",
+      "minStats": "Minimum stats",
       "payUpTo": "Pay up to"
     },
     "filters": {
@@ -360,12 +360,12 @@
     },
     "detail": {
       "available": "Available",
-      "unitPrice": "Price per unit",
+      "unitPrice": "Price/unit",
       "posted": "Posted",
       "sold": "Sold",
       "of": "of",
-      "markFulfilled": "Mark as fulfilled",
-      "cancelListing": "Cancel listing",
+      "markFulfilled": "Completed",
+      "cancelListing": "Cancel",
       "tradedWith": "Traded with",
       "forItem": "for {item}",
       "offersReceived": "Offers received",
@@ -380,12 +380,12 @@
       "tradeForm": {
         "offerItem": "Offer item",
         "zeny": "Extra zeny (optional)",
-        "submit": "Send offer"
+        "submit": "Offer"
       },
       "tradeActions": {
         "accept": "Accept",
         "reject": "Reject",
-        "cancelOffer": "Cancel offer"
+        "cancelOffer": "Cancel"
       }
     },
     "form": {
@@ -397,9 +397,9 @@
         "GIFT": "Gift"
       },
       "submitLabels": {
-        "SALE": "Post sale",
-        "BUY": "Post request",
-        "TRADE": "Post trade",
+        "SALE": "Post",
+        "BUY": "Post",
+        "TRADE": "Post",
         "GIFT": "Send gift"
       },
       "publishing": "Posting...",
