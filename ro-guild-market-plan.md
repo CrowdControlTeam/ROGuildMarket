@@ -1,6 +1,6 @@
 # Plan de desarrollo — Mercado de guild (Ragnarok Online)
 
-## 0. Estado actual (actualizado 2026-07-23)
+## 0. Estado actual (actualizado 2026-07-24)
 
 Léase esto primero al retomar el proyecto, antes que el resto del documento —
 resume la realidad actual del desarrollo; el resto del archivo es la
@@ -742,6 +742,54 @@ API, no traducibles); el `label`/`description` vive ahora en
 servidor con `getTranslations("admin.recognition.models")`. Verificado en
 vivo (switch a inglés → "Flash (recommended)" / descripciones en inglés,
 vuelta a español OK, sin errores de consola).
+
+**Backlog de mejoras — implementado (2026-07-24):** las tres notas del
+usuario (pantalla personal, estadísticas admin, filtro por usuario), más
+una cuarta añadida sobre la marcha (enlace + mención en el DM de
+contacto). Ninguna tocó el esquema, así que no hay migración de
+producción pendiente de esta tanda.
+- **"Mi actividad" (`/my/listings` + `/my/gifts`):** rutas RESTful
+  hermanas bajo un layout compartido con pestañas (`src/app/my/layout.tsx`
+  + `MyActivityTabs.tsx`), en vez de un único `?tab=` — cada pestaña es su
+  propio recurso. `getMyListings()` nuevo (todos mis listings, cualquier
+  estado/tipo, sin paginación por volumen bajo). `/market/gifts` y la
+  entrada "Regalos" del menú hamburguesa quedan intactas; su lógica se
+  extrajo a `GiftsHistory.tsx` para reutilizarla en `/my/gifts` sin
+  duplicar código. Enlace "Mi actividad" en `UserMenu.tsx`.
+- **Filtro por usuario en el mercado:** `posterId` en `MarketFilters`
+  (`market.ts`) + `UserPicker.tsx` extendido con un modo controlado
+  opcional (`selected`/`onClear`, mismo patrón que `ItemPicker`) sin
+  romper el uso existente en el formulario de regalos. `posterId`/
+  `posterName` viajan en la URL para repintar el campo tras recargar.
+- **DM de contacto (desde nombre clicable):** `UserMention`/`ContactModal`
+  ganan un `listingId` opcional que via `sendContactMessage` añade `url`
+  al listing en el embed de Discord, más un field con la mención nativa
+  `<@discordId>` del remitente — dentro del canal privado bot↔destinatario
+  no le hace ping a nadie, solo renderiza un chip clicable al perfil desde
+  el que responder por DM. En Regalos (sin listing que enlazar) se queda
+  sin URL, como antes.
+- **Estadísticas de mercado (`/admin/stats`):** totales (publicaciones por
+  tipo×estado, zeny movido, ofertas de trade por estado, regalos
+  enviados, usuarios que han publicado vs. registrados) + rankings top 10
+  (quién más publica, top vendedores/compradores por zeny, items más
+  publicados/comprados). Todo calculado reduciendo filas planas en JS
+  (cruzar `Purchase`/`TradeOffer` con el poster o el item del `Listing`
+  no es directo con `groupBy`, y el volumen de un mercado de guild hace
+  que reducir en memoria sea barato). Ventana fija de 30 días
+  (`createdAt` en Listing/Purchase/Gift, `updatedAt` en TradeOffer porque
+  importa cuándo se aceptó/rechazó, no solo cuándo se creó) — desplegable
+  de periodo en la UI con un único valor por ahora
+  (`admin-stats-constants.ts`, separado del archivo `"use server"` porque
+  ese exige que todo lo exportado sea async), listo para añadir más
+  periodos sin rehacer nada. Sin gráficos, solo tablas/números, según lo
+  pedido. `Panel.tsx` gana un `headerAction` opcional para el enlace "Ver
+  estadísticas" desde `/admin`.
+
+Verificado todo en vivo con datos reales (sesión autenticada), sin
+errores de consola. Los 4 puntos van en una sola rama
+(`feature/my_activity_stats_filters`), un commit por punto, con PR
+conjunta a `develop` cuando los cuatro estuvieron listos (a petición
+explícita del usuario).
 
 ---
 
