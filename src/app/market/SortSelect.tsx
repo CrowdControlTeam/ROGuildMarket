@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { SORT_VALUES } from "@/lib/market";
 import { sortLabel } from "@/lib/market-labels";
@@ -8,6 +8,7 @@ import { selectClass } from "@/lib/ui";
 
 export function SortSelect() {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const t = useTranslations("market");
 
@@ -19,7 +20,7 @@ export function SortSelect() {
       params.set("sort", value);
     }
     // Solo cambia el orden; los filtros ya presentes en la URL se mantienen.
-    router.push(`/market?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`);
   }
 
   return (

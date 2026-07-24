@@ -797,20 +797,31 @@ al final (conviene cerrar antes qué métricas exactas se quieren).
 
 **Feedback de un usuario potencial (2026-07-24)** — 3 bugs + 1 propuesta:
 
-- **Buscador roto tras "Reset" (bug, causa identificada):** `resetFilters()`
-  en `MarketFilters.tsx` limpia `q`/categoría/precio/etc. pero
-  deliberadamente NO toca `type` (comentario en el propio código: para no
-  sacar al usuario de una vista ya "fijada" por el menú Vender/Comprar/
-  Comerciar). El problema es que `typeLocked` (`!!searchParams.get("type")`)
-  no distingue entre "vine de un enlace del menú" y "elegí un Tipo en el
-  propio desplegable de filtros y busqué" — en el segundo caso, el
-  desplegable "Tipo" desaparece del todo (`{!typeLocked && (...)}`) y
-  Reset nunca lo recupera, así que el filtro de tipo queda pegado en
-  silencio y las búsquedas siguientes parecen no funcionar. Pendiente de
-  confirmar con repro en vivo (no había sesión autenticada disponible al
-  investigarlo), pero la causa encaja con el síntoma. Fix propuesto: que
-  Reset también borre `type` cuando no venga fijado por un enlace de menú
-  real, o separar "tipo elegido en el form" de "tipo fijado por el menú".
+- **Buscador roto tras "Reset" — RESUELTO.** Causa confirmada en vivo:
+  `typeLocked` (antes `!!searchParams.get("type")`) no distinguía entre
+  "vine de un enlace del menú Vender/Comprar/Comerciar" y "elegí un Tipo en
+  el propio desplegable de filtros y busqué" — ambos casos generaban la
+  misma URL `?type=SALE`, así que el desplegable "Tipo" desaparecía del
+  todo y Reset nunca lo recuperaba (quedaba pegado en silencio, excluyendo
+  resultados de otros tipos sin ningún indicio visible). Repro en vivo:
+  elegir "Venta" en el desplegable de Mercado general, buscar, Reset →
+  la URL se quedaba en `?type=SALE`, y una búsqueda posterior de "Damascus"
+  solo mostraba la venta, ocultando la compra existente del mismo item.
+  Fix aplicado (a petición del usuario, separando identidad de "pantalla"
+  de filtros normales en vez de un flag extra en la query string): rutas
+  nuevas `/market/sale`, `/market/buy`, `/market/trade` (antes
+  `/market?type=SALE` etc. desde el menú), cada una un wrapper fino sobre
+  el componente compartido `MarketPageContent.tsx` con `screenType` fijo
+  como prop — el título y el bloqueo del selector "Tipo" ahora dependen
+  solo de la ruta, nunca de la query string. En `/market` (Mercado
+  general), `type` vuelve a ser un filtro normal: visible, incluido en
+  Reset, sin cambiar el título de la página. `MarketFilters.tsx` y
+  `SortSelect.tsx` usan `usePathname()` en vez de `/market` fijo para que
+  filtros/orden funcionen igual en cualquiera de las 4 rutas. Verificado
+  en navegador: filtro por tipo en Mercado general + Reset ahora limpia
+  todo correctamente; en `/market/sale` con un filtro de categoría
+  aplicado, Reset limpia el filtro pero te mantiene en Ventas (no salta a
+  Mercado general). Sin migración de datos ni cambios de schema.
 - **Botón "Comprar" poco claro — PENDIENTE, no investigado a petición
   explícita del usuario ("hablaremos después").** Sugerencia de quien dio
   el feedback: que en vez de comprar directamente, contactara/abriera DM

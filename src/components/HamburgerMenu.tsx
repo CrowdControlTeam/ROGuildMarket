@@ -13,9 +13,9 @@ export function HamburgerMenu() {
 
   const links: { href: string; label: string; enabled: boolean }[] = [
     { href: "/market", label: t("title"), enabled: true },
-    { href: "/market?type=SALE", label: marketViewTitle(t, "SALE"), enabled: true },
-    { href: "/market?type=BUY", label: marketViewTitle(t, "BUY"), enabled: true },
-    { href: "/market?type=TRADE", label: marketViewTitle(t, "TRADE"), enabled: true },
+    { href: "/market/sale", label: marketViewTitle(t, "SALE"), enabled: true },
+    { href: "/market/buy", label: marketViewTitle(t, "BUY"), enabled: true },
+    { href: "/market/trade", label: marketViewTitle(t, "TRADE"), enabled: true },
     { href: "/market/gifts", label: t("gifts.title"), enabled: true },
   ];
 
