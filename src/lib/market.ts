@@ -25,6 +25,10 @@ export type MarketFilters = {
   slot?: EquipSlot;
   weaponType?: WeaponType;
   type?: ListingType;
+  // Filtro por quien publica (poster) — resuelto a un id concreto en
+  // cliente vía UserPicker, no un "contiene" de texto libre, para no
+  // depender de coincidencias parciales entre nombres parecidos.
+  posterId?: string;
   // Filtro por random option, uno por slot posicional (1..MAX_OPTION_SLOTS
   // — ver src/lib/item-options-constants.ts). Filtra por statCode, no por
   // defId: la misma stat (p.ej. MaxHP %) existe como filas de
@@ -228,6 +232,7 @@ export async function getListings(filters: MarketFilters) {
   const where: Prisma.ListingWhereInput = {
     status: "ACTIVE",
     ...(filters.type ? { type: filters.type } : {}),
+    ...(filters.posterId ? { posterId: filters.posterId } : {}),
     ...(Object.keys(priceFilter).length > 0 ? { price: priceFilter } : {}),
     ...(filters.refineMin !== undefined || filters.refineMax !== undefined
       ? {

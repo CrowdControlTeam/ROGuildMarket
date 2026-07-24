@@ -194,6 +194,7 @@
       "buyOptionsHint": "Search buy requests that match these values.",
       "name": "Name",
       "namePlaceholder": "Search item...",
+      "poster": "User",
       "type": "Type",
       "all": "All",
       "category": "Category",
@@ -398,7 +399,8 @@
       "removeSelected": "Remove selected item"
     },
     "userPicker": {
-      "placeholder": "Search for a user by name..."
+      "placeholder": "Search for a user by name...",
+      "removeSelected": "Remove selected user"
     },
     "gifts": {
       "title": "Gifts",

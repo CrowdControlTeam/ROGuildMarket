@@ -16,6 +16,7 @@ import {
 } from "@/lib/listings";
 import { buttonClass, inputClass, inputBaseClass, selectClass, labelClass } from "@/lib/ui";
 import { MaskedPriceInput } from "@/components/MaskedPriceInput";
+import { UserPicker, type UserResult } from "@/components/UserPicker";
 
 type OptionFilterSelection = { statCode: string; min: number | ""; max: number | "" };
 
@@ -58,6 +59,14 @@ export function MarketFilters() {
   // la propia vista pasa a "ser" de ese tipo. "Reset" (o volver a
   // Mercado) lo despeja y el selector reaparece.
   const typeLocked = !!searchParams.get("type");
+  // El id resuelto es lo que de verdad filtra (ver posterId en market.ts);
+  // el nombre solo se guarda en la URL para poder repintar el campo ya
+  // seleccionado tras recargar, sin tener que volver a buscar.
+  const [poster, setPoster] = useState<UserResult | null>(() => {
+    const posterId = searchParams.get("posterId");
+    const posterName = searchParams.get("posterName");
+    return posterId && posterName ? { id: posterId, username: posterName, avatarUrl: null } : null;
+  });
   const [category, setCategory] = useState(searchParams.get("category") ?? "");
   const [slot, setSlot] = useState(searchParams.get("slot") ?? "");
   const [weaponType, setWeaponType] = useState(searchParams.get("weaponType") ?? "");
@@ -192,6 +201,8 @@ export function MarketFilters() {
     const params = new URLSearchParams(searchParams.toString());
     setOrDelete(params, "q", q.trim());
     setOrDelete(params, "type", type);
+    setOrDelete(params, "posterId", poster?.id ?? "");
+    setOrDelete(params, "posterName", poster?.username ?? "");
     setOrDelete(params, "category", category);
     setOrDelete(params, "slot", slot);
     setOrDelete(params, "weaponType", weaponType);
@@ -240,6 +251,7 @@ export function MarketFilters() {
   // hace falta que Reset también sirva de vía de escape.
   function resetFilters() {
     setQ("");
+    setPoster(null);
     setCategory("");
     setSlot("");
     setWeaponType("");
@@ -253,6 +265,8 @@ export function MarketFilters() {
     const params = new URLSearchParams(searchParams.toString());
     const keys = [
       "q",
+      "posterId",
+      "posterName",
       "category",
       "slot",
       "weaponType",
@@ -280,6 +294,16 @@ export function MarketFilters() {
           onChange={(e) => setQ(e.target.value)}
           placeholder={t("filters.namePlaceholder")}
           className={inputClass}
+        />
+      </div>
+
+      <div className="min-w-[160px] flex-1">
+        <label className={labelClass}>{t("filters.poster")}</label>
+        <UserPicker
+          key={poster?.id ?? "empty"}
+          selected={poster}
+          onSelect={setPoster}
+          onClear={() => setPoster(null)}
         />
       </div>
 

@@ -194,6 +194,7 @@
       "buyOptionsHint": "Busca compras que cumplan estos valores.",
       "name": "Nombre",
       "namePlaceholder": "Buscar item...",
+      "poster": "Usuario",
       "type": "Tipo",
       "all": "Todas",
       "category": "Categoría",
@@ -398,7 +399,8 @@
       "removeSelected": "Quitar item seleccionado"
     },
     "userPicker": {
-      "placeholder": "Busca un usuario por nombre..."
+      "placeholder": "Busca un usuario por nombre...",
+      "removeSelected": "Quitar usuario seleccionado"
     },
     "gifts": {
       "title": "Regalos",
