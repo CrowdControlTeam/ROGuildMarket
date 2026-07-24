@@ -2,15 +2,11 @@
   "common": {
     "cancel": "Cancelar",
     "close": "Cerrar",
-    "save": "Guardar",
-    "saved": "Guardado.",
     "send": "Enviar",
-    "sending": "Enviando...",
     "search": "Buscar",
     "reset": "Reset",
     "searching": "Buscando...",
     "loading": "Cargando...",
-    "retry": "Reintentar",
     "genericError": "Error inesperado",
     "searchError": "No se ha podido buscar. Inténtalo de nuevo.",
     "you": "Tú",
@@ -26,8 +22,17 @@
       "memberSince": "Miembro desde",
       "roles": "Roles en Discord",
       "noRoles": "Sin roles registrados",
+      "myActivity": "Mi actividad",
       "settings": "Configuración",
       "signOut": "Cerrar sesión"
+    }
+  },
+  "myActivity": {
+    "title": "Mi actividad",
+    "listingsEmpty": "Todavía no has publicado nada.",
+    "tabs": {
+      "listings": "Mis publicaciones",
+      "gifts": "Regalos"
     }
   },
   "home": {
@@ -45,18 +50,11 @@
   "errors": {
     "boundary": {
       "title": "Algo ha ido mal",
-      "message": "Ha ocurrido un error inesperado. Puedes intentarlo de nuevo.",
-      "retry": "Reintentar"
-    },
-    "global": {
-      "title": "Algo ha ido mal",
-      "message": "Ha ocurrido un error inesperado al cargar la página.",
-      "retry": "Reintentar"
+      "message": "Ha ocurrido un error inesperado. Puedes intentarlo de nuevo."
     },
     "notFound": {
       "title": "No encontrado",
-      "message": "Esta página no existe o el elemento que buscas ya no está disponible.",
-      "backToMarket": "Volver al mercado"
+      "message": "Esta página no existe o el elemento que buscas ya no está disponible."
     },
     "invalidData": "Datos inválidos",
     "selectItem": "Selecciona un item",
@@ -103,10 +101,42 @@
     "recognitionFailed": "Ha fallado la detección automática. Prueba de nuevo o rellena el item a mano."
   },
   "admin": {
-    "backToMarket": "Volver al mercado",
     "title": "Configuración",
-    "save": "Guardar",
-    "saved": "Guardado.",
+    "statsLink": "Ver estadísticas",
+    "stats": {
+      "title": "Estadísticas del mercado",
+      "backToConfig": "Volver a configuración",
+      "period": {
+        "label": "Periodo",
+        "30d": "Últimos 30 días"
+      },
+      "totals": {
+        "heading": "Resumen",
+        "zenyMoved": "Zeny movido",
+        "postersCount": "Usuarios que han publicado",
+        "totalUsers": "Usuarios registrados",
+        "giftsSent": "Regalos enviados"
+      },
+      "listingsByType": {
+        "heading": "Publicaciones por tipo y estado",
+        "closed": "Cerrada"
+      },
+      "tradeOffers": {
+        "heading": "Ofertas de intercambio por estado"
+      },
+      "rankings": {
+        "topPosters": "Quién más publica",
+        "topEarners": "Top vendedores (zeny conseguido)",
+        "topSpenders": "Top compradores (zeny gastado)",
+        "topListedItems": "Items más publicados",
+        "topPurchasedItems": "Items más comprados",
+        "empty": "Sin datos en este periodo.",
+        "count": "Publicaciones",
+        "quantity": "Unidades",
+        "rank": "#",
+        "name": "Nombre"
+      }
+    },
     "general": {
       "legend": "General",
       "siteNameLabel": "Nombre de la aplicación",
@@ -180,10 +210,31 @@
       "admin": "El mercado está en modo mantenimiento (como administrador, sí puedes publicar y comprar).",
       "user": "El mercado está en modo mantenimiento: no se puede crear ventas ni comprar por ahora."
     },
+    "nav": {
+      "backToMarket": "Volver al mercado"
+    },
+    "button": {
+      "save": "Guardar",
+      "retry": "Reintentar"
+    },
+    "status": {
+      "saved": "Guardado.",
+      "sending": "Enviando..."
+    },
+    "field": {
+      "options": "Options",
+      "quantity": "Cantidad",
+      "message": "Mensaje",
+      "refine": "Refine",
+      "cardSlots": "Slots de carta",
+      "minStats": "Stats mínimos buscados",
+      "payUpTo": "Pago hasta"
+    },
     "filters": {
       "buyOptionsHint": "Busca compras que cumplan estos valores.",
       "name": "Nombre",
       "namePlaceholder": "Buscar item...",
+      "poster": "Usuario",
       "type": "Tipo",
       "all": "Todas",
       "category": "Categoría",
@@ -196,7 +247,6 @@
       "cardSlotsMax": "Slots máx.",
       "priceMin": "Precio mín.",
       "priceMax": "Precio máx.",
-      "options": "Options",
       "optionPlaceholder": "-- Option {slot} --",
       "min": "Mín",
       "max": "Máx",
@@ -308,16 +358,11 @@
       "loadMoreError": "No se ha podido cargar más. Inténtalo de nuevo."
     },
     "detail": {
-      "back": "Volver al mercado",
-      "quantity": "Cantidad",
       "available": "Disponibles",
-      "payUpTo": "Pago hasta",
       "unitPrice": "Precio por unidad",
       "posted": "Publicado",
       "sold": "Vendidos",
       "of": "de",
-      "minStats": "Stats mínimos buscados",
-      "options": "Options",
       "markFulfilled": "Marcar como cumplida",
       "cancelListing": "Cancelar publicación",
       "tradedWith": "Intercambiado con",
@@ -333,11 +378,7 @@
       },
       "tradeForm": {
         "offerItem": "Ofrecer item",
-        "quantity": "Cantidad",
-        "refine": "Refine",
-        "cardSlots": "Slots de carta",
         "zeny": "Zeny adicional (opcional)",
-        "sending": "Enviando...",
         "submit": "Enviar oferta"
       },
       "tradeActions": {
@@ -363,14 +404,9 @@
       "publishing": "Publicando...",
       "recognitionLabel": "Reconocer desde captura (opcional)",
       "itemLabel": "Item",
-      "quantityLabel": "Cantidad",
-      "refineLabel": "Refine",
-      "cardSlotsLabel": "Slots de carta",
       "priceLabel": "Precio (z)",
       "payUpToLabel": "Pago hasta (z)",
       "recipientLabel": "Destinatario",
-      "minStatsLabel": "Stats mínimos buscados",
-      "optionsLabel": "Options",
       "recognitionNoMatchNamed": "No se ha encontrado en el catálogo ningún item parecido a \"{name}\". Selecciónalo manualmente.",
       "recognitionNoMatch": "No se ha podido leer el item en la captura. Selecciónalo manualmente.",
       "recognitionDetected": "Detectado: {item}. Revisa los datos antes de publicar.",
@@ -388,7 +424,8 @@
       "removeSelected": "Quitar item seleccionado"
     },
     "userPicker": {
-      "placeholder": "Busca un usuario por nombre..."
+      "placeholder": "Busca un usuario por nombre...",
+      "removeSelected": "Quitar usuario seleccionado"
     },
     "gifts": {
       "title": "Regalos",
@@ -400,7 +437,6 @@
     },
     "contact": {
       "writeTo": "Escribir a @{username}",
-      "messageLabel": "Mensaje",
       "sent": "Mensaje enviado."
     }
   },
@@ -412,14 +448,11 @@
     },
     "fields": {
       "price": "Precio",
-      "payUpTo": "Pago hasta",
-      "quantity": "Cantidad",
-      "options": "Options",
       "totalPrice": "Precio total",
       "zenyIncluded": "Zeny incluido",
       "yourOffer": "Tu oferta",
       "youReceived": "Has recibido",
-      "message": "Mensaje"
+      "replyTo": "Responder a"
     },
     "dm": {
       "purchased": "{username} ha comprado tu {item}",

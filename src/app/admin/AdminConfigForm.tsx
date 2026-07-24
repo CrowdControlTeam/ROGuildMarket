@@ -13,6 +13,8 @@ export function AdminConfigForm({ config }: { config: Config }) {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
   const t = useTranslations("admin");
+  const tButton = useTranslations("market.button");
+  const tStatus = useTranslations("market.status");
 
   return (
     <form
@@ -210,10 +212,10 @@ export function AdminConfigForm({ config }: { config: Config }) {
       </fieldset>
 
       {error && <p className="text-sm text-red-700">{error}</p>}
-      {saved && !error && <p className="text-sm text-green-700">{t("saved")}</p>}
+      {saved && !error && <p className="text-sm text-green-700">{tStatus("saved")}</p>}
 
       <button type="submit" className={buttonClass("primary")}>
-        {t("save")}
+        {tButton("save")}
       </button>
     </form>
   );

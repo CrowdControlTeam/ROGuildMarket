@@ -42,6 +42,7 @@ export async function sendGift(formData: FormData) {
   const session = await requireSession();
   const t = await getTranslations("errors");
   const tDiscord = await getTranslations("discord");
+  const tField = await getTranslations("market.field");
 
   const { maintenanceModeEnabled } = await loadMarketConfig();
   if (maintenanceModeEnabled && !session.user.isAdmin) {
@@ -146,11 +147,11 @@ export async function sendGift(formData: FormData) {
     color: DISCORD_EMBED_COLOR.GIFT,
     itemIconUrl: `${appUrl}${item.iconUrl}`,
     fields: [
-      { name: tDiscord("fields.quantity"), value: String(quantity), inline: true },
+      { name: tField("quantity"), value: String(quantity), inline: true },
       ...(rawOptions.length > 0
         ? [
             {
-              name: tDiscord("fields.options"),
+              name: tField("options"),
               value: rawOptions
                 .map((o) => `${defsById.get(o.defId)!.label}: ${formatOptionAmount(o.value, false)}`)
                 .join("\n"),

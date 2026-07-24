@@ -23,6 +23,7 @@ export function UserMention({
   viewerId,
   capitalize = false,
   item,
+  listingId,
   dmAvailable = false,
 }: {
   userId: string;
@@ -30,6 +31,10 @@ export function UserMention({
   viewerId: string;
   capitalize?: boolean;
   item?: MentionItem;
+  // Listing desde la que se menciona a esta persona (si la hay) — permite
+  // que el DM de contacto enlace de vuelta al listing. No todas las
+  // menciones tienen una (p.ej. en Regalos no hay listing que enlazar).
+  listingId?: string;
   dmAvailable?: boolean;
 }) {
   const t = useTranslations("common");
@@ -62,6 +67,7 @@ export function UserMention({
         recipientId={userId}
         recipientUsername={username}
         item={item}
+        listingId={listingId}
       />
     </>
   );
@@ -73,12 +79,14 @@ function ContactModal({
   recipientId,
   recipientUsername,
   item,
+  listingId,
 }: {
   open: boolean;
   onClose: () => void;
   recipientId: string;
   recipientUsername: string;
   item: MentionItem;
+  listingId?: string;
 }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -86,7 +94,9 @@ function ContactModal({
   const [isPending, startTransition] = useTransition();
   const submittingRef = useRef(false);
   const t = useTranslations("market.contact");
+  const tField = useTranslations("market.field");
   const tCommon = useTranslations("common");
+  const tStatus = useTranslations("market.status");
 
   function handleClose() {
     onClose();
@@ -145,7 +155,8 @@ function ContactModal({
           >
             <input type="hidden" name="recipientId" value={recipientId} />
             <input type="hidden" name="itemId" value={item.id} />
-            <label className={labelClass}>{t("messageLabel")}</label>
+            {listingId && <input type="hidden" name="listingId" value={listingId} />}
+            <label className={labelClass}>{tField("message")}</label>
             <textarea
               name="message"
               rows={4}
@@ -157,7 +168,7 @@ function ContactModal({
             />
             {error && <p className="text-sm text-red-700">{error}</p>}
             <button type="submit" disabled={isPending} className={buttonClass("primary")}>
-              {isPending ? tCommon("sending") : tCommon("send")}
+              {isPending ? tStatus("sending") : tCommon("send")}
             </button>
           </form>
         )}
