@@ -12,10 +12,11 @@ export default async function AdminPage() {
   await requireAdmin();
   const config = await getMarketConfig();
   const t = await getTranslations("admin");
+  const tNav = await getTranslations("market.nav");
 
   return (
     <main className="mx-auto max-w-lg px-6 py-8">
-      <BackLink href="/market" label={t("backToMarket")} />
+      <BackLink href="/market" label={tNav("backToMarket")} />
       <Panel
         title={t("title")}
         headerAction={

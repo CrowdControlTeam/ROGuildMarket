@@ -2,15 +2,11 @@
   "common": {
     "cancel": "Cancel",
     "close": "Close",
-    "save": "Save",
-    "saved": "Saved.",
     "send": "Send",
-    "sending": "Sending...",
     "search": "Search",
     "reset": "Reset",
     "searching": "Searching...",
     "loading": "Loading...",
-    "retry": "Retry",
     "genericError": "Unexpected error",
     "searchError": "Couldn't search. Please try again.",
     "you": "You",
@@ -33,7 +29,6 @@
   },
   "myActivity": {
     "title": "My activity",
-    "back": "Back to the market",
     "listingsEmpty": "You haven't posted anything yet.",
     "tabs": {
       "listings": "My listings",
@@ -55,18 +50,11 @@
   "errors": {
     "boundary": {
       "title": "Something went wrong",
-      "message": "An unexpected error occurred. You can try again.",
-      "retry": "Retry"
-    },
-    "global": {
-      "title": "Something went wrong",
-      "message": "An unexpected error occurred while loading the page.",
-      "retry": "Retry"
+      "message": "An unexpected error occurred. You can try again."
     },
     "notFound": {
       "title": "Not found",
-      "message": "This page doesn't exist, or the item you're looking for is no longer available.",
-      "backToMarket": "Back to the market"
+      "message": "This page doesn't exist, or the item you're looking for is no longer available."
     },
     "invalidData": "Invalid data",
     "selectItem": "Select an item",
@@ -113,11 +101,8 @@
     "recognitionFailed": "Automatic detection failed. Try again or fill in the item by hand."
   },
   "admin": {
-    "backToMarket": "Back to the market",
     "title": "Settings",
     "statsLink": "View stats",
-    "save": "Save",
-    "saved": "Saved.",
     "stats": {
       "title": "Market stats",
       "backToConfig": "Back to settings",
@@ -225,6 +210,26 @@
       "admin": "The market is under maintenance (as an admin, you can still post and buy).",
       "user": "The market is under maintenance: sales and purchases are disabled for now."
     },
+    "nav": {
+      "backToMarket": "Back to the market"
+    },
+    "button": {
+      "save": "Save",
+      "retry": "Retry"
+    },
+    "status": {
+      "saved": "Saved.",
+      "sending": "Sending..."
+    },
+    "field": {
+      "options": "Options",
+      "quantity": "Quantity",
+      "message": "Message",
+      "refine": "Refine",
+      "cardSlots": "Card slots",
+      "minStats": "Minimum stats wanted",
+      "payUpTo": "Pay up to"
+    },
     "filters": {
       "buyOptionsHint": "Search buy requests that match these values.",
       "name": "Name",
@@ -242,7 +247,6 @@
       "cardSlotsMax": "Slots max.",
       "priceMin": "Price min.",
       "priceMax": "Price max.",
-      "options": "Options",
       "optionPlaceholder": "-- Option {slot} --",
       "min": "Min",
       "max": "Max",
@@ -354,16 +358,11 @@
       "loadMoreError": "Couldn't load more. Please try again."
     },
     "detail": {
-      "back": "Back to the market",
-      "quantity": "Quantity",
       "available": "Available",
-      "payUpTo": "Pay up to",
       "unitPrice": "Price per unit",
       "posted": "Posted",
       "sold": "Sold",
       "of": "of",
-      "minStats": "Minimum stats wanted",
-      "options": "Options",
       "markFulfilled": "Mark as fulfilled",
       "cancelListing": "Cancel listing",
       "tradedWith": "Traded with",
@@ -379,11 +378,7 @@
       },
       "tradeForm": {
         "offerItem": "Offer item",
-        "quantity": "Quantity",
-        "refine": "Refine",
-        "cardSlots": "Card slots",
         "zeny": "Extra zeny (optional)",
-        "sending": "Sending...",
         "submit": "Send offer"
       },
       "tradeActions": {
@@ -409,14 +404,9 @@
       "publishing": "Posting...",
       "recognitionLabel": "Recognize from screenshot (optional)",
       "itemLabel": "Item",
-      "quantityLabel": "Quantity",
-      "refineLabel": "Refine",
-      "cardSlotsLabel": "Card slots",
       "priceLabel": "Price (z)",
       "payUpToLabel": "Pay up to (z)",
       "recipientLabel": "Recipient",
-      "minStatsLabel": "Minimum stats wanted",
-      "optionsLabel": "Options",
       "recognitionNoMatchNamed": "No item in the catalog looks like \"{name}\". Select it manually.",
       "recognitionNoMatch": "Couldn't read the item in the screenshot. Select it manually.",
       "recognitionDetected": "Detected: {item}. Review the data before posting.",
@@ -447,7 +437,6 @@
     },
     "contact": {
       "writeTo": "Message @{username}",
-      "messageLabel": "Message",
       "sent": "Message sent."
     }
   },
@@ -459,14 +448,10 @@
     },
     "fields": {
       "price": "Price",
-      "payUpTo": "Pay up to",
-      "quantity": "Quantity",
-      "options": "Options",
       "totalPrice": "Total price",
       "zenyIncluded": "Zeny included",
       "yourOffer": "Your offer",
       "youReceived": "You received",
-      "message": "Message",
       "replyTo": "Reply to"
     },
     "dm": {

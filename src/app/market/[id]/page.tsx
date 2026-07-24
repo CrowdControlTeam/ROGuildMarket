@@ -57,7 +57,7 @@ export default async function ListingDetailPage({
 
   return (
     <main className="mx-auto max-w-lg px-6 py-8">
-      <BackLink href="/market" label={t("detail.back")} />
+      <BackLink href="/market" label={t("nav.backToMarket")} />
       <Panel>
         <div className="flex items-center gap-4">
           <Image
@@ -85,12 +85,12 @@ export default async function ListingDetailPage({
 
         <dl className="mt-6 flex flex-col gap-2 text-sm">
           <div className="flex justify-between border-b border-ro-panel-border/30 pb-2">
-            <dt className="text-ro-text-muted">{isBuy ? t("detail.quantity") : t("detail.available")}</dt>
+            <dt className="text-ro-text-muted">{isBuy ? t("field.quantity") : t("detail.available")}</dt>
             <dd>{isBuy ? listing.quantity : remaining}</dd>
           </div>
           {!isTrade && listing.price !== null && (
             <div className="flex justify-between border-b border-ro-panel-border/30 pb-2">
-              <dt className="text-ro-text-muted">{isBuy ? t("detail.payUpTo") : t("detail.unitPrice")}</dt>
+              <dt className="text-ro-text-muted">{isBuy ? t("field.payUpTo") : t("detail.unitPrice")}</dt>
               <dd className={`font-bold ${priceColorClass(listing.price)}`}>
                 {formatPrice(listing.price)}
               </dd>
@@ -132,7 +132,7 @@ export default async function ListingDetailPage({
 
         {listing.options.length > 0 && (
           <div className="mt-4">
-            <p className={labelClass}>{isBuy ? t("detail.minStats") : t("detail.options")}</p>
+            <p className={labelClass}>{isBuy ? t("field.minStats") : t("field.options")}</p>
             <ul className="flex flex-col gap-1 text-sm">
               {listing.options.map((o) => (
                 <li key={o.slotIndex} className="flex justify-between border-b border-ro-panel-border/30 pb-1">

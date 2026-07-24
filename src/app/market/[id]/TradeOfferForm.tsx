@@ -24,6 +24,8 @@ export function TradeOfferForm({ listingId }: { listingId: string }) {
   // pueden dispararse antes de ese commit — ver NewPublicationForm.tsx.
   const submittingRef = useRef(false);
   const t = useTranslations("market.detail.tradeForm");
+  const tField = useTranslations("market.field");
+  const tStatus = useTranslations("market.status");
 
   useEffect(() => {
     getMaxRefineLevel().then(setMaxRefineLevel);
@@ -70,13 +72,13 @@ export function TradeOfferForm({ listingId }: { listingId: string }) {
       </div>
 
       <div>
-        <label className={labelClass}>{t("quantity")}</label>
+        <label className={labelClass}>{tField("quantity")}</label>
         <input type="number" name="quantity" min={1} defaultValue={1} required className={inputClass} />
       </div>
 
       {refineEligible && (
         <div>
-          <label className={labelClass}>{t("refine")}</label>
+          <label className={labelClass}>{tField("refine")}</label>
           <input
             type="number"
             name="refineLevel"
@@ -91,7 +93,7 @@ export function TradeOfferForm({ listingId }: { listingId: string }) {
 
       {maxCardSlots > 0 && (
         <div>
-          <label className={labelClass}>{t("cardSlots")}</label>
+          <label className={labelClass}>{tField("cardSlots")}</label>
           <input
             type="number"
             name="cardSlots"
@@ -112,7 +114,7 @@ export function TradeOfferForm({ listingId }: { listingId: string }) {
       {error && <p className="text-sm text-red-700">{error}</p>}
 
       <button type="submit" disabled={!selectedItem || isPending} className={buttonClass("primary")}>
-        {isPending ? t("sending") : t("submit")}
+        {isPending ? tStatus("sending") : t("submit")}
       </button>
     </form>
   );

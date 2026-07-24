@@ -480,7 +480,7 @@ export function MarketFilters() {
             aria-expanded={optionsExpanded}
             className={`flex items-center gap-1 ${labelClass}`}
           >
-            {t("filters.options")}
+            {t("field.options")}
             {optionsExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
           {optionsExpanded && isBuyFilter && (

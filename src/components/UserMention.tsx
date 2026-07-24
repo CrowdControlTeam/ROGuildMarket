@@ -94,7 +94,9 @@ function ContactModal({
   const [isPending, startTransition] = useTransition();
   const submittingRef = useRef(false);
   const t = useTranslations("market.contact");
+  const tField = useTranslations("market.field");
   const tCommon = useTranslations("common");
+  const tStatus = useTranslations("market.status");
 
   function handleClose() {
     onClose();
@@ -154,7 +156,7 @@ function ContactModal({
             <input type="hidden" name="recipientId" value={recipientId} />
             <input type="hidden" name="itemId" value={item.id} />
             {listingId && <input type="hidden" name="listingId" value={listingId} />}
-            <label className={labelClass}>{t("messageLabel")}</label>
+            <label className={labelClass}>{tField("message")}</label>
             <textarea
               name="message"
               rows={4}
@@ -166,7 +168,7 @@ function ContactModal({
             />
             {error && <p className="text-sm text-red-700">{error}</p>}
             <button type="submit" disabled={isPending} className={buttonClass("primary")}>
-              {isPending ? tCommon("sending") : tCommon("send")}
+              {isPending ? tStatus("sending") : tCommon("send")}
             </button>
           </form>
         )}

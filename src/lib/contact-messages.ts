@@ -18,6 +18,7 @@ export async function sendContactMessage(formData: FormData) {
   const session = await requireSession();
   const t = await getTranslations("errors");
   const tDiscord = await getTranslations("discord");
+  const tField = await getTranslations("market.field");
 
   if (!(await isDmFeatureAvailable())) {
     throw new Error(t("dmNotAvailable"));
@@ -59,7 +60,7 @@ export async function sendContactMessage(formData: FormData) {
     color: DISCORD_EMBED_COLOR.MESSAGE,
     itemIconUrl: `${appUrl}${item.iconUrl}`,
     fields: [
-      { name: tDiscord("fields.message"), value: parsed.data.message, inline: false },
+      { name: tField("message"), value: parsed.data.message, inline: false },
       // Mención nativa de Discord: dentro del canal privado bot<->destinatario
       // no le hace ping a nadie (el remitente no está en ese canal), solo
       // renderiza un chip clicable que abre su perfil — desde ahí se puede
