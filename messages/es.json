@@ -115,8 +115,43 @@
   "admin": {
     "backToMarket": "Volver al mercado",
     "title": "Configuración",
+    "statsLink": "Ver estadísticas",
     "save": "Guardar",
     "saved": "Guardado.",
+    "stats": {
+      "title": "Estadísticas del mercado",
+      "backToConfig": "Volver a configuración",
+      "period": {
+        "label": "Periodo",
+        "30d": "Últimos 30 días"
+      },
+      "totals": {
+        "heading": "Resumen",
+        "zenyMoved": "Zeny movido",
+        "postersCount": "Usuarios que han publicado",
+        "totalUsers": "Usuarios registrados",
+        "giftsSent": "Regalos enviados"
+      },
+      "listingsByType": {
+        "heading": "Publicaciones por tipo y estado",
+        "closed": "Cerrada"
+      },
+      "tradeOffers": {
+        "heading": "Ofertas de intercambio por estado"
+      },
+      "rankings": {
+        "topPosters": "Quién más publica",
+        "topEarners": "Top vendedores (zeny conseguido)",
+        "topSpenders": "Top compradores (zeny gastado)",
+        "topListedItems": "Items más publicados",
+        "topPurchasedItems": "Items más comprados",
+        "empty": "Sin datos en este periodo.",
+        "count": "Publicaciones",
+        "quantity": "Unidades",
+        "rank": "#",
+        "name": "Nombre"
+      }
+    },
     "general": {
       "legend": "General",
       "siteNameLabel": "Nombre de la aplicación",

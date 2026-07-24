@@ -115,8 +115,43 @@
   "admin": {
     "backToMarket": "Back to the market",
     "title": "Settings",
+    "statsLink": "View stats",
     "save": "Save",
     "saved": "Saved.",
+    "stats": {
+      "title": "Market stats",
+      "backToConfig": "Back to settings",
+      "period": {
+        "label": "Period",
+        "30d": "Last 30 days"
+      },
+      "totals": {
+        "heading": "Overview",
+        "zenyMoved": "Zeny moved",
+        "postersCount": "Users who have posted",
+        "totalUsers": "Registered users",
+        "giftsSent": "Gifts sent"
+      },
+      "listingsByType": {
+        "heading": "Listings by type and status",
+        "closed": "Closed"
+      },
+      "tradeOffers": {
+        "heading": "Trade offers by status"
+      },
+      "rankings": {
+        "topPosters": "Who posts the most",
+        "topEarners": "Top sellers (zeny earned)",
+        "topSpenders": "Top buyers (zeny spent)",
+        "topListedItems": "Most listed items",
+        "topPurchasedItems": "Most purchased items",
+        "empty": "No data for this period.",
+        "count": "Listings",
+        "quantity": "Units",
+        "rank": "#",
+        "name": "Name"
+      }
+    },
     "general": {
       "legend": "General",
       "siteNameLabel": "App name",
