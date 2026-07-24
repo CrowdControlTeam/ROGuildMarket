@@ -1,6 +1,6 @@
-import { DetailSlot } from "../DetailSlot";
+import { DetailSlot } from "./DetailSlot";
 
-export default function DetailSlotCatchAll({
+export default function DetailSlotRoot({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

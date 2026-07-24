@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { loadMoreListings } from "@/lib/market-actions";
 import type { MarketFilters } from "@/lib/market";
@@ -48,6 +49,17 @@ export function MarketResults({
   const [isPending, startTransition] = useTransition();
   const t = useTranslations("market");
   const tCommon = useTranslations("common");
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Abre el detalle como panel superpuesto (?listing=<id>) en vez de
+  // navegar a /market/[id] — así el mercado se queda montado detrás. La
+  // página /market/[id] se conserva aparte para enlaces directos/compartidos.
+  function listingHref(id: string) {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("listing", id);
+    return `${pathname}?${params.toString()}`;
+  }
 
   function loadMore() {
     setLoadMoreError(null);
@@ -113,7 +125,8 @@ export function MarketResults({
                   se apila en una columna con las options a ancho completo
                   (ver bloque siguiente). */}
               <Link
-                href={`/market/${listing.id}`}
+                href={listingHref(listing.id)}
+                scroll={false}
                 className="hidden items-center gap-4 rounded-lg border-2 border-ro-panel-border bg-ro-panel p-4 text-ro-text transition-colors hover:border-ro-gold sm:flex"
               >
                 <Image
@@ -146,7 +159,8 @@ export function MarketResults({
 
               {/* Tarjeta apilada, solo en móvil. */}
               <Link
-                href={`/market/${listing.id}`}
+                href={listingHref(listing.id)}
+                scroll={false}
                 className="flex flex-col gap-2 rounded-lg border-2 border-ro-panel-border bg-ro-panel p-4 text-ro-text transition-colors hover:border-ro-gold sm:hidden"
               >
                 {badge}

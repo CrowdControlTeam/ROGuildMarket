@@ -63,14 +63,17 @@ export async function ListingDetailContent({ id }: { id: string }) {
           width={44}
           height={44}
         />
-        <div>
-          <h1 className="flex items-center gap-2 font-heading text-sm text-ro-text">
+        <div className="min-w-0">
+          {/* Badge en su propia línea arriba del nombre — con el badge
+              inline, nombres un poco largos empujaban el badge o se
+              descuadraban. */}
+          <span
+            className={`inline-block rounded border px-1.5 py-0.5 text-xs font-normal ${LISTING_TYPE_BADGE_CLASS[listing.type]}`}
+          >
+            {listingTypeLabel(t, listing.type)}
+          </span>
+          <h1 className="mt-1 font-heading text-sm text-ro-text">
             {formatItemDisplayName(listing.item.name, listing.refineLevel, listing.cardSlots)}
-            <span
-              className={`rounded border px-1.5 py-0.5 text-xs font-normal ${LISTING_TYPE_BADGE_CLASS[listing.type]}`}
-            >
-              {listingTypeLabel(t, listing.type)}
-            </span>
           </h1>
           <p className="mt-1 text-sm text-ro-text-muted">
             {listingStatusLabel(t, listing.status, listing.type)}
@@ -80,7 +83,7 @@ export async function ListingDetailContent({ id }: { id: string }) {
 
       {/* Grid de 2 columnas en vez de filas apiladas con borde propio —
           reduce bastante el alto total, sobre todo en el panel móvil. */}
-      <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
+      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
         <div>
           <dt className="text-xs text-ro-text-muted">{isBuy ? t("field.quantity") : t("detail.available")}</dt>
           <dd>{isBuy ? listing.quantity : remaining}</dd>
@@ -124,7 +127,7 @@ export async function ListingDetailContent({ id }: { id: string }) {
       </dl>
 
       {listing.options.length > 0 && (
-        <div className="mt-3">
+        <div className="mt-2">
           <p className={labelClass}>{isBuy ? t("field.minStats") : t("field.options")}</p>
           {/* Texto plano en móvil (cabe en la mitad de columna sin
               apretarse); badge como en las cards del mercado a partir de
@@ -151,7 +154,7 @@ export async function ListingDetailContent({ id }: { id: string }) {
       )}
 
       {listing.status === "ACTIVE" && (
-        <div className="mt-4">
+        <div className="mt-3">
           {isPoster ? (
             <CancelListingButton listingId={listing.id} showFulfill={isBuy} />
           ) : isTrade ? (
@@ -167,7 +170,7 @@ export async function ListingDetailContent({ id }: { id: string }) {
       )}
 
       {isTrade && listing.status === "SOLD" && (
-        <p className="mt-4 text-sm text-ro-text-muted">
+        <p className="mt-3 text-sm text-ro-text-muted">
           {(() => {
             const accepted = listing.tradeOffers.find((o) => o.status === "ACCEPTED");
             if (!accepted) return null;
@@ -194,7 +197,7 @@ export async function ListingDetailContent({ id }: { id: string }) {
       )}
 
       {isTrade && (isPoster ? pendingOffers.length > 0 : myOffers.length > 0) && (
-        <div className="mt-4">
+        <div className="mt-3">
           <p className={labelClass}>{isPoster ? t("detail.offersReceived") : t("detail.yourOffers")}</p>
           <ul className="mt-2 flex flex-col gap-3">
             {(isPoster ? pendingOffers : myOffers).map((offer) => (

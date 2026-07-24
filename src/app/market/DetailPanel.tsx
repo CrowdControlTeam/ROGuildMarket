@@ -4,12 +4,17 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useTranslations } from "next-intl";
 
-// Ficha de listing interceptada (market/@detail/(.)[id]/page.tsx) — a
-// diferencia de Sidebar.tsx (menú hamburguesa), esto NO es un modal: sin
-// fondo oscurecido y sin cierre al hacer clic fuera, porque el objetivo es
-// justo lo contrario — poder seguir viendo y navegando el mercado detrás
-// mientras el panel está abierto. Solo se cierra con la X, Escape, o (en
-// móvil) deslizando el panel hacia abajo.
+// Envoltorio visual de la ficha de listing (panel lateral en desktop,
+// bottom sheet en móvil) — usado como overlay sobre /market (slot @detail,
+// activado por ?listing=<id> — ver MarketResults.listingHref y
+// @detail/DetailSlot.tsx), manteniendo el mercado montado detrás. El
+// acceso directo/enlace compartido (market/[id]/page.tsx) usa un layout de
+// página normal en vez de este panel.
+// A diferencia de Sidebar.tsx (menú hamburguesa), esto NO es un modal: sin
+// fondo oscurecido y sin cierre al hacer clic fuera. Se cierra con la X,
+// Escape, o (en móvil) deslizando el panel hacia abajo; `close()` usa
+// router.back() porque se llega aquí navegando (Link push, ver
+// listingHref), así que "atrás" ya deja la URL correcta sin el query param.
 export function DetailPanel({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const t = useTranslations("common");
@@ -61,7 +66,7 @@ export function DetailPanel({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`fixed left-0 right-0 bottom-0 z-40 flex h-[75vh] max-h-[85vh] w-full flex-col overflow-hidden rounded-t-2xl border-t-4 border-ro-panel-border bg-ro-panel text-ro-text shadow-xl transition-transform duration-200 md:left-auto md:top-0 md:h-full md:max-h-none md:w-[420px] md:max-w-[85vw] md:rounded-none md:rounded-l-2xl md:border-l-4 md:border-t-0 ${
+      className={`fixed left-0 right-0 bottom-0 z-40 flex h-auto max-h-[60vh] w-full flex-col overflow-hidden rounded-t-2xl border-t-4 border-ro-panel-border bg-ro-panel text-ro-text shadow-xl transition-transform duration-200 md:left-auto md:top-0 md:h-full md:max-h-none md:w-[420px] md:max-w-[85vw] md:rounded-none md:rounded-l-2xl md:border-l-4 md:border-t-0 ${
         mounted ? "translate-y-0 md:translate-x-0" : "translate-y-full md:translate-x-full"
       }`}
       style={
@@ -89,7 +94,7 @@ export function DetailPanel({ children }: { children: React.ReactNode }) {
           ✕
         </button>
       </div>
-      <div className="overflow-y-auto p-4">{children}</div>
+      <div className="overflow-y-auto p-3">{children}</div>
     </div>
   );
 }
