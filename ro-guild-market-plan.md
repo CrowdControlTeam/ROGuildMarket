@@ -795,6 +795,67 @@ Orden sugerido: "Mis publicaciones" primero (más autocontenido), luego
 "Filtro por usuario" (reutiliza casi todo lo existente), y "Estadísticas"
 al final (conviene cerrar antes qué métricas exactas se quieren).
 
+**Feedback de un usuario potencial (2026-07-24)** — 3 bugs + 1 propuesta:
+
+- **Buscador roto tras "Reset" — RESUELTO.** Causa confirmada en vivo:
+  `typeLocked` (antes `!!searchParams.get("type")`) no distinguía entre
+  "vine de un enlace del menú Vender/Comprar/Comerciar" y "elegí un Tipo en
+  el propio desplegable de filtros y busqué" — ambos casos generaban la
+  misma URL `?type=SALE`, así que el desplegable "Tipo" desaparecía del
+  todo y Reset nunca lo recuperaba (quedaba pegado en silencio, excluyendo
+  resultados de otros tipos sin ningún indicio visible). Repro en vivo:
+  elegir "Venta" en el desplegable de Mercado general, buscar, Reset →
+  la URL se quedaba en `?type=SALE`, y una búsqueda posterior de "Damascus"
+  solo mostraba la venta, ocultando la compra existente del mismo item.
+  Fix aplicado (a petición del usuario, separando identidad de "pantalla"
+  de filtros normales en vez de un flag extra en la query string): rutas
+  nuevas `/market/sale`, `/market/buy`, `/market/trade` (antes
+  `/market?type=SALE` etc. desde el menú), cada una un wrapper fino sobre
+  el componente compartido `MarketPageContent.tsx` con `screenType` fijo
+  como prop — el título y el bloqueo del selector "Tipo" ahora dependen
+  solo de la ruta, nunca de la query string. En `/market` (Mercado
+  general), `type` vuelve a ser un filtro normal: visible, incluido en
+  Reset, sin cambiar el título de la página. `MarketFilters.tsx` y
+  `SortSelect.tsx` usan `usePathname()` en vez de `/market` fijo para que
+  filtros/orden funcionen igual en cualquiera de las 4 rutas. Verificado
+  en navegador: filtro por tipo en Mercado general + Reset ahora limpia
+  todo correctamente; en `/market/sale` con un filtro de categoría
+  aplicado, Reset limpia el filtro pero te mantiene en Ventas (no salta a
+  Mercado general). Sin migración de datos ni cambios de schema.
+- **Botón "Comprar" poco claro — PENDIENTE, no investigado a petición
+  explícita del usuario ("hablaremos después").** Sugerencia de quien dio
+  el feedback: que en vez de comprar directamente, contactara/abriera DM
+  con quien publica.
+- **Error de render al reconocer item con Gemini (bug, sin causa
+  confirmada):** revisado el flujo completo (`ScreenshotDropzone.tsx`,
+  `handleScreenshotScan` en `NewPublicationForm.tsx`,
+  `recognizeItemFromScreenshot` en `item-recognition.ts`) sin encontrar un
+  defecto claro por lectura estática — todos los paths de error devuelven
+  string, no hay hooks condicionales, ni objetos crudos pasados a JSX.
+  Hace falta o el texto/stack exacto del error (el overlay de Next en dev
+  lo muestra completo) o reproducirlo en vivo con sesión real para
+  localizarlo.
+- **Propuesta: detalle de listing en panel lateral derecho** (en vez de
+  navegar a `/market/[id]`, para poder seguir viendo el mercado a la
+  izquierda). Planificado usando Parallel Routes + Intercepting Routes de
+  Next.js (verificado contra `node_modules/next/dist/docs/`, es
+  literalmente el patrón que documentan para "opening a shopping cart in a
+  side modal"): `src/app/market/layout.tsx` nuevo con slot `@detail`,
+  `market/@detail/default.tsx` (null) + `market/@detail/[...catchAll]/page.tsx`
+  (null, para cerrar el panel al navegar a cualquier otra ruta) +
+  `market/@detail/(.)[id]/page.tsx` (intercepta el click desde la lista,
+  reutiliza `Sidebar` con `side="right"` y `onClose={() => router.back()}`).
+  El contenido de la ficha se extrae a un componente compartido (mismo
+  patrón que `GiftsHistory.tsx`) para que lo use tanto la página completa
+  (`market/[id]/page.tsx`, sin cambios de comportamiento en visita directa/
+  enlace compartido) como el panel interceptado — sin duplicar lógica de
+  precio/options/formularios de compra-oferta/cancelar. `<Link>` normal en
+  `MarketResults.tsx` no necesita cambios: la intercepción es puramente de
+  routing. Pendiente: decidir si el `Sidebar` actual (`w-72`) es
+  suficientemente ancho para una ficha completa, o si hace falta una
+  variante más ancha. Sin empezar la implementación — pendiente de luz
+  verde.
+
 ---
 
 ## 1. Idea general

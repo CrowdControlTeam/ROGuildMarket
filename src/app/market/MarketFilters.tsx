@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ChevronDown, ChevronUp } from "lucide-react";
@@ -46,19 +46,20 @@ function dedupeByStat(defs: ItemOptionDef[]): StatOption[] {
   return Array.from(byCode.values()).sort((a, b) => a.label.localeCompare(b.label));
 }
 
-export function MarketFilters() {
+export function MarketFilters({ screenType }: { screenType: ListingType | null }) {
   const router = useRouter();
+  const pathname = usePathname();
   const searchParams = useSearchParams();
   const t = useTranslations("market");
   const tCommon = useTranslations("common");
 
   const [q, setQ] = useState(searchParams.get("q") ?? "");
-  const [type, setType] = useState(searchParams.get("type") ?? "");
-  // Cuando se llega con un tipo ya fijado en la URL (menú Vender/Comprar/
-  // Comerciar, o un filtro de Tipo ya aplicado), el selector se oculta —
-  // la propia vista pasa a "ser" de ese tipo. "Reset" (o volver a
-  // Mercado) lo despeja y el selector reaparece.
-  const typeLocked = !!searchParams.get("type");
+  // En una pantalla fija (Ventas/Compras/Intercambios, ruta /market/sale|
+  // buy|trade) "type" viene de la ruta, no de la query string, y nunca
+  // cambia — el selector se oculta y no participa en Reset. Fuera de ahí
+  // (Mercado general) es un filtro normal como cualquier otro.
+  const [type, setType] = useState(screenType ?? searchParams.get("type") ?? "");
+  const typeLocked = screenType !== null;
   // El id resuelto es lo que de verdad filtra (ver posterId en market.ts);
   // el nombre solo se guarda en la URL para poder repintar el campo ya
   // seleccionado tras recargar, sin tener que volver a buscar.
@@ -200,7 +201,12 @@ export function MarketFilters() {
     e.preventDefault();
     const params = new URLSearchParams(searchParams.toString());
     setOrDelete(params, "q", q.trim());
-    setOrDelete(params, "type", type);
+    // En pantalla fija, "type" ya lo da la ruta — no se duplica en la query.
+    if (typeLocked) {
+      params.delete("type");
+    } else {
+      setOrDelete(params, "type", type);
+    }
     setOrDelete(params, "posterId", poster?.id ?? "");
     setOrDelete(params, "posterName", poster?.username ?? "");
     setOrDelete(params, "category", category);
@@ -241,16 +247,15 @@ export function MarketFilters() {
     setOrDelete(params, "minPrice", minPrice === "" ? "" : String(minPrice));
     setOrDelete(params, "maxPrice", maxPrice === "" ? "" : String(maxPrice));
     // Cambiar filtros reinicia la paginación (sin cursor).
-    router.push(`/market?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`);
   }
 
-  // "type" no se toca aquí a propósito: dentro de una vista ya filtrada por
-  // tipo (Ventas/Compras/Intercambios, con el selector "Tipo" oculto),
-  // Reset limpia el resto de filtros pero se queda en esa misma vista — para
-  // volver al Mercado general está el propio enlace "Mercado" del menú, no
-  // hace falta que Reset también sirva de vía de escape.
+  // En pantalla fija, "type" es parte de la ruta (no un filtro), así que
+  // Reset ni lo toca ni hace falta que lo trate como caso especial: fuera
+  // de ahí (Mercado general) se limpia igual que cualquier otro filtro.
   function resetFilters() {
     setQ("");
+    if (!typeLocked) setType("");
     setPoster(null);
     setCategory("");
     setSlot("");
@@ -265,6 +270,7 @@ export function MarketFilters() {
     const params = new URLSearchParams(searchParams.toString());
     const keys = [
       "q",
+      "type",
       "posterId",
       "posterName",
       "category",
@@ -281,7 +287,7 @@ export function MarketFilters() {
       keys.push(`option${n}Stat`, `option${n}Min`, `option${n}Max`);
     }
     keys.forEach((key) => params.delete(key));
-    router.push(`/market?${params.toString()}`);
+    router.push(`${pathname}?${params.toString()}`);
   }
 
   return (
